@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — System Flow</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">System Flow</h1>
+        <p class="page-subtitle">End-to-end AI operating pipeline from requirements to release</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-4" id="flowStats" style="margin-bottom:20px;"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Requirements → PBI → Approval → Architecture → Dev → QA → Release</h3>
+        <span class="tag">Connected System Flow</span>
+      </div>
+      <div id="systemFlowStack" class="flow-stack"></div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('system-flow');
+    let currentProjectId = createProjectSelector('projectSelector', renderSystemFlow);
+    let liveStageIndex = 2;
+    let flowTicker = null;
+
+    const FLOW_STEPS = [
+      {
+        step: 'Requirements',
+        agent: 'Business Analyst',
+        input: ['Raw requirement docs', 'Stakeholder transcripts'],
+        output: ['Structured requirements', 'Ambiguity report']
+      },
+      {
+        step: 'PBI',
+        agent: 'Product Owner',
+        input: ['Structured requirements', 'Priority goals'],
+        output: ['Epics', 'Features', 'User Stories']
+      },
+      {
+        step: 'Approval',
+        agent: 'Business Analyst + Product Owner',
+        input: ['User stories', 'Acceptance candidates'],
+        output: ['Approved backlog items', 'Ready for architecture']
+      },
+      {
+        step: 'Architecture',
+        agent: 'Chief Architect',
+        input: ['Approved backlog', 'System constraints'],
+        output: ['DB schema', 'API contracts', 'Module map']
+      },
+      {
+        step: 'Dev',
+        agent: 'Module Architect + Developer Agent - Auth 01',
+        input: ['Architecture artifacts', 'Task breakdown'],
+        output: ['Implementation commits', 'Unit tests']
+      },
+      {
+        step: 'QA',
+        agent: 'QA Agent',
+        input: ['Implementation build', 'Acceptance criteria'],
+        output: ['Gate review report', 'Defect list']
+      },
+      {
+        step: 'Release',
+        agent: 'DevOps Agent',
+        input: ['QA approved build', 'Deployment checklist'],
+        output: ['Release package', 'Deployment telemetry']
+      }
+    ];
+
+    function getStepStatus(index) {
+      if (index < liveStageIndex) return 'COMPLETED';
+      if (index === liveStageIndex) return 'EXECUTING';
+      return 'PENDING';
+    }
+
+    function renderStats() {
+      const statuses = FLOW_STEPS.map((_, idx) => getStepStatus(idx));
+      const completed = statuses.filter(s => s === 'COMPLETED').length;
+      const executing = statuses.filter(s => s === 'EXECUTING').length;
+      const pending = statuses.filter(s => s === 'PENDING').length;
+      const progress = Math.round((completed / FLOW_STEPS.length) * 100);
+
+      document.getElementById('flowStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Project</span><span class="stat-value" style="font-size:18px;">${currentProjectId}</span></div>
+        <div class="stat-card"><span class="stat-label">Completed Steps</span><span class="stat-value">${completed}</span></div>
+        <div class="stat-card"><span class="stat-label">Active Step</span><span class="stat-value">${executing}</span></div>
+        <div class="stat-card"><span class="stat-label">Pipeline Progress</span><span class="stat-value">${progress}%</span><div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div></div>
+      `;
+    }
+
+    function renderSystemFlow() {
+      currentProjectId = getSelectedProject();
+      renderStats();
+
+      document.getElementById('systemFlowStack').innerHTML = FLOW_STEPS.map((node, index) => `
+        <div>
+          <div class="flow-card">
+            <div class="card-header" style="margin-bottom:8px;">
+              <div>
+                <h3 class="card-title">${node.step}</h3>
+                <span class="card-subtitle">Agent: ${node.agent}</span>
+              </div>
+              ${statusBadge(getStepStatus(index))}
+            </div>
+            <div class="flow-io-grid">
+              <div class="flow-io-box">
+                <div class="flow-io-title">Input</div>
+                <div class="flow-io-list">${node.input.map(i => `<span class="tag">${i}</span>`).join('')}</div>
+              </div>
+              <div class="flow-io-box">
+                <div class="flow-io-title">Output</div>
+                <div class="flow-io-list">${node.output.map(o => `<span class="tag">${o}</span>`).join('')}</div>
+              </div>
+            </div>
+          </div>
+          ${index < FLOW_STEPS.length - 1 ? '<div class="flow-arrow">↓</div>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function startFlowTicker() {
+      if (!flowTicker) {
+        flowTicker = setInterval(() => {
+          liveStageIndex = (liveStageIndex + 1) % FLOW_STEPS.length;
+          renderSystemFlow();
+        }, 3000);
+      }
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (flowTicker) clearInterval(flowTicker);
+    });
+
+    renderSystemFlow();
+    startFlowTicker();
+  </script>
+</body>
+</html>

@@ -1,6 +1,9 @@
 // NEXUS Seed Data — structured dummy data for the entire system
 function seedNexusData() {
-  if (NexusStore.isSeeded()) return;
+  if (NexusStore.isSeeded()) {
+    ensureNexusExtensionData();
+    return;
+  }
 
   // --- Users ---
   NexusStore.set('users', [
@@ -326,4 +329,80 @@ function seedNexusData() {
 
   NexusStore.setSystemState('EXECUTING');
   NexusStore.markSeeded();
+  ensureNexusExtensionData();
+}
+
+function ensureNexusExtensionData() {
+  // Required task dataset used by Flow/Kanban/Live simulation demos.
+  const requiredTasks = [
+    {
+      task_id: 'TASK-AUTH-101',
+      title: 'Design auth login architecture contract',
+      module: 'auth',
+      assignedTo: 'agent_mod_arch_auth',
+      status: 'SPECIFIED',
+      risk: 'HIGH',
+      storyRef: 'US-002',
+      createdAt: '2024-01-16T09:00:00Z',
+      completedAt: null,
+      gateLevel: 'L3',
+      gateStatus: 'PENDING',
+      tokensUsed: 1200,
+      logs: [
+        'Backlog approved by Business Analyst and Product Owner',
+        'Architecture task created by Chief Architect'
+      ]
+    },
+    {
+      task_id: 'TASK-AUTH-102',
+      title: 'Implement login API and session audit trail',
+      module: 'auth',
+      assignedTo: 'agent_dev_auth_01',
+      status: 'AGENT_ASSIGNED',
+      risk: 'MEDIUM',
+      storyRef: 'US-002',
+      createdAt: '2024-01-16T10:30:00Z',
+      completedAt: null,
+      gateLevel: 'L2',
+      gateStatus: 'PENDING',
+      tokensUsed: 1500,
+      logs: [
+        'Task assigned to Developer Agent - Auth 01',
+        'Implementation plan accepted by Module Architect'
+      ]
+    }
+  ];
+
+  const projectTasks = NexusStore.getTasks('proj_001');
+  let tasksChanged = false;
+  requiredTasks.forEach(task => {
+    if (!projectTasks.some(t => t.task_id === task.task_id)) {
+      projectTasks.push(task);
+      tasksChanged = true;
+    }
+  });
+  if (tasksChanged) NexusStore.setTasks('proj_001', projectTasks);
+
+  const defaultWorkspaceFiles = {
+    skills: '# SKILLS\n\n## Core Responsibilities\n- Analyze and deliver within assigned role\n- Produce structured outputs\n- Escalate on ceiling/risk violations\n',
+    tools: '# TOOLS\n\n## Available Tools\n- code_generator\n- test_runner\n- api_mock_builder\n\n## Rules\n- No production access\n- Log all major actions\n',
+    heartbeat: '# HEARTBEAT\n\n## Current Task\n- Awaiting simulation updates\n\n## Status\nIDLE\n\n## Tokens Used\n0\n',
+    souls: '# SOUL\n\n## Behavioral Traits\n- Governance-first\n- Transparent escalation\n\n## Collaboration\n- Works through approved flow\n'
+  };
+
+  [
+    'agent_ba_001',
+    'agent_po_001',
+    'agent_chief_arch_001',
+    'agent_mod_arch_auth',
+    'agent_dev_auth_01',
+    'agent_qa_001',
+    'agent_secdevops_001'
+  ].forEach(agentId => {
+    Object.entries(defaultWorkspaceFiles).forEach(([fileName, content]) => {
+      if (!NexusStore.getWorkspaceFile(agentId, fileName)) {
+        NexusStore.setWorkspaceFile(agentId, fileName, content);
+      }
+    });
+  });
 }

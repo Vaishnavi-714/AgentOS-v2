@@ -12,6 +12,7 @@ function createNavigation(activePage) {
     { id: 'dashboard', label: 'Dashboard', icon: '📊', href: 'dashboard.html' },
     { id: 'requirements', label: 'Requirements', icon: '📋', href: 'requirements.html' },
     { id: 'pipeline', label: 'Pipeline', icon: '⚙️', href: 'pipeline.html' },
+    { id: 'system-flow', label: 'System Flow', icon: '🔄', href: 'system-flow.html' },
     { id: 'backlog', label: 'Backlog', icon: '📝', href: 'backlog.html' },
     { id: 'agents', label: 'Agents', icon: '🤖', href: 'agents.html' },
     { id: 'tasks', label: 'Tasks', icon: '✅', href: 'tasks.html' },
@@ -134,8 +135,10 @@ function statusBadge(status) {
     'COMPLETED': '#10b981', 'DONE': '#10b981', 'PASS': '#10b981', 'ACTIVE': '#10b981', 'APPROVED': '#10b981', 'RESOLVED': '#10b981',
     'IN_PROGRESS': '#3b82f6', 'EXECUTING': '#3b82f6',
     'PENDING': '#f59e0b', 'SPECIFIED': '#f59e0b', 'CONFIGURED': '#f59e0b',
+    'AGENT_ASSIGNED': '#8b5cf6', 'GATE_REVIEW': '#8b5cf6',
     'BLOCKED': '#ef4444', 'FAIL': '#ef4444', 'REJECTED': '#ef4444',
     'ESCALATED': '#f97316',
+    'IDLE': '#6b7280',
     'CREATED': '#8b5cf6', 'LEARNING': '#8b5cf6', 'OPTIMIZED': '#a855f7',
     'RETIRED': '#6b7280', 'NOT_STARTED': '#6b7280'
   };

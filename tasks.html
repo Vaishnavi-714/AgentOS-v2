@@ -47,9 +47,11 @@
       <select class="form-select" id="filterStatus" onchange="renderTasks()">
         <option value="">All Statuses</option>
         <option value="SPECIFIED">Specified</option>
+        <option value="AGENT_ASSIGNED">Assigned</option>
         <option value="EXECUTING">Executing</option>
         <option value="ESCALATED">Escalated</option>
         <option value="BLOCKED">Blocked</option>
+        <option value="GATE_REVIEW">Review</option>
         <option value="DONE">Done</option>
       </select>
       <select class="form-select" id="filterRisk" onchange="renderTasks()">
@@ -64,8 +66,17 @@
       </select>
     </div>
 
-    <!-- Tasks -->
-    <div id="taskList"></div>
+    <div class="tabs" style="margin-top:8px;">
+      <button class="tab active" onclick="switchTaskView('list', event)">List View</button>
+      <button class="tab" onclick="switchTaskView('kanban', event)">Kanban Board</button>
+      <button class="tab" onclick="switchTaskView('flow', event)">Flow View</button>
+    </div>
+
+    <div id="task-view-list" class="tab-content active">
+      <div id="taskList"></div>
+    </div>
+    <div id="task-view-kanban" class="tab-content"></div>
+    <div id="task-view-flow" class="tab-content"></div>
   </div>
 
   <!-- Task Detail Modal -->
@@ -88,6 +99,26 @@
     seedNexusData();
     createNavigation('tasks');
     let currentProjectId = createProjectSelector('projectSelector', () => { populateModules(); renderTasks(); });
+    let draggingTaskId = null;
+    let taskTicker = null;
+    const taskRuntime = {};
+
+    const KANBAN_COLUMNS = [
+      { id: 'SPECIFIED', label: 'SPECIFIED', color: 'var(--warning)' },
+      { id: 'AGENT_ASSIGNED', label: 'ASSIGNED', color: 'var(--accent)' },
+      { id: 'EXECUTING', label: 'EXECUTING', color: 'var(--info)' },
+      { id: 'ESCALATED', label: 'ESCALATED', color: 'var(--orange)' },
+      { id: 'BLOCKED', label: 'BLOCKED', color: 'var(--danger)' },
+      { id: 'GATE_REVIEW', label: 'REVIEW', color: 'var(--purple)' },
+      { id: 'DONE', label: 'DONE', color: 'var(--success)' }
+    ];
+
+    function switchTaskView(view, evt) {
+      document.querySelectorAll('#task-view-list, #task-view-kanban, #task-view-flow').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('task-view-' + view).classList.add('active');
+      if (evt && evt.target) evt.target.classList.add('active');
+    }
 
     function populateModules() {
       currentProjectId = getSelectedProject();
@@ -97,10 +128,9 @@
       (project?.modules || []).forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
     }
 
-    function renderTasks() {
+    function getFilteredTasks() {
       currentProjectId = getSelectedProject();
       let tasks = NexusStore.getTasks(currentProjectId);
-
       const filterStatus = document.getElementById('filterStatus').value;
       const filterRisk = document.getElementById('filterRisk').value;
       const filterModule = document.getElementById('filterModule').value;
@@ -108,8 +138,67 @@
       if (filterStatus) tasks = tasks.filter(t => t.status === filterStatus);
       if (filterRisk) tasks = tasks.filter(t => t.risk === filterRisk);
       if (filterModule) tasks = tasks.filter(t => t.module === filterModule);
+      return tasks;
+    }
 
+    function ensureTaskRuntime(tasks) {
+      tasks.forEach(task => {
+        if (!taskRuntime[task.task_id]) {
+          const base = task.tokensUsed || (task.task_id === 'TASK-AUTH-101' ? 1200 : task.task_id === 'TASK-AUTH-102' ? 1500 : 900 + Math.floor(Math.random() * 400));
+          taskRuntime[task.task_id] = {
+            tokens: base,
+            milestones: [1200, 1500, 2100],
+            milestoneIndex: base >= 2100 ? 2 : base >= 1500 ? 1 : 0
+          };
+        }
+      });
+    }
+
+    function getTaskTokens(task) {
+      ensureTaskRuntime([task]);
+      return taskRuntime[task.task_id].tokens;
+    }
+
+    function startTaskSimulation() {
+      if (!taskTicker) {
+        taskTicker = setInterval(stepTaskSimulation, 2000);
+      }
+    }
+
+    function stepTaskSimulation() {
+      currentProjectId = getSelectedProject();
+      const tasks = NexusStore.getTasks(currentProjectId);
+      ensureTaskRuntime(tasks);
+      let changed = false;
+
+      tasks.forEach(task => {
+        const runtime = taskRuntime[task.task_id];
+        if (!runtime) return;
+        if (!['AGENT_ASSIGNED', 'EXECUTING', 'ESCALATED', 'BLOCKED', 'GATE_REVIEW'].includes(task.status)) return;
+
+        if (runtime.milestoneIndex < runtime.milestones.length - 1) {
+          runtime.milestoneIndex += 1;
+          runtime.tokens = runtime.milestones[runtime.milestoneIndex];
+        } else {
+          runtime.tokens += 40 + Math.floor(Math.random() * 90);
+        }
+        task.tokensUsed = runtime.tokens;
+        changed = true;
+      });
+
+      if (changed) {
+        NexusStore.setTasks(currentProjectId, tasks);
+        renderTasks();
+      }
+    }
+
+    function renderTasks() {
+      currentProjectId = getSelectedProject();
       const allTasks = NexusStore.getTasks(currentProjectId);
+      const filteredTasks = getFilteredTasks();
+      ensureTaskRuntime(allTasks);
+      startTaskSimulation();
+
       const done = allTasks.filter(t => t.status === 'DONE').length;
       const executing = allTasks.filter(t => t.status === 'EXECUTING').length;
       const escalated = allTasks.filter(t => t.status === 'ESCALATED' || t.status === 'BLOCKED').length;
@@ -121,6 +210,12 @@
         <div class="stat-card"><span class="stat-label">Blocked / Escalated</span><span class="stat-value" style="color:var(--danger)">${escalated}</span></div>
       `;
 
+      renderListView(filteredTasks);
+      renderKanbanView(filteredTasks);
+      renderFlowView(filteredTasks);
+    }
+
+    function renderListView(tasks) {
       if (tasks.length === 0) {
         document.getElementById('taskList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><h3 class="empty-state-title">No Tasks Found</h3></div>';
         return;
@@ -129,7 +224,7 @@
       document.getElementById('taskList').innerHTML = `
         <div class="table-container">
           <table>
-            <thead><tr><th>Task ID</th><th>Title</th><th>Module</th><th>Assigned To</th><th>Risk</th><th>Gate</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Task ID</th><th>Title</th><th>Module</th><th>Assigned To</th><th>Risk</th><th>Tokens</th><th>Gate</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               ${tasks.map(t => {
                 const agent = NexusStore.getAgent(t.assignedTo);
@@ -140,6 +235,7 @@
                     <td><span class="tag">${t.module}</span></td>
                     <td style="font-size:12px;">${agent ? escapeHtml(agent.agent_name) : t.assignedTo}</td>
                     <td>${riskBadge(t.risk)}</td>
+                    <td><span class="tag">${getTaskTokens(t)}</span></td>
                     <td><span class="tag">${t.gateLevel} ${t.gateStatus === 'PASS' ? '✓' : t.gateStatus === 'FAIL' ? '✗' : '⏳'}</span></td>
                     <td>${statusBadge(t.status)}</td>
                     <td>
@@ -152,6 +248,162 @@
           </table>
         </div>
       `;
+    }
+
+    function renderKanbanView(tasks) {
+      if (tasks.length === 0) {
+        document.getElementById('task-view-kanban').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧩</div><h3 class="empty-state-title">No Tasks for Kanban</h3></div>';
+        return;
+      }
+
+      document.getElementById('task-view-kanban').innerHTML = `
+        <div class="kanban-grid">
+          ${KANBAN_COLUMNS.map(col => {
+            const colTasks = tasks.filter(t => t.status === col.id);
+            return `
+              <div class="kanban-col">
+                <div class="kanban-col-header">
+                  <span class="kanban-col-title" style="color:${col.color}">${col.label}</span>
+                  <span class="tag">${colTasks.length}</span>
+                </div>
+                <div class="kanban-dropzone" ondragover="onTaskDragOver(event)" ondragleave="onTaskDragLeave(event)" ondrop="onTaskDrop(event, '${col.id}')">
+                  ${colTasks.map(task => renderKanbanCard(task)).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderKanbanCard(task) {
+      const agent = NexusStore.getAgent(task.assignedTo);
+      return `
+        <div class="kanban-task" draggable="true" ondragstart="onTaskDragStart(event, '${task.task_id}')" ondragend="onTaskDragEnd(event)" onclick="showTask('${task.task_id}')">
+          <div style="font-family:var(--mono); font-size:11px; color:var(--accent);">${task.task_id}</div>
+          <div class="kanban-task-title">${escapeHtml(task.title)}</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">${agent ? escapeHtml(agent.agent_name) : task.assignedTo}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            ${riskBadge(task.risk)}
+            <span class="tag">${getTaskTokens(task)}</span>
+          </div>
+          <div>${statusBadge(task.status)}</div>
+        </div>
+      `;
+    }
+
+    function onTaskDragStart(evt, taskId) {
+      draggingTaskId = taskId;
+      evt.dataTransfer.setData('text/plain', taskId);
+      evt.currentTarget.classList.add('dragging');
+    }
+
+    function onTaskDragEnd(evt) {
+      evt.currentTarget.classList.remove('dragging');
+      document.querySelectorAll('.kanban-dropzone').forEach(z => z.classList.remove('drag-over'));
+    }
+
+    function onTaskDragOver(evt) {
+      evt.preventDefault();
+      evt.currentTarget.classList.add('drag-over');
+    }
+
+    function onTaskDragLeave(evt) {
+      evt.currentTarget.classList.remove('drag-over');
+    }
+
+    function onTaskDrop(evt, targetStatus) {
+      evt.preventDefault();
+      evt.currentTarget.classList.remove('drag-over');
+
+      const taskId = evt.dataTransfer.getData('text/plain') || draggingTaskId;
+      if (!taskId) return;
+
+      const tasks = NexusStore.getTasks(currentProjectId);
+      const task = tasks.find(t => t.task_id === taskId);
+      if (!task) return;
+      if (task.status === targetStatus) return;
+
+      const oldStatus = task.status;
+      task.status = targetStatus;
+      task.logs = task.logs || [];
+      task.logs.push(`Moved via Kanban: ${oldStatus} → ${targetStatus}`);
+      if (targetStatus === 'DONE') task.completedAt = new Date().toISOString();
+      if (targetStatus !== 'DONE') task.completedAt = null;
+
+      NexusStore.setTasks(currentProjectId, tasks);
+      showToast(`Task ${taskId} moved to ${targetStatus}`, 'success');
+      renderTasks();
+    }
+
+    function renderFlowView(tasks) {
+      const priorityTasks = tasks
+        .slice()
+        .sort((a, b) => {
+          if (a.task_id === 'TASK-AUTH-101') return -1;
+          if (b.task_id === 'TASK-AUTH-101') return 1;
+          if (a.task_id === 'TASK-AUTH-102') return -1;
+          if (b.task_id === 'TASK-AUTH-102') return 1;
+          return a.task_id.localeCompare(b.task_id);
+        })
+        .slice(0, 6);
+
+      if (priorityTasks.length === 0) {
+        document.getElementById('task-view-flow').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔁</div><h3 class="empty-state-title">No Tasks for Flow View</h3></div>';
+        return;
+      }
+
+      document.getElementById('task-view-flow').innerHTML = `
+        <div class="flow-stack">
+          ${priorityTasks.map(task => `
+            <div class="flow-card">
+              <div class="card-header" style="margin-bottom:8px;">
+                <div>
+                  <h3 class="card-title">${task.task_id} — ${escapeHtml(task.title)}</h3>
+                  <span class="card-subtitle">${task.module} module · Tokens ${getTaskTokens(task)}</span>
+                </div>
+                ${statusBadge(task.status)}
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(4, minmax(180px, 1fr)); gap:10px;">
+                ${renderTaskFlowStage(task, 'Chief Architect', 'Approved backlog + Epic', 'Architecture specification', 1)}
+                ${renderTaskFlowStage(task, 'Module Architect', 'Architecture specification', 'Module design + assignment', 2)}
+                ${renderTaskFlowStage(task, 'Developer', 'Assigned implementation task', 'Code + tests', 3)}
+                ${renderTaskFlowStage(task, 'QA', 'Code + acceptance criteria', 'Test result + gate decision', 4)}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderTaskFlowStage(task, stageName, input, output, stageIndex) {
+      const stageStatus = resolveTaskStageStatus(task.status, stageIndex);
+      return `
+        <div class="flow-io-box">
+          <div class="flow-io-title">${stageName}</div>
+          <div style="font-size:12px; margin-bottom:6px;"><strong>Input:</strong> ${input}</div>
+          <div style="font-size:12px; margin-bottom:8px;"><strong>Output:</strong> ${output}</div>
+          ${statusBadge(stageStatus)}
+        </div>
+      `;
+    }
+
+    function resolveTaskStageStatus(taskStatus, stageIndex) {
+      if (taskStatus === 'DONE') return 'COMPLETED';
+      if (taskStatus === 'SPECIFIED') return stageIndex === 1 ? 'EXECUTING' : 'IDLE';
+      if (taskStatus === 'AGENT_ASSIGNED') {
+        if (stageIndex === 1) return 'COMPLETED';
+        return stageIndex === 2 ? 'EXECUTING' : 'IDLE';
+      }
+      if (taskStatus === 'EXECUTING') {
+        if (stageIndex <= 2) return 'COMPLETED';
+        return stageIndex === 3 ? 'EXECUTING' : 'IDLE';
+      }
+      if (taskStatus === 'ESCALATED') return stageIndex === 3 ? 'ESCALATED' : stageIndex < 3 ? 'COMPLETED' : 'IDLE';
+      if (taskStatus === 'BLOCKED') return stageIndex === 3 ? 'BLOCKED' : stageIndex < 3 ? 'COMPLETED' : 'IDLE';
+      if (taskStatus === 'GATE_REVIEW') return stageIndex < 4 ? 'COMPLETED' : 'EXECUTING';
+      return 'IDLE';
     }
 
     function showTask(taskId) {
@@ -169,6 +421,7 @@
           <div><span class="form-label">Story Reference</span><div style="font-size:13px; font-family:var(--mono);">${task.storyRef || 'N/A'}</div></div>
           <div><span class="form-label">Gate Level</span><div><span class="tag">${task.gateLevel}</span></div></div>
           <div><span class="form-label">Gate Status</span><div>${statusBadge(task.gateStatus)}</div></div>
+          <div><span class="form-label">Tokens Used</span><div><span class="tag">${getTaskTokens(task)}</span></div></div>
           <div><span class="form-label">Created</span><div style="font-size:13px;">${formatTime(task.createdAt)}</div></div>
           <div><span class="form-label">Completed</span><div style="font-size:13px;">${task.completedAt ? formatTime(task.completedAt) : '—'}</div></div>
         </div>
@@ -178,11 +431,10 @@
 
         <div class="form-label">Execution Log</div>
         <div class="timeline" style="max-height:200px; overflow-y:auto;">
-          ${task.logs.map(l => `<div class="timeline-item completed"><p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(l)}</p></div>`).join('')}
+          ${(task.logs || []).map(l => `<div class="timeline-item completed"><p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(l)}</p></div>`).join('')}
         </div>
       `;
 
-      // Actions based on status
       let actions = '<button class="btn btn-outline" onclick="closeModal(\'taskModal\')">Close</button>';
       if (task.status === 'EXECUTING') {
         actions = `
@@ -191,7 +443,9 @@
           ${actions}
         `;
       } else if (task.status === 'SPECIFIED') {
-        actions = `<button class="btn btn-primary btn-sm" onclick="transitionTask('${task.task_id}', 'EXECUTING', 'Agent assigned, execution started')">Start Execution</button>${actions}`;
+        actions = `<button class="btn btn-primary btn-sm" onclick="transitionTask('${task.task_id}', 'AGENT_ASSIGNED', 'Assigned to delivery agent')">Assign Agent</button>${actions}`;
+      } else if (task.status === 'AGENT_ASSIGNED') {
+        actions = `<button class="btn btn-primary btn-sm" onclick="transitionTask('${task.task_id}', 'EXECUTING', 'Execution started')">Start Execution</button>${actions}`;
       } else if (task.status === 'BLOCKED' || task.status === 'ESCALATED') {
         actions = `<button class="btn btn-primary btn-sm" onclick="transitionTask('${task.task_id}', 'EXECUTING', 'Unblocked, resuming execution')">Resume</button>${actions}`;
       }
@@ -209,6 +463,15 @@
     }
 
     async function submitForGate(taskId, level) {
+      const tasks = NexusStore.getTasks(currentProjectId);
+      const task = tasks.find(t => t.task_id === taskId);
+      if (task) {
+        task.status = 'GATE_REVIEW';
+        task.logs = task.logs || [];
+        task.logs.push(`Submitted to ${level} gate review`);
+        NexusStore.setTasks(currentProjectId, tasks);
+      }
+
       showLoading('Running quality gate review...');
       const result = await MockAPI.submitGateReview(currentProjectId, taskId, level);
       hideLoading();
@@ -245,6 +508,10 @@
 
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
     function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    window.addEventListener('beforeunload', () => {
+      if (taskTicker) clearInterval(taskTicker);
+    });
 
     populateModules();
     renderTasks();

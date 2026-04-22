@@ -23,12 +23,16 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('orgchart')">Org Chart</button>
-      <button class="tab" onclick="switchTab('list')">Agent List</button>
-      <button class="tab" onclick="switchTab('performance')">Performance</button>
+      <button class="tab active" onclick="switchTab('orgchart', event)">Org Structure</button>
+      <button class="tab" onclick="switchTab('flow', event)">Agent Flow</button>
+      <button class="tab" onclick="switchTab('live', event)">Live Activity</button>
+      <button class="tab" onclick="switchTab('list', event)">Agent List</button>
+      <button class="tab" onclick="switchTab('performance', event)">Performance</button>
     </div>
 
     <div id="tab-orgchart" class="tab-content active"></div>
+    <div id="tab-flow" class="tab-content"></div>
+    <div id="tab-live" class="tab-content"></div>
     <div id="tab-list" class="tab-content"></div>
     <div id="tab-performance" class="tab-content"></div>
   </div>
@@ -143,6 +147,24 @@
     </div>
   </div>
 
+  <div class="modal-overlay side" id="workspacePanel">
+    <div class="modal side-modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="workspacePanelTitle">Agent Workspace</h3>
+        <button class="modal-close" onclick="closeModal('workspacePanel')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="workspaceAgentMeta" style="margin-bottom:12px;"></div>
+        <div class="workspace-tabs" id="workspacePanelTabs"></div>
+        <div class="workspace-pane" id="workspacePanelContent"></div>
+      </div>
+      <div class="modal-footer">
+        <a id="workspacePanelOpenFull" class="btn btn-primary" href="#">Open Full Workspace →</a>
+        <button class="btn btn-outline" onclick="closeModal('workspacePanel')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/store.js"></script>
   <script src="js/data.js"></script>
   <script src="js/mock-api.js"></script>
@@ -151,11 +173,90 @@
     seedNexusData();
     createNavigation('agents');
 
-    function switchTab(tab) {
+    const WORKSPACE_FILES = ['skills', 'tools', 'heartbeat', 'souls'];
+    const WORKSPACE_LABELS = {
+      skills: 'skills.md',
+      tools: 'tools.md',
+      heartbeat: 'heartbeat.md',
+      souls: 'souls.md'
+    };
+    const flowExpanded = {};
+    const liveActivityState = {};
+    let activeWorkspaceAgentId = null;
+    let activeWorkspaceFile = 'heartbeat';
+    let liveTicker = null;
+
+    const FLOW_DEFINITION = [
+      {
+        agentId: 'agent_ba_001',
+        fallbackName: 'Business Analyst',
+        taskId: 'TASK-AUTH-101',
+        inputs: ['Raw requirements', 'Stakeholder notes'],
+        outputs: ['Refined backlog', 'Clarified constraints'],
+        actions: ['Refining requirements', 'Clarifying domain language', 'Eliminating ambiguity'],
+        tokenStart: 1200
+      },
+      {
+        agentId: 'agent_po_001',
+        fallbackName: 'Product Owner',
+        taskId: 'TASK-AUTH-101',
+        inputs: ['Refined backlog', 'Priority matrix'],
+        outputs: ['Approved acceptance criteria', 'Ready-for-architecture PBI'],
+        actions: ['Validating acceptance', 'Prioritizing backlog', 'Aligning business goals'],
+        tokenStart: 1260
+      },
+      {
+        agentId: 'agent_chief_arch_001',
+        fallbackName: 'Chief Architect',
+        taskId: 'TASK-AUTH-101',
+        inputs: ['Approved backlog', 'Epics'],
+        outputs: ['DB Schema', 'API Contracts'],
+        actions: ['Designing system architecture', 'Defining API contracts', 'Reviewing risk boundaries'],
+        tokenStart: 1500
+      },
+      {
+        agentId: 'agent_mod_arch_auth',
+        fallbackName: 'Module Architect - Auth',
+        taskId: 'TASK-AUTH-101',
+        inputs: ['DB schema', 'API contracts'],
+        outputs: ['Module blueprint', 'Task breakdown'],
+        actions: ['Breaking down tasks', 'Designing module APIs', 'Preparing implementation guide'],
+        tokenStart: 1320
+      },
+      {
+        agentId: 'agent_dev_auth_01',
+        fallbackName: 'Developer Agent - Auth 01',
+        taskId: 'TASK-AUTH-101',
+        inputs: ['Task breakdown', 'Module contracts'],
+        outputs: ['Code changes', 'Unit tests'],
+        actions: ['Writing login API', 'Implementing auth handlers', 'Refactoring token service'],
+        tokenStart: 1240
+      },
+      {
+        agentId: 'agent_qa_001',
+        fallbackName: 'QA Agent',
+        taskId: 'TASK-AUTH-102',
+        inputs: ['Code build', 'Acceptance criteria'],
+        outputs: ['Test evidence', 'Defect report'],
+        actions: ['Executing test suites', 'Validating acceptance scenarios', 'Running regression checks'],
+        tokenStart: 1180
+      },
+      {
+        agentId: 'agent_secdevops_001',
+        fallbackName: 'DevOps Agent',
+        taskId: 'TASK-AUTH-102',
+        inputs: ['QA-approved build', 'Release checklist'],
+        outputs: ['Deployment package', 'Release telemetry'],
+        actions: ['Preparing deployment bundle', 'Running security gates', 'Publishing release candidate'],
+        tokenStart: 1300
+      }
+    ];
+
+    function switchTab(tab, evt) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.getElementById('tab-' + tab).classList.add('active');
-      event.target.classList.add('active');
+      if (evt && evt.target) evt.target.classList.add('active');
     }
 
     function updateModelVariants() {
@@ -171,6 +272,7 @@
 
     function render() {
       const agents = NexusStore.getAgents();
+      initLiveActivity(agents);
       const active = agents.filter(a => a.status === 'ACTIVE').length;
       const blocked = agents.filter(a => a.status === 'BLOCKED').length;
       const totalTasks = agents.reduce((a, ag) => a + ag.metrics.tasks_completed, 0);
@@ -184,6 +286,8 @@
       `;
 
       renderOrgChart(agents);
+      renderAgentFlow(agents);
+      renderLiveActivity(agents);
       renderAgentList(agents);
       renderPerformance(agents);
     }
@@ -244,12 +348,105 @@
     }
 
     function agentNode(agent) {
+      const status = getLiveStatus(agent.agent_id, agent.status);
       const colors = { ACTIVE: 'var(--success)', BLOCKED: 'var(--danger)', IDLE: 'var(--text-muted)' };
       return `
-        <div class="org-node" onclick="showAgent('${agent.agent_id}')" style="border-color:${colors[agent.status]||'var(--border)'}">
+        <div class="org-node" onclick="openAgentWorkspacePanel('${agent.agent_id}')" style="border-color:${colors[status]||'var(--border)'}">
           <div class="org-node-name">${escapeHtml(agent.agent_name)}</div>
           <div class="org-node-role">${agent.model_provider.split('_')[1] || agent.model_provider} · ${agent.module_scope}</div>
-          <div class="org-node-status">${statusBadge(agent.status)}</div>
+          <div class="org-node-status">${statusBadge(status)}</div>
+        </div>
+      `;
+    }
+
+    function renderAgentFlow(agents) {
+      document.getElementById('tab-flow').innerHTML = `
+        <div class="flow-stack">
+          ${FLOW_DEFINITION.map((stage, idx) => {
+            const agent = agents.find(a => a.agent_id === stage.agentId);
+            const state = liveActivityState[stage.agentId];
+            const name = agent ? agent.agent_name : stage.fallbackName;
+            const status = getLiveStatus(stage.agentId, agent ? agent.status : 'ACTIVE');
+            const payload = {
+              agentId: stage.agentId,
+              agentName: name,
+              currentTask: state ? state.taskId : stage.taskId,
+              status,
+              input: stage.inputs,
+              output: stage.outputs,
+              lastAction: state ? state.action : stage.actions[0],
+              tokensUsed: state ? state.tokens : stage.tokenStart,
+              generatedAt: new Date().toISOString()
+            };
+
+            return `
+              <div>
+                <div class="flow-card clickable" onclick="toggleFlowBlock('${stage.agentId}')">
+                  <div class="card-header" style="margin-bottom:8px;">
+                    <div>
+                      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openAgentWorkspacePanel('${stage.agentId}')">${escapeHtml(name)}</button>
+                      <span class="card-subtitle" style="display:block; margin-top:6px;">Task ${state ? state.taskId : stage.taskId}</span>
+                    </div>
+                    ${statusBadge(status)}
+                  </div>
+
+                  <div class="flow-io-grid">
+                    <div class="flow-io-box">
+                      <div class="flow-io-title">Input</div>
+                      <div class="flow-io-list">${stage.inputs.map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('')}</div>
+                    </div>
+                    <div class="flow-io-box">
+                      <div class="flow-io-title">Output</div>
+                      <div class="flow-io-list">${stage.outputs.map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('')}</div>
+                    </div>
+                  </div>
+
+                  <div class="json-panel ${flowExpanded[stage.agentId] ? 'show' : ''}">
+                    <div class="code-block">${escapeHtml(JSON.stringify(payload, null, 2))}</div>
+                  </div>
+                </div>
+                ${idx < FLOW_DEFINITION.length - 1 ? '<div class="flow-arrow">↓</div>' : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function toggleFlowBlock(agentId) {
+      flowExpanded[agentId] = !flowExpanded[agentId];
+      renderAgentFlow(NexusStore.getAgents());
+    }
+
+    function renderLiveActivity(agents) {
+      document.getElementById('tab-live').innerHTML = `
+        <div class="grid grid-3">
+          ${FLOW_DEFINITION.map(stage => {
+            const agent = agents.find(a => a.agent_id === stage.agentId);
+            const state = liveActivityState[stage.agentId];
+            const name = agent ? agent.agent_name : stage.fallbackName;
+            const status = state ? state.status : 'ACTIVE';
+            return `
+              <div class="activity-card" onclick="openAgentWorkspacePanel('${stage.agentId}')">
+                <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+                  <div>
+                    <h3 class="card-title">${escapeHtml(name)}</h3>
+                    <span class="tag" style="font-family:var(--mono); margin-top:6px;">${state ? state.taskId : stage.taskId}</span>
+                  </div>
+                  ${statusBadge(status)}
+                </div>
+
+                <div style="margin-top:10px; font-size:13px; color:var(--text-secondary);">
+                  <span style="color:var(--text-muted);">Current Action:</span> ${escapeHtml(state ? state.action : stage.actions[0])}
+                </div>
+
+                <div class="activity-meta">
+                  <div class="activity-kv"><span>Tokens Used</span>${state ? state.tokens : stage.tokenStart}</div>
+                  <div class="activity-kv"><span>Timer</span>${state ? formatDuration(Date.now() - state.startedAt) : '00:00'}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       `;
     }
@@ -267,11 +464,11 @@
                   <td><span class="tag">${a.module_scope}</span></td>
                   <td style="font-size:12px; color:var(--text-muted)">${a.model_variant}</td>
                   <td>${statusBadge(a.lifecycle)}</td>
-                  <td>${statusBadge(a.status)}</td>
+                  <td>${statusBadge(getLiveStatus(a.agent_id, a.status))}</td>
                   <td style="font-weight:600;">${a.metrics.tasks_completed}</td>
                   <td>${a.metrics.gate_pass_rate}%</td>
                   <td>
-                    <button class="btn btn-outline btn-sm" onclick="showAgent('${a.agent_id}')">Details</button>
+                    <button class="btn btn-outline btn-sm" onclick="openAgentWorkspacePanel('${a.agent_id}')">Workspace Panel</button>
                     <a class="btn btn-outline btn-sm" href="agent-workspace.html?id=${a.agent_id}">Workspace</a>
                   </td>
                 </tr>
@@ -286,10 +483,10 @@
       document.getElementById('tab-performance').innerHTML = `
         <div class="grid grid-2">
           ${agents.map(a => `
-            <div class="card">
+            <div class="card" onclick="openAgentWorkspacePanel('${a.agent_id}')" style="cursor:pointer;">
               <div class="card-header">
                 <div><h3 class="card-title">${escapeHtml(a.agent_name)}</h3><span class="card-subtitle">${a.role.replace(/_/g,' ')} · ${a.module_scope}</span></div>
-                ${statusBadge(a.status)}
+                ${statusBadge(getLiveStatus(a.agent_id, a.status))}
               </div>
               <div class="metric-bar">
                 <span class="metric-label">Tasks Completed</span>
@@ -314,62 +511,167 @@
 
     function showAgent(id) {
       if (!id) return;
-      const agent = NexusStore.getAgent(id);
+      openAgentWorkspacePanel(id);
+    }
+
+    function getLiveStatus(agentId, fallback) {
+      return liveActivityState[agentId]?.status || fallback;
+    }
+
+    function initLiveActivity(agents) {
+      FLOW_DEFINITION.forEach(stage => {
+        const agent = agents.find(a => a.agent_id === stage.agentId);
+        if (!liveActivityState[stage.agentId]) {
+          const startedAt = Date.now() - (Math.floor(Math.random() * 120) + 30) * 1000;
+          liveActivityState[stage.agentId] = {
+            taskId: stage.taskId,
+            action: stage.actions[0],
+            status: agent ? agent.status : 'ACTIVE',
+            tokens: stage.tokenStart,
+            startedAt,
+            milestoneIndex: stage.tokenStart >= 2100 ? 2 : stage.tokenStart >= 1500 ? 1 : 0,
+            milestones: [1200, 1500, 2100]
+          };
+        }
+      });
+
+      if (!liveTicker) {
+        liveTicker = setInterval(stepLiveActivity, 2000);
+      }
+    }
+
+    function stepLiveActivity() {
+      FLOW_DEFINITION.forEach(stage => {
+        const state = liveActivityState[stage.agentId];
+        if (!state) return;
+
+        const roll = Math.random();
+        state.status = roll < 0.72 ? 'ACTIVE' : roll < 0.9 ? 'IDLE' : 'BLOCKED';
+
+        if (state.status === 'ACTIVE') {
+          state.action = stage.actions[Math.floor(Math.random() * stage.actions.length)];
+        } else if (state.status === 'BLOCKED') {
+          state.action = 'Waiting on escalation approval';
+        } else {
+          state.action = 'Awaiting next assignment';
+        }
+
+        if (state.milestoneIndex < state.milestones.length - 1) {
+          state.milestoneIndex += 1;
+          state.tokens = state.milestones[state.milestoneIndex];
+        } else {
+          state.tokens += 40 + Math.floor(Math.random() * 120);
+        }
+
+        if (Math.random() > 0.78) {
+          state.taskId = state.taskId === 'TASK-AUTH-101' ? 'TASK-AUTH-102' : 'TASK-AUTH-101';
+          state.startedAt = Date.now();
+        }
+
+        syncHeartbeatFile(stage.agentId);
+      });
+
+      renderLiveActivity(NexusStore.getAgents());
+      renderAgentFlow(NexusStore.getAgents());
+      if (activeWorkspaceAgentId) renderWorkspacePanel();
+    }
+
+    function syncHeartbeatFile(agentId) {
+      const agent = NexusStore.getAgent(agentId);
+      const state = liveActivityState[agentId];
+      if (!agent || !state) return;
+      NexusStore.setWorkspaceFile(agentId, 'heartbeat', buildHeartbeatMarkdown(agent, state));
+    }
+
+    function buildHeartbeatMarkdown(agent, state) {
+      return `# HEARTBEAT\n\n## Current Task\n- ${state.taskId}\n\n## Current Action\n- ${state.action}\n\n## Status\n${state.status}\n\n## Tokens Used\n${state.tokens}\n\n## Active Timer\n${formatDuration(Date.now() - state.startedAt)}\n\n## Agent\n${agent.agent_name}`;
+    }
+
+    function ensureWorkspaceDefaults(agentId, agentName) {
+      const defaults = {
+        skills: `# SKILLS\n\n## Core Responsibilities\n- Execute ${agentName} role actions\n- Produce structured outputs\n- Follow governance and escalation boundaries\n`,
+        tools: '# TOOLS\n\n## Available Tools\n- code_generator\n- test_runner\n- quality_gate_checker\n\n## Rules\n- No production writes\n- Trace all changes\n',
+        souls: '# SOUL\n\n## Behavioral Traits\n- Quality-first decisions\n- Explicit risk communication\n- Evidence-backed outputs\n'
+      };
+      ['skills', 'tools', 'souls'].forEach(file => {
+        if (!NexusStore.getWorkspaceFile(agentId, file)) {
+          NexusStore.setWorkspaceFile(agentId, file, defaults[file]);
+        }
+      });
+      if (!NexusStore.getWorkspaceFile(agentId, 'heartbeat')) {
+        const state = liveActivityState[agentId] || {
+          taskId: 'TASK-AUTH-101',
+          action: 'Awaiting simulation update',
+          status: 'IDLE',
+          tokens: 1200,
+          startedAt: Date.now()
+        };
+        NexusStore.setWorkspaceFile(agentId, 'heartbeat', buildHeartbeatMarkdown({ agent_name: agentName }, state));
+      }
+    }
+
+    function openAgentWorkspacePanel(agentId) {
+      const agent = NexusStore.getAgent(agentId);
       if (!agent) return;
 
-      document.getElementById('detailTitle').textContent = agent.agent_name;
-      document.getElementById('workspaceLink').href = 'agent-workspace.html?id=' + agent.agent_id;
+      activeWorkspaceAgentId = agentId;
+      activeWorkspaceFile = 'heartbeat';
+      ensureWorkspaceDefaults(agentId, agent.agent_name);
+      renderWorkspacePanel();
+      document.getElementById('workspacePanel').classList.add('show');
+    }
 
-      document.getElementById('detailBody').innerHTML = `
-        <div class="grid grid-2" style="margin-bottom:20px;">
-          <div>
-            <div class="form-label">Agent ID</div>
-            <div style="font-family:var(--mono); font-size:13px; color:var(--accent);">${agent.agent_id}</div>
-          </div>
-          <div>
-            <div class="form-label">Created</div>
-            <div style="font-size:13px;">${formatTime(agent.createdAt)}</div>
-          </div>
-          <div>
-            <div class="form-label">Model</div>
-            <div style="font-size:13px;">${agent.model_provider} / ${agent.model_variant}</div>
-          </div>
-          <div>
-            <div class="form-label">Lifecycle</div>
-            <div>${statusBadge(agent.lifecycle)}</div>
-          </div>
-        </div>
+    function switchWorkspaceFile(fileName) {
+      activeWorkspaceFile = fileName;
+      renderWorkspacePanel();
+    }
 
-        <div class="form-label">Capabilities</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
-          ${agent.capabilities.map(c => `<span class="chip">${c.replace(/_/g,' ')}</span>`).join('')}
-        </div>
+    function renderWorkspacePanel() {
+      if (!activeWorkspaceAgentId) return;
+      const agent = NexusStore.getAgent(activeWorkspaceAgentId);
+      if (!agent) return;
 
-        <div class="form-label">Ceiling Configuration</div>
-        <div class="code-block" style="margin-bottom:16px; font-size:12px;">${JSON.stringify(agent.ceiling_profile, null, 2)}</div>
-
-        <div class="form-label">Performance Metrics</div>
-        <div class="metric-bar">
-          <span class="metric-label">Tasks Completed</span>
-          <div class="metric-track"><div class="metric-fill" style="width:${Math.min(agent.metrics.tasks_completed*3,100)}%;background:var(--success)"></div></div>
-          <span class="metric-value">${agent.metrics.tasks_completed}</span>
-        </div>
-        <div class="metric-bar">
-          <span class="metric-label">Escalations</span>
-          <div class="metric-track"><div class="metric-fill" style="width:${Math.min(agent.metrics.escalations_raised*15,100)}%;background:var(--warning)"></div></div>
-          <span class="metric-value">${agent.metrics.escalations_raised}</span>
-        </div>
-        <div class="metric-bar">
-          <span class="metric-label">Gate Pass Rate</span>
-          <div class="metric-track"><div class="metric-fill" style="width:${agent.metrics.gate_pass_rate}%;background:var(--success)"></div></div>
-          <span class="metric-value">${agent.metrics.gate_pass_rate}%</span>
+      const state = liveActivityState[activeWorkspaceAgentId];
+      document.getElementById('workspacePanelTitle').textContent = agent.agent_name + ' Workspace';
+      document.getElementById('workspacePanelOpenFull').href = 'agent-workspace.html?id=' + agent.agent_id;
+      document.getElementById('workspaceAgentMeta').innerHTML = `
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="tag">${agent.agent_id}</span>
+          <span class="tag">${agent.role.replace(/_/g, ' ')}</span>
+          ${statusBadge(getLiveStatus(agent.agent_id, agent.status))}
+          ${state ? `<span class="tag" style="font-family:var(--mono);">${state.taskId}</span>` : ''}
+          ${state ? `<span class="tag">Tokens ${state.tokens}</span>` : ''}
         </div>
       `;
-      document.getElementById('agentDetailModal').classList.add('show');
+
+      document.getElementById('workspacePanelTabs').innerHTML = WORKSPACE_FILES.map(file =>
+        `<div class="workspace-tab ${activeWorkspaceFile === file ? 'active' : ''}" onclick="switchWorkspaceFile('${file}')">${WORKSPACE_LABELS[file]}</div>`
+      ).join('');
+
+      let content = NexusStore.getWorkspaceFile(activeWorkspaceAgentId, activeWorkspaceFile);
+      if (activeWorkspaceFile === 'heartbeat' && state) {
+        content = buildHeartbeatMarkdown(agent, state);
+      }
+
+      document.getElementById('workspacePanelContent').innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+    }
+
+    function formatDuration(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      const hours = Math.floor(minutes / 60);
+      if (hours > 0) {
+        return String(hours).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+      }
+      return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
     }
 
     function openCreateAgent() { document.getElementById('createAgentModal').classList.add('show'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+      if (id === 'workspacePanel') activeWorkspaceAgentId = null;
+    }
 
     async function createAgent() {
       const name = document.getElementById('agentName').value.trim();
@@ -400,6 +702,10 @@
         render();
       }
     }
+
+    window.addEventListener('beforeunload', () => {
+      if (liveTicker) clearInterval(liveTicker);
+    });
 
     function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
