@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Tasks</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Task Management</h1>
+        <p class="page-subtitle">Governed task lifecycle tracking and state transitions</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="taskStats" style="margin-bottom:24px;"></div>
+
+    <!-- State Machine Visualization -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header"><h3 class="card-title">Task State Machine</h3></div>
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; padding:10px;">
+        <div style="padding:8px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-weight:600; background:var(--bg-tertiary);">SPECIFIED</div>
+        <div style="font-size:16px; color:var(--text-muted);">→</div>
+        <div style="padding:8px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-weight:600; background:var(--bg-tertiary);">AGENT_ASSIGNED</div>
+        <div style="font-size:16px; color:var(--text-muted);">→</div>
+        <div style="padding:8px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-weight:600; background:var(--bg-tertiary);">EXECUTING</div>
+        <div style="font-size:16px; color:var(--text-muted);">→</div>
+        <div style="padding:8px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-weight:600; background:var(--bg-tertiary);">ESCALATED</div>
+        <div style="font-size:16px; color:var(--text-muted);">→</div>
+        <div style="padding:8px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-weight:600; background:var(--bg-tertiary);">GATE_REVIEW</div>
+        <div style="font-size:16px; color:var(--text-muted);">→</div>
+        <div style="padding:8px 16px; border-radius:8px; border:1px solid var(--border); font-size:12px; font-weight:600; background:var(--bg-tertiary);">DONE</div>
+      </div>
+      <div style="text-align:center; font-size:11px; color:var(--text-muted); padding-bottom:8px;">
+        BLOCKED ← ceiling violation / failed gate (branches from EXECUTING)
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-bar">
+      <select class="form-select" id="filterStatus" onchange="renderTasks()">
+        <option value="">All Statuses</option>
+        <option value="SPECIFIED">Specified</option>
+        <option value="EXECUTING">Executing</option>
+        <option value="ESCALATED">Escalated</option>
+        <option value="BLOCKED">Blocked</option>
+        <option value="DONE">Done</option>
+      </select>
+      <select class="form-select" id="filterRisk" onchange="renderTasks()">
+        <option value="">All Risks</option>
+        <option value="LOW">Low</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+        <option value="CRITICAL">Critical</option>
+      </select>
+      <select class="form-select" id="filterModule" onchange="renderTasks()">
+        <option value="">All Modules</option>
+      </select>
+    </div>
+
+    <!-- Tasks -->
+    <div id="taskList"></div>
+  </div>
+
+  <!-- Task Detail Modal -->
+  <div class="modal-overlay" id="taskModal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="taskModalTitle">Task Details</h3>
+        <button class="modal-close" onclick="closeModal('taskModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="taskModalBody"></div>
+      <div class="modal-footer" id="taskModalFooter"></div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('tasks');
+    let currentProjectId = createProjectSelector('projectSelector', () => { populateModules(); renderTasks(); });
+
+    function populateModules() {
+      currentProjectId = getSelectedProject();
+      const project = NexusStore.getProject(currentProjectId);
+      const sel = document.getElementById('filterModule');
+      sel.innerHTML = '<option value="">All Modules</option>';
+      (project?.modules || []).forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
+    }
+
+    function renderTasks() {
+      currentProjectId = getSelectedProject();
+      let tasks = NexusStore.getTasks(currentProjectId);
+
+      const filterStatus = document.getElementById('filterStatus').value;
+      const filterRisk = document.getElementById('filterRisk').value;
+      const filterModule = document.getElementById('filterModule').value;
+
+      if (filterStatus) tasks = tasks.filter(t => t.status === filterStatus);
+      if (filterRisk) tasks = tasks.filter(t => t.risk === filterRisk);
+      if (filterModule) tasks = tasks.filter(t => t.module === filterModule);
+
+      const allTasks = NexusStore.getTasks(currentProjectId);
+      const done = allTasks.filter(t => t.status === 'DONE').length;
+      const executing = allTasks.filter(t => t.status === 'EXECUTING').length;
+      const escalated = allTasks.filter(t => t.status === 'ESCALATED' || t.status === 'BLOCKED').length;
+
+      document.getElementById('taskStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Tasks</span><span class="stat-value">${allTasks.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Completed</span><span class="stat-value" style="color:var(--success)">${done}</span></div>
+        <div class="stat-card"><span class="stat-label">Executing</span><span class="stat-value" style="color:var(--info)">${executing}</span></div>
+        <div class="stat-card"><span class="stat-label">Blocked / Escalated</span><span class="stat-value" style="color:var(--danger)">${escalated}</span></div>
+      `;
+
+      if (tasks.length === 0) {
+        document.getElementById('taskList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><h3 class="empty-state-title">No Tasks Found</h3></div>';
+        return;
+      }
+
+      document.getElementById('taskList').innerHTML = `
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Task ID</th><th>Title</th><th>Module</th><th>Assigned To</th><th>Risk</th><th>Gate</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${tasks.map(t => {
+                const agent = NexusStore.getAgent(t.assignedTo);
+                return `
+                  <tr>
+                    <td style="font-family:var(--mono); font-size:12px; color:var(--accent);">${t.task_id}</td>
+                    <td style="font-weight:500;">${escapeHtml(t.title)}</td>
+                    <td><span class="tag">${t.module}</span></td>
+                    <td style="font-size:12px;">${agent ? escapeHtml(agent.agent_name) : t.assignedTo}</td>
+                    <td>${riskBadge(t.risk)}</td>
+                    <td><span class="tag">${t.gateLevel} ${t.gateStatus === 'PASS' ? '✓' : t.gateStatus === 'FAIL' ? '✗' : '⏳'}</span></td>
+                    <td>${statusBadge(t.status)}</td>
+                    <td>
+                      <button class="btn btn-outline btn-sm" onclick="showTask('${t.task_id}')">Details</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function showTask(taskId) {
+      currentProjectId = getSelectedProject();
+      const task = NexusStore.getTasks(currentProjectId).find(t => t.task_id === taskId);
+      if (!task) return;
+      const agent = NexusStore.getAgent(task.assignedTo);
+
+      document.getElementById('taskModalTitle').textContent = task.task_id + ' — ' + task.title;
+      document.getElementById('taskModalBody').innerHTML = `
+        <div class="grid grid-2" style="margin-bottom:16px;">
+          <div><span class="form-label">Module</span><div><span class="tag">${task.module}</span></div></div>
+          <div><span class="form-label">Risk</span><div>${riskBadge(task.risk)}</div></div>
+          <div><span class="form-label">Assigned To</span><div style="font-size:13px;">${agent ? escapeHtml(agent.agent_name) : task.assignedTo}</div></div>
+          <div><span class="form-label">Story Reference</span><div style="font-size:13px; font-family:var(--mono);">${task.storyRef || 'N/A'}</div></div>
+          <div><span class="form-label">Gate Level</span><div><span class="tag">${task.gateLevel}</span></div></div>
+          <div><span class="form-label">Gate Status</span><div>${statusBadge(task.gateStatus)}</div></div>
+          <div><span class="form-label">Created</span><div style="font-size:13px;">${formatTime(task.createdAt)}</div></div>
+          <div><span class="form-label">Completed</span><div style="font-size:13px;">${task.completedAt ? formatTime(task.completedAt) : '—'}</div></div>
+        </div>
+
+        <div class="form-label">Status</div>
+        <div style="margin-bottom:16px;">${statusBadge(task.status)}</div>
+
+        <div class="form-label">Execution Log</div>
+        <div class="timeline" style="max-height:200px; overflow-y:auto;">
+          ${task.logs.map(l => `<div class="timeline-item completed"><p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(l)}</p></div>`).join('')}
+        </div>
+      `;
+
+      // Actions based on status
+      let actions = '<button class="btn btn-outline" onclick="closeModal(\'taskModal\')">Close</button>';
+      if (task.status === 'EXECUTING') {
+        actions = `
+          <button class="btn btn-success btn-sm" onclick="submitForGate('${task.task_id}', '${task.gateLevel}')">Submit to Gate Review</button>
+          <button class="btn btn-warning btn-sm" onclick="escalateTask('${task.task_id}')">Escalate</button>
+          ${actions}
+        `;
+      } else if (task.status === 'SPECIFIED') {
+        actions = `<button class="btn btn-primary btn-sm" onclick="transitionTask('${task.task_id}', 'EXECUTING', 'Agent assigned, execution started')">Start Execution</button>${actions}`;
+      } else if (task.status === 'BLOCKED' || task.status === 'ESCALATED') {
+        actions = `<button class="btn btn-primary btn-sm" onclick="transitionTask('${task.task_id}', 'EXECUTING', 'Unblocked, resuming execution')">Resume</button>${actions}`;
+      }
+      document.getElementById('taskModalFooter').innerHTML = actions;
+      document.getElementById('taskModal').classList.add('show');
+    }
+
+    async function transitionTask(taskId, newStatus, note) {
+      showLoading('Updating task...');
+      await MockAPI.updateTaskStatus(currentProjectId, taskId, newStatus, note);
+      hideLoading();
+      closeModal('taskModal');
+      showToast(`Task ${taskId} → ${newStatus}`, 'success');
+      renderTasks();
+    }
+
+    async function submitForGate(taskId, level) {
+      showLoading('Running quality gate review...');
+      const result = await MockAPI.submitGateReview(currentProjectId, taskId, level);
+      hideLoading();
+      closeModal('taskModal');
+      if (result.success) {
+        showToast(`Gate ${level}: ${result.gate.status}`, result.gate.status === 'PASS' ? 'success' : 'warning');
+      }
+      renderTasks();
+    }
+
+    async function escalateTask(taskId) {
+      showLoading('Raising escalation...');
+      const task = NexusStore.getTasks(currentProjectId).find(t => t.task_id === taskId);
+      await MockAPI.raiseEscalation({
+        raised_by: task.assignedTo,
+        raised_by_name: NexusStore.getAgent(task.assignedTo)?.agent_name || task.assignedTo,
+        ceiling_violated: 'task_blocked',
+        context: `Task ${taskId}: ${task.title} — requires escalation`,
+        reasoning: 'Agent cannot proceed within current ceiling constraints',
+        impact_analysis: `Affects ${task.module} module`,
+        options: [{ option: 'Approve with conditions', risk: 'MEDIUM' }, { option: 'Defer task', risk: 'LOW' }],
+        recommended_action: 'Approve with conditions',
+        escalated_to: 'agent_chief_arch_001',
+        escalated_to_name: 'Chief / Solution Architect',
+        projectId: currentProjectId,
+        taskRef: taskId
+      });
+      await MockAPI.updateTaskStatus(currentProjectId, taskId, 'ESCALATED', 'Escalation raised');
+      hideLoading();
+      closeModal('taskModal');
+      showToast('Escalation raised', 'warning');
+      renderTasks();
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    populateModules();
+    renderTasks();
+  </script>
+</body>
+</html>

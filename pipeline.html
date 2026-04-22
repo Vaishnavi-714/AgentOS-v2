@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Pipeline</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">AI Processing Pipeline</h1>
+        <p class="page-subtitle">13-stage requirement processing and backlog generation</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+        <button class="btn btn-primary" id="runBtn" onclick="runNextStage()">▶ Run Next Stage</button>
+        <button class="btn btn-success" id="runAllBtn" onclick="runAllStages()">⚡ Run All</button>
+      </div>
+    </div>
+
+    <!-- Pipeline Progress -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-header">
+        <h3 class="card-title" id="pipelineTitle">Pipeline Status</h3>
+        <div id="pipelineStatus"></div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <span style="font-size:13px; color:var(--text-secondary)" id="progressLabel">0 / 13 stages</span>
+          <span style="font-size:13px; font-weight:600; color:var(--text-primary)" id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar" style="height:12px;">
+          <div class="progress-fill" id="progressFill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stages -->
+    <div id="stagesContainer"></div>
+
+    <!-- Pipeline Log -->
+    <div class="card" style="margin-top:24px;">
+      <div class="card-header">
+        <h3 class="card-title">Pipeline Execution Log</h3>
+        <button class="btn btn-outline btn-sm" onclick="clearLog()">Clear</button>
+      </div>
+      <div id="pipelineLog" class="code-block" style="max-height:300px; overflow-y:auto; font-size:12px;"></div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('pipeline');
+    let currentProjectId = createProjectSelector('projectSelector', renderPipeline);
+    let pipelineLog = [];
+    let isRunning = false;
+
+    function renderPipeline() {
+      currentProjectId = getSelectedProject();
+      const pipeline = NexusStore.getPipeline(currentProjectId);
+
+      if (!pipeline) {
+        document.getElementById('stagesContainer').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚙️</div>
+            <h3 class="empty-state-title">Pipeline Not Started</h3>
+            <p class="empty-state-text">Click "Run Next Stage" to initialize and begin the processing pipeline</p>
+          </div>
+        `;
+        document.getElementById('pipelineStatus').innerHTML = statusBadge('NOT_STARTED');
+        document.getElementById('progressLabel').textContent = '0 / 13 stages';
+        document.getElementById('progressPct').textContent = '0%';
+        document.getElementById('progressFill').style.width = '0%';
+        return;
+      }
+
+      const completed = pipeline.stages.filter(s => s.status === 'COMPLETED').length;
+      const pct = Math.round(completed / 13 * 100);
+
+      document.getElementById('pipelineStatus').innerHTML = statusBadge(pipeline.status);
+      document.getElementById('progressLabel').textContent = `${completed} / 13 stages`;
+      document.getElementById('progressPct').textContent = pct + '%';
+      document.getElementById('progressFill').style.width = pct + '%';
+
+      if (pipeline.status === 'COMPLETED') {
+        document.getElementById('runBtn').disabled = true;
+        document.getElementById('runAllBtn').disabled = true;
+        document.getElementById('pipelineTitle').textContent = 'Pipeline Complete';
+      }
+
+      document.getElementById('stagesContainer').innerHTML = pipeline.stages.map(stage => {
+        const statusClass = stage.status === 'COMPLETED' ? 'completed' : stage.status === 'IN_PROGRESS' ? 'in-progress' : 'pending';
+        const statusIcon = stage.status === 'COMPLETED' ? '✓' : stage.status === 'IN_PROGRESS' ? '◉' : stage.stage;
+        return `
+          <div class="pipeline-stage ${statusClass} fade-in" style="animation-delay:${stage.stage * 0.05}s">
+            <div class="pipeline-stage-number">${statusIcon}</div>
+            <div class="pipeline-stage-info">
+              <div class="pipeline-stage-name">Stage ${stage.stage}: ${stage.name}</div>
+              <div class="pipeline-stage-logs">
+                ${stage.logs.length > 0 ? stage.logs.map(l => `<div style="margin:2px 0;">• ${escapeHtml(l)}</div>`).join('') : '<span style="color:var(--text-muted)">Waiting...</span>'}
+              </div>
+            </div>
+            <div class="pipeline-stage-time">
+              ${stage.startedAt ? formatTime(stage.startedAt) : ''}
+              ${stage.completedAt ? '<br>→ ' + formatTime(stage.completedAt) : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function runNextStage() {
+      if (isRunning) return;
+      isRunning = true;
+      document.getElementById('runBtn').disabled = true;
+      document.getElementById('runBtn').textContent = '⏳ Processing...';
+
+      addLogEntry('Starting next pipeline stage...');
+      const result = await MockAPI.advancePipeline(currentProjectId);
+
+      if (result.success) {
+        const currentStage = result.pipeline.stages.find(s => s.status === 'COMPLETED' && s.completedAt);
+        if (currentStage) {
+          addLogEntry(`✓ Stage ${currentStage.stage} (${currentStage.name}) completed`);
+          currentStage.logs.forEach(l => addLogEntry(`  → ${l}`));
+        }
+        if (result.completed) {
+          addLogEntry('🎉 Pipeline completed! All 13 stages processed successfully.');
+          showToast('Pipeline completed successfully!', 'success');
+        }
+      }
+
+      isRunning = false;
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runBtn').textContent = '▶ Run Next Stage';
+      renderPipeline();
+    }
+
+    async function runAllStages() {
+      if (isRunning) return;
+      isRunning = true;
+      document.getElementById('runAllBtn').disabled = true;
+      document.getElementById('runBtn').disabled = true;
+      document.getElementById('runAllBtn').textContent = '⏳ Running All...';
+
+      addLogEntry('=== Running all remaining stages ===');
+
+      let completed = false;
+      while (!completed) {
+        const result = await MockAPI.advancePipeline(currentProjectId);
+        if (result.success) {
+          const currentStage = result.pipeline.stages.filter(s => s.status === 'COMPLETED').pop();
+          if (currentStage) {
+            addLogEntry(`✓ Stage ${currentStage.stage}: ${currentStage.name}`);
+          }
+          completed = result.completed;
+          renderPipeline();
+        } else {
+          break;
+        }
+      }
+
+      addLogEntry('=== Pipeline run complete ===');
+      showToast('Pipeline finished', 'success');
+      isRunning = false;
+      document.getElementById('runAllBtn').disabled = false;
+      document.getElementById('runBtn').disabled = false;
+      document.getElementById('runAllBtn').textContent = '⚡ Run All';
+      renderPipeline();
+    }
+
+    function addLogEntry(text) {
+      pipelineLog.push(`[${new Date().toLocaleTimeString()}] ${text}`);
+      const logEl = document.getElementById('pipelineLog');
+      logEl.textContent = pipelineLog.join('\n');
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function clearLog() { pipelineLog = []; document.getElementById('pipelineLog').textContent = ''; }
+
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    renderPipeline();
+  </script>
+</body>
+</html>

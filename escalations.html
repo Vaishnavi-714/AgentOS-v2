@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Escalations</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Escalation Dashboard</h1>
+        <p class="page-subtitle">Ceiling violations, escalation routing, and resolution management</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-warning" onclick="openRaiseEscalation()">⚠️ Raise Escalation</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="escStats" style="margin-bottom:24px;"></div>
+
+    <!-- Filter -->
+    <div class="filter-bar">
+      <select class="form-select" id="filterStatus" onchange="renderEscalations()">
+        <option value="">All Statuses</option>
+        <option value="PENDING">Pending</option>
+        <option value="RESOLVED">Resolved</option>
+      </select>
+    </div>
+
+    <!-- Escalation List -->
+    <div id="escalationList"></div>
+  </div>
+
+  <!-- Resolve Escalation Modal -->
+  <div class="modal-overlay" id="resolveModal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="resolveTitle">Resolve Escalation</h3>
+        <button class="modal-close" onclick="closeModal('resolveModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="resolveBody"></div>
+      <div class="modal-footer" id="resolveFooter"></div>
+    </div>
+  </div>
+
+  <!-- Raise Escalation Modal -->
+  <div class="modal-overlay" id="raiseModal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Raise New Escalation</h3>
+        <button class="modal-close" onclick="closeModal('raiseModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">Raised By (Agent)</label>
+            <select id="raiseAgent" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Escalate To</label>
+            <select id="raiseTarget" class="form-select"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ceiling Violated</label>
+          <input type="text" id="raiseCeiling" class="form-input" placeholder="e.g., modify_data_model">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Context</label>
+          <textarea id="raiseContext" class="form-textarea" placeholder="Describe the situation requiring escalation..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reasoning</label>
+          <textarea id="raiseReasoning" class="form-textarea" style="min-height:60px;" placeholder="Why can't the agent proceed?"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Impact Analysis</label>
+          <input type="text" id="raiseImpact" class="form-input" placeholder="What areas are affected?">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('raiseModal')">Cancel</button>
+        <button class="btn btn-warning" onclick="submitEscalation()">Raise Escalation</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('escalations');
+
+    function renderEscalations() {
+      let escalations = NexusStore.getEscalations();
+      const filterStatus = document.getElementById('filterStatus').value;
+      if (filterStatus) escalations = escalations.filter(e => e.status === filterStatus);
+
+      const all = NexusStore.getEscalations();
+      const pending = all.filter(e => e.status === 'PENDING').length;
+      const resolved = all.filter(e => e.status === 'RESOLVED').length;
+      const avgResTime = resolved > 0 ? all.filter(e => e.status === 'RESOLVED').reduce((a, e) => {
+        const diff = (new Date(e.resolvedAt) - new Date(e.timestamp)) / 60000;
+        return a + diff;
+      }, 0) / resolved : 0;
+
+      document.getElementById('escStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Escalations</span><span class="stat-value">${all.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Pending</span><span class="stat-value" style="color:${pending>0?'var(--warning)':'var(--text-primary)'}">${pending}</span></div>
+        <div class="stat-card"><span class="stat-label">Resolved</span><span class="stat-value" style="color:var(--success)">${resolved}</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Resolution Time</span><span class="stat-value">${avgResTime > 0 ? Math.round(avgResTime) + 'm' : 'N/A'}</span></div>
+      `;
+
+      if (escalations.length === 0) {
+        document.getElementById('escalationList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3 class="empty-state-title">No Escalations</h3></div>';
+        return;
+      }
+
+      document.getElementById('escalationList').innerHTML = escalations.map(esc => `
+        <div class="card fade-in" style="border-left:3px solid ${esc.status === 'PENDING' ? 'var(--warning)' : 'var(--success)'};">
+          <div class="card-header">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:600;">${esc.escalation_id}</span>
+                ${statusBadge(esc.status)}
+                ${esc.taskRef ? `<span class="tag">${esc.taskRef}</span>` : ''}
+              </div>
+              <h3 class="card-title" style="font-size:14px;">${escapeHtml(esc.context)}</h3>
+            </div>
+            <span style="font-size:12px; color:var(--text-muted)">${formatTime(esc.timestamp)}</span>
+          </div>
+
+          <div class="grid grid-2" style="margin-bottom:12px;">
+            <div>
+              <span class="form-label">Raised By</span>
+              <div style="font-size:13px;">${escapeHtml(esc.raised_by_name)}</div>
+            </div>
+            <div>
+              <span class="form-label">Escalated To</span>
+              <div style="font-size:13px;">${escapeHtml(esc.escalated_to_name)}</div>
+            </div>
+            <div>
+              <span class="form-label">Ceiling Violated</span>
+              <div><span class="chip" style="color:var(--danger); border-color:var(--danger)40;">${esc.ceiling_violated}</span></div>
+            </div>
+            <div>
+              <span class="form-label">Impact</span>
+              <div style="font-size:12px; color:var(--text-secondary)">${escapeHtml(esc.impact_analysis)}</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <span class="form-label">Reasoning</span>
+            <p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(esc.reasoning)}</p>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <span class="form-label">Options</span>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${esc.options.map((o, i) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--bg-tertiary); border-radius:var(--radius); border:1px solid var(--border);">
+                  <span style="font-size:13px;">Option ${String.fromCharCode(65+i)}: ${escapeHtml(o.option)}</span>
+                  ${riskBadge(o.risk)}
+                </div>
+              `).join('')}
+            </div>
+            ${esc.recommended_action ? `<div style="margin-top:8px; font-size:12px; color:var(--accent);">Recommended: ${escapeHtml(esc.recommended_action)}</div>` : ''}
+          </div>
+
+          ${esc.status === 'RESOLVED' ? `
+            <div style="padding:12px; background:var(--success)10; border:1px solid var(--success)30; border-radius:var(--radius);">
+              <span class="form-label" style="color:var(--success)">Resolution</span>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:4px;">${esc.resolution?.action}: ${escapeHtml(esc.resolution?.chosen_option)}</div>
+              <div style="font-size:12px; color:var(--text-secondary)">${escapeHtml(esc.resolution?.notes || '')}</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Decided by: ${escapeHtml(esc.resolution?.decided_by || '')} · ${formatTime(esc.resolvedAt)}</div>
+            </div>
+          ` : `
+            <div style="display:flex; gap:8px; margin-top:12px;">
+              <button class="btn btn-success btn-sm" onclick="openResolve('${esc.escalation_id}', 'APPROVED')">✅ Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="openResolve('${esc.escalation_id}', 'REJECTED')">❌ Reject</button>
+              <button class="btn btn-outline btn-sm" onclick="openResolve('${esc.escalation_id}', 'DELEGATED')">🔁 Delegate</button>
+            </div>
+          `}
+        </div>
+      `).join('');
+    }
+
+    let currentEscId = null;
+    let currentAction = null;
+
+    function openResolve(escId, action) {
+      currentEscId = escId;
+      currentAction = action;
+      const esc = NexusStore.getEscalations().find(e => e.escalation_id === escId);
+      if (!esc) return;
+
+      document.getElementById('resolveTitle').textContent = `${action === 'APPROVED' ? 'Approve' : action === 'REJECTED' ? 'Reject' : 'Delegate'} — ${escId}`;
+      document.getElementById('resolveBody').innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Selected Option</label>
+          <select id="resolveOption" class="form-select">
+            ${esc.options.map((o, i) => `<option value="${o.option}" ${i===0?'selected':''}>${String.fromCharCode(65+i)}: ${o.option} (${o.risk} risk)</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Decision Type</label>
+          <select id="resolveType" class="form-select">
+            <option value="ARCHITECTURE">Architecture</option>
+            <option value="SECURITY">Security</option>
+            <option value="DATA_MODEL">Data Model</option>
+            <option value="OPERATIONAL">Operational</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes / Reasoning</label>
+          <textarea id="resolveNotes" class="form-textarea" placeholder="Explain the decision rationale..."></textarea>
+        </div>
+      `;
+      document.getElementById('resolveFooter').innerHTML = `
+        <button class="btn btn-outline" onclick="closeModal('resolveModal')">Cancel</button>
+        <button class="btn btn-${action==='APPROVED'?'success':action==='REJECTED'?'danger':'warning'}" onclick="submitResolution()">${action === 'APPROVED' ? '✅ Approve' : action === 'REJECTED' ? '❌ Reject' : '🔁 Delegate'}</button>
+      `;
+      document.getElementById('resolveModal').classList.add('show');
+    }
+
+    async function submitResolution() {
+      showLoading('Resolving escalation...');
+      const resolution = {
+        action: currentAction,
+        chosen_option: document.getElementById('resolveOption').value,
+        type: document.getElementById('resolveType').value,
+        decided_by: 'human_orchestrator',
+        decided_by_name: NexusStore.getUser()?.name || 'Human Orchestrator',
+        notes: document.getElementById('resolveNotes').value
+      };
+      const result = await MockAPI.resolveEscalation(currentEscId, resolution);
+      hideLoading();
+      closeModal('resolveModal');
+      if (result.success) {
+        showToast(`Escalation ${currentEscId} resolved: ${currentAction}`, 'success');
+        renderEscalations();
+      }
+    }
+
+    function openRaiseEscalation() {
+      const agents = NexusStore.getAgents();
+      document.getElementById('raiseAgent').innerHTML = agents.map(a => `<option value="${a.agent_id}">${a.agent_name}</option>`).join('');
+      document.getElementById('raiseTarget').innerHTML = agents.map(a => `<option value="${a.agent_id}">${a.agent_name}</option>`).join('');
+      document.getElementById('raiseModal').classList.add('show');
+    }
+
+    async function submitEscalation() {
+      const agentId = document.getElementById('raiseAgent').value;
+      const targetId = document.getElementById('raiseTarget').value;
+      const agent = NexusStore.getAgent(agentId);
+      const target = NexusStore.getAgent(targetId);
+
+      showLoading('Raising escalation...');
+      await MockAPI.raiseEscalation({
+        raised_by: agentId,
+        raised_by_name: agent?.agent_name || agentId,
+        ceiling_violated: document.getElementById('raiseCeiling').value || 'manual_escalation',
+        context: document.getElementById('raiseContext').value,
+        reasoning: document.getElementById('raiseReasoning').value,
+        impact_analysis: document.getElementById('raiseImpact').value,
+        options: [{ option: 'Approve requested action', risk: 'MEDIUM' }, { option: 'Defer to next sprint', risk: 'LOW' }],
+        recommended_action: 'Approve requested action',
+        escalated_to: targetId,
+        escalated_to_name: target?.agent_name || targetId,
+        projectId: getSelectedProject()
+      });
+      hideLoading();
+      closeModal('raiseModal');
+      showToast('Escalation raised successfully', 'warning');
+      renderEscalations();
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    renderEscalations();
+  </script>
+</body>
+</html>

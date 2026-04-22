@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Requirements</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Requirement Ingestion</h1>
+        <p class="page-subtitle">Upload, review, and manage project requirements</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+        <button class="btn btn-primary" onclick="openUploadModal()">+ Upload Requirements</button>
+      </div>
+    </div>
+
+    <!-- Ingestion Stats -->
+    <div class="grid grid-4" id="reqStats" style="margin-bottom: 24px;"></div>
+
+    <!-- Filter -->
+    <div class="filter-bar">
+      <select class="form-select" id="filterType" onchange="renderRequirements()">
+        <option value="">All Types</option>
+        <option value="FUNCTIONAL">Functional</option>
+        <option value="NON_FUNCTIONAL">Non-Functional</option>
+        <option value="CONSTRAINT">Constraint</option>
+      </select>
+      <select class="form-select" id="filterModule" onchange="renderRequirements()">
+        <option value="">All Modules</option>
+      </select>
+      <select class="form-select" id="filterPriority" onchange="renderRequirements()">
+        <option value="">All Priorities</option>
+        <option value="MUST_HAVE">Must Have</option>
+        <option value="SHOULD_HAVE">Should Have</option>
+        <option value="COULD_HAVE">Could Have</option>
+        <option value="WONT_HAVE">Won't Have</option>
+      </select>
+    </div>
+
+    <!-- Requirements Table -->
+    <div id="reqTable"></div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div class="modal-overlay" id="uploadModal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Upload Requirements</h3>
+        <button class="modal-close" onclick="closeModal('uploadModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="tabs">
+          <button class="tab active" onclick="switchUploadTab('text')">Paste Text</button>
+          <button class="tab" onclick="switchUploadTab('file')">Upload File</button>
+          <button class="tab" onclick="switchUploadTab('transcript')">Meeting Transcript</button>
+        </div>
+
+        <div id="tab-text" class="tab-content active">
+          <div class="form-group">
+            <label class="form-label">Paste requirements text</label>
+            <textarea id="reqText" class="form-textarea" style="min-height:200px;" placeholder="Paste raw requirements, meeting notes, or specification text here...&#10;&#10;Example:&#10;- Users must be able to register with email&#10;- System must support OAuth login&#10;- All data must be encrypted at rest"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Source Name</label>
+            <input type="text" id="reqSourceName" class="form-input" placeholder="e.g., client_meeting_notes.txt" value="pasted_text.txt">
+          </div>
+        </div>
+
+        <div id="tab-file" class="tab-content">
+          <div class="form-group">
+            <label class="form-label">Select Files (.txt, .pdf supported)</label>
+            <div style="border:2px dashed var(--border); border-radius:var(--radius-lg); padding:40px; text-align:center; cursor:pointer;" onclick="document.getElementById('fileInput').click()">
+              <div style="font-size:36px; margin-bottom:12px;">📁</div>
+              <p style="font-size:13px; color:var(--text-secondary);">Click to browse or drag files here</p>
+              <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">Supports: .txt, .pdf, .docx</p>
+            </div>
+            <input type="file" id="fileInput" style="display:none" multiple accept=".txt,.pdf,.docx" onchange="handleFileSelect(this)">
+            <div id="selectedFiles" style="margin-top:12px;"></div>
+          </div>
+        </div>
+
+        <div id="tab-transcript" class="tab-content">
+          <div class="form-group">
+            <label class="form-label">Meeting Transcript</label>
+            <textarea id="transcriptText" class="form-textarea" style="min-height:200px;" placeholder="Paste meeting transcript here...&#10;&#10;[10:00 AM] PM: We need user registration with email...&#10;[10:02 AM] Client: Also support social login with Google..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Meeting Date</label>
+            <input type="date" id="meetingDate" class="form-input">
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">Requirement Type</label>
+            <select id="reqType" class="form-select">
+              <option value="FUNCTIONAL">Functional</option>
+              <option value="NON_FUNCTIONAL">Non-Functional</option>
+              <option value="CONSTRAINT">Constraint</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Module</label>
+            <select id="reqModule" class="form-select">
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('uploadModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitRequirements()">Upload & Process</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('requirements');
+    let currentProjectId = createProjectSelector('projectSelector', () => { populateModules(); renderRequirements(); });
+
+    function populateModules() {
+      currentProjectId = getSelectedProject();
+      const project = NexusStore.getProject(currentProjectId);
+      const modules = project?.modules || [];
+      const selects = [document.getElementById('filterModule'), document.getElementById('reqModule')];
+      selects.forEach(sel => {
+        if (!sel) return;
+        const isFilter = sel.id === 'filterModule';
+        sel.innerHTML = isFilter ? '<option value="">All Modules</option>' : '<option value="unassigned">Unassigned</option>';
+        modules.forEach(m => sel.innerHTML += `<option value="${m}">${m}</option>`);
+      });
+    }
+
+    function renderRequirements() {
+      currentProjectId = getSelectedProject();
+      const reqs = NexusStore.getRequirements(currentProjectId);
+      const filterType = document.getElementById('filterType').value;
+      const filterModule = document.getElementById('filterModule').value;
+      const filterPriority = document.getElementById('filterPriority').value;
+
+      let filtered = reqs;
+      if (filterType) filtered = filtered.filter(r => r.type === filterType);
+      if (filterModule) filtered = filtered.filter(r => r.module === filterModule);
+      if (filterPriority) filtered = filtered.filter(r => r.priority === filterPriority);
+
+      // Stats
+      document.getElementById('reqStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Requirements</span><span class="stat-value">${reqs.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Functional</span><span class="stat-value">${reqs.filter(r=>r.type==='FUNCTIONAL').length}</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Confidence</span><span class="stat-value">${reqs.length ? (reqs.reduce((a,r)=>a+parseFloat(r.confidence),0)/reqs.length*100).toFixed(0)+'%' : 'N/A'}</span></div>
+        <div class="stat-card"><span class="stat-label">Must Have</span><span class="stat-value" style="color:var(--danger)">${reqs.filter(r=>r.priority==='MUST_HAVE').length}</span></div>
+      `;
+
+      if (filtered.length === 0) {
+        document.getElementById('reqTable').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><h3 class="empty-state-title">No Requirements Found</h3><p class="empty-state-text">Upload requirements or adjust filters</p></div>`;
+        return;
+      }
+
+      document.getElementById('reqTable').innerHTML = `
+        <div class="table-container">
+          <table>
+            <thead><tr><th>ID</th><th>Requirement</th><th>Type</th><th>Module</th><th>Priority</th><th>Confidence</th><th>Source</th></tr></thead>
+            <tbody>
+              ${filtered.map(r => `
+                <tr>
+                  <td style="font-family:var(--mono); font-size:12px; color:var(--accent);">${r.id}</td>
+                  <td style="max-width:400px;">${escapeHtml(r.text)}</td>
+                  <td><span class="tag">${r.type}</span></td>
+                  <td><span class="tag">${r.module}</span></td>
+                  <td>${priorityBadge(r.priority)}</td>
+                  <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <div class="progress-bar" style="width:60px;height:6px;">
+                        <div class="progress-fill" style="width:${parseFloat(r.confidence)*100}%; background:${parseFloat(r.confidence)>0.9?'var(--success)':parseFloat(r.confidence)>0.8?'var(--warning)':'var(--danger)'}"></div>
+                      </div>
+                      <span style="font-size:12px;">${(parseFloat(r.confidence)*100).toFixed(0)}%</span>
+                    </div>
+                  </td>
+                  <td style="font-size:12px; color:var(--text-muted)">${escapeHtml(r.source)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function openUploadModal() { document.getElementById('uploadModal').classList.add('show'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    let activeUploadTab = 'text';
+    function switchUploadTab(tab) {
+      activeUploadTab = tab;
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function handleFileSelect(input) {
+      const files = Array.from(input.files);
+      document.getElementById('selectedFiles').innerHTML = files.map(f =>
+        `<div class="chip" style="margin:4px;">${f.name} (${(f.size/1024).toFixed(1)} KB)</div>`
+      ).join('');
+    }
+
+    async function submitRequirements() {
+      showLoading('Processing requirements...');
+      let content = '';
+      let sourceName = 'upload';
+
+      if (activeUploadTab === 'text') {
+        content = document.getElementById('reqText').value;
+        sourceName = document.getElementById('reqSourceName').value || 'pasted_text.txt';
+      } else if (activeUploadTab === 'transcript') {
+        content = document.getElementById('transcriptText').value;
+        sourceName = 'meeting_transcript_' + (document.getElementById('meetingDate').value || 'undated') + '.txt';
+      } else {
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput.files.length > 0) {
+          content = `[File upload simulated: ${Array.from(fileInput.files).map(f=>f.name).join(', ')}]`;
+          sourceName = fileInput.files[0].name;
+        }
+      }
+
+      if (!content.trim()) { hideLoading(); showToast('Please provide requirement content', 'error'); return; }
+
+      // Split content into individual requirements (by lines or sentences)
+      const lines = content.split(/[\n]+/).map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(l => l.length > 10);
+      const files = lines.map((line, i) => ({
+        content: line, name: sourceName,
+        type: document.getElementById('reqType').value,
+        module: document.getElementById('reqModule').value
+      }));
+
+      if (files.length === 0) files.push({ content, name: sourceName, type: document.getElementById('reqType').value, module: document.getElementById('reqModule').value });
+
+      const result = await MockAPI.uploadRequirements(currentProjectId, files);
+      hideLoading();
+      closeModal('uploadModal');
+
+      if (result.success) {
+        showToast(`${result.requirements.length} requirements ingested successfully`, 'success');
+        renderRequirements();
+      }
+    }
+
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    populateModules();
+    renderRequirements();
+  </script>
+</body>
+</html>

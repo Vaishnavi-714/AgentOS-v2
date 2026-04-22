@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Monitoring Dashboard</title>
+  <link rel="stylesheet" href="css/common.css">
+  <style>
+    .chart-bar { display: flex; align-items: flex-end; gap: 8px; height: 180px; padding: 0 10px; }
+    .chart-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .chart-fill { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.5s ease; min-width: 20px; max-width: 60px; }
+    .chart-label { font-size: 10px; color: var(--text-muted); margin-top: 6px; text-align: center; white-space: nowrap; }
+    .chart-value { font-size: 11px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+    .heatmap-cell {
+      padding: 12px; border-radius: var(--radius); text-align: center;
+      font-size: 20px; font-weight: 700; transition: transform 0.2s;
+    }
+    .heatmap-cell:hover { transform: scale(1.05); }
+    .heatmap-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Monitoring Dashboard</h1>
+        <p class="page-subtitle">Real-time system intelligence and performance metrics</p>
+      </div>
+      <div class="page-actions">
+        <div id="systemStateDisplay"></div>
+        <button class="btn btn-outline btn-sm" onclick="render()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Top Stats -->
+    <div class="grid grid-4" id="topStats" style="margin-bottom:24px;"></div>
+
+    <!-- Row 1: Escalation Trends + Agent Utilization -->
+    <div class="grid grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📊 Escalation Trends</h3></div>
+        <div id="escalationTrends"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🤖 Agent Utilization</h3></div>
+        <div id="agentUtilization"></div>
+      </div>
+    </div>
+
+    <!-- Row 2: Gate Success + Risk Distribution -->
+    <div class="grid grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">✅ Gate Success Rates</h3></div>
+        <div id="gateRates"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">⚠️ Risk Distribution</h3></div>
+        <div id="riskDist"></div>
+      </div>
+    </div>
+
+    <!-- Row 3: Decision Activity + Ceiling Violations -->
+    <div class="grid grid-2" style="margin-bottom:16px;">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📋 Decision Activity</h3></div>
+        <div id="decisionActivity"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🔍 Ceiling Violation Heatmap</h3></div>
+        <div id="ceilingHeatmap"></div>
+      </div>
+    </div>
+
+    <!-- Row 4: Pipeline Velocity + System Logs -->
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">⚡ Pipeline Velocity</h3></div>
+        <div id="pipelineVelocity"></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">System Activity Log</h3>
+          <span class="tag" id="logCount"></span>
+        </div>
+        <div id="sysLogs" style="max-height:350px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('monitoring');
+
+    function render() {
+      const agents = NexusStore.getAgents();
+      const escalations = NexusStore.getEscalations();
+      const decisions = NexusStore.getDecisions();
+      const projects = NexusStore.getProjects();
+      const logs = NexusStore.getLogs();
+      const systemState = NexusStore.getSystemState();
+
+      // All tasks across projects
+      let allTasks = [];
+      let allGates = [];
+      projects.forEach(p => {
+        allTasks.push(...NexusStore.getTasks(p.id));
+        allGates.push(...NexusStore.getGateReviews(p.id));
+      });
+
+      // System state display
+      const stateColors = { IDLE: '#6b7280', EXECUTING: '#10b981', ESCALATION_PENDING: '#f59e0b', BLOCKED: '#ef4444', GATE_REVIEW: '#8b5cf6', RELEASED: '#3b82f6' };
+      document.getElementById('systemStateDisplay').innerHTML = `
+        <div class="system-state" style="background:${stateColors[systemState]||'#6b7280'}20; color:${stateColors[systemState]||'#6b7280'}; border:1px solid ${stateColors[systemState]||'#6b7280'}40; padding:8px 16px; border-radius:var(--radius);">
+          <span class="state-dot" style="background:${stateColors[systemState]||'#6b7280'}"></span>
+          ${systemState}
+        </div>
+      `;
+
+      // Top stats
+      const totalTasks = allTasks.length;
+      const doneTasks = allTasks.filter(t => t.status === 'DONE').length;
+      const activeAgents = agents.filter(a => a.status === 'ACTIVE').length;
+      const pendingEsc = escalations.filter(e => e.status === 'PENDING').length;
+
+      document.getElementById('topStats').innerHTML = `
+        <div class="stat-card">
+          <span class="stat-label">Tasks Completed</span>
+          <span class="stat-value">${doneTasks}/${totalTasks}</span>
+          <div class="progress-bar" style="margin-top:8px;"><div class="progress-fill" style="width:${totalTasks?Math.round(doneTasks/totalTasks*100):0}%"></div></div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Active Agents</span>
+          <span class="stat-value">${activeAgents}</span>
+          <span class="stat-change">${agents.filter(a=>a.status==='BLOCKED').length} blocked</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Pending Escalations</span>
+          <span class="stat-value" style="color:${pendingEsc>0?'var(--warning)':'var(--success)'}">${pendingEsc}</span>
+          <span class="stat-change">${escalations.length} total</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Decisions Recorded</span>
+          <span class="stat-value">${decisions.length}</span>
+          <span class="stat-change up">${decisions.filter(d=>d.human_reviewed).length} human-reviewed</span>
+        </div>
+      `;
+
+      // Escalation Trends
+      const escByType = {};
+      escalations.forEach(e => { escByType[e.ceiling_violated] = (escByType[e.ceiling_violated] || 0) + 1; });
+      const maxEsc = Math.max(...Object.values(escByType), 1);
+      document.getElementById('escalationTrends').innerHTML = `
+        <div class="chart-bar">
+          ${Object.entries(escByType).map(([type, count]) => `
+            <div class="chart-col">
+              <div class="chart-value">${count}</div>
+              <div class="chart-fill" style="height:${count/maxEsc*160}px; background:var(--warning);"></div>
+              <div class="chart-label">${type.replace(/_/g,' ').substring(0,15)}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="margin-top:12px; font-size:12px; color:var(--text-muted); text-align:center;">
+          Frequency by ceiling type · Pending: ${pendingEsc} · Resolved: ${escalations.filter(e=>e.status==='RESOLVED').length}
+        </div>
+      `;
+
+      // Agent Utilization
+      const agentStates = { ACTIVE: 0, BLOCKED: 0, IDLE: 0 };
+      agents.forEach(a => { agentStates[a.status] = (agentStates[a.status] || 0) + 1; });
+      document.getElementById('agentUtilization').innerHTML = `
+        <div style="display:flex; gap:16px; justify-content:center; margin-bottom:16px;">
+          ${[['ACTIVE', 'var(--success)'], ['BLOCKED', 'var(--danger)'], ['IDLE', 'var(--text-muted)']].map(([s, c]) => `
+            <div style="text-align:center;">
+              <div style="font-size:28px; font-weight:700; color:${c}">${agentStates[s]||0}</div>
+              <div style="font-size:11px; color:var(--text-muted)">${s}</div>
+            </div>
+          `).join('')}
+        </div>
+        ${agents.map(a => `
+          <div class="metric-bar">
+            <span class="metric-label" style="min-width:180px; font-size:11px;">${escapeHtml(a.agent_name.substring(0,25))}</span>
+            <div class="metric-track"><div class="metric-fill" style="width:${Math.min(a.metrics.tasks_completed*4,100)}%; background:${a.status==='ACTIVE'?'var(--success)':a.status==='BLOCKED'?'var(--danger)':'var(--text-muted)'}"></div></div>
+            <span class="metric-value" style="font-size:11px;">${a.metrics.tasks_completed}</span>
+          </div>
+        `).join('')}
+      `;
+
+      // Gate Success Rates
+      const gatesByLevel = { L1: { pass: 0, fail: 0 }, L2: { pass: 0, fail: 0 }, L3: { pass: 0, fail: 0 }, L4: { pass: 0, fail: 0 } };
+      allGates.forEach(g => {
+        if (gatesByLevel[g.level]) {
+          gatesByLevel[g.level][g.status === 'PASS' ? 'pass' : 'fail']++;
+        }
+      });
+      document.getElementById('gateRates').innerHTML = `
+        ${Object.entries(gatesByLevel).map(([level, data]) => {
+          const total = data.pass + data.fail;
+          const rate = total ? Math.round(data.pass / total * 100) : 0;
+          const colors = { L1: 'var(--success)', L2: 'var(--info)', L3: 'var(--warning)', L4: 'var(--danger)' };
+          return `
+            <div class="metric-bar" style="margin-bottom:16px;">
+              <span class="metric-label" style="font-weight:600; color:${colors[level]}">${level}</span>
+              <div class="metric-track" style="height:12px;">
+                <div class="metric-fill" style="width:${rate}%; background:${colors[level]}"></div>
+              </div>
+              <span class="metric-value">${rate}% <span style="font-weight:400; color:var(--text-muted);">(${data.pass}/${total})</span></span>
+            </div>
+          `;
+        }).join('')}
+        <div style="text-align:center; margin-top:8px; font-size:12px; color:var(--text-muted);">
+          Overall: ${allGates.length ? Math.round(allGates.filter(g=>g.status==='PASS').length/allGates.length*100) : 0}% pass rate across ${allGates.length} reviews
+        </div>
+      `;
+
+      // Risk Distribution
+      const riskCount = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 };
+      allTasks.forEach(t => { riskCount[t.risk] = (riskCount[t.risk] || 0) + 1; });
+      const riskColors = { LOW: 'var(--success)', MEDIUM: 'var(--warning)', HIGH: 'var(--orange)', CRITICAL: 'var(--danger)' };
+      const totalRisk = Object.values(riskCount).reduce((a, b) => a + b, 0) || 1;
+      document.getElementById('riskDist').innerHTML = `
+        <div style="display:flex; gap:4px; height:40px; border-radius:var(--radius); overflow:hidden; margin-bottom:16px;">
+          ${Object.entries(riskCount).map(([r, c]) => c > 0 ? `<div style="flex:${c}; background:${riskColors[r]}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:white;">${c}</div>` : '').join('')}
+        </div>
+        <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+          ${Object.entries(riskCount).map(([r, c]) => `
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:12px; height:12px; border-radius:3px; background:${riskColors[r]}"></div>
+              <span style="font-size:12px; color:var(--text-secondary)">${r}: ${c} (${Math.round(c/totalRisk*100)}%)</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Decision Activity
+      const decByType = {};
+      decisions.forEach(d => { decByType[d.type] = (decByType[d.type] || 0) + 1; });
+      const humanCount = decisions.filter(d => d.human_reviewed).length;
+      const agentCount = decisions.length - humanCount;
+      document.getElementById('decisionActivity').innerHTML = `
+        <div style="display:flex; gap:24px; justify-content:center; margin-bottom:20px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px; font-weight:700; color:var(--info)">${decisions.length}</div>
+            <div style="font-size:11px; color:var(--text-muted)">Total</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px; font-weight:700; color:var(--success)">${humanCount}</div>
+            <div style="font-size:11px; color:var(--text-muted)">👤 Human</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px; font-weight:700; color:var(--purple)">${agentCount}</div>
+            <div style="font-size:11px; color:var(--text-muted)">🤖 Agent</div>
+          </div>
+        </div>
+        <div style="display:flex; gap:4px; height:24px; border-radius:var(--radius); overflow:hidden;">
+          ${humanCount > 0 ? `<div style="flex:${humanCount}; background:var(--success); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:white;">Human</div>` : ''}
+          ${agentCount > 0 ? `<div style="flex:${agentCount}; background:var(--purple); display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:white;">Agent</div>` : ''}
+        </div>
+        <div style="margin-top:16px;">
+          ${Object.entries(decByType).map(([type, count]) => `
+            <div class="metric-bar">
+              <span class="metric-label">${type}</span>
+              <div class="metric-track"><div class="metric-fill" style="width:${count/decisions.length*100}%; background:var(--accent)"></div></div>
+              <span class="metric-value">${count}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Ceiling Violation Heatmap
+      const violations = {};
+      agents.forEach(a => {
+        violations[a.agent_name.substring(0, 20)] = a.metrics.escalations_raised;
+      });
+      const maxViol = Math.max(...Object.values(violations), 1);
+      document.getElementById('ceilingHeatmap').innerHTML = `
+        <div class="grid grid-4" style="gap:8px;">
+          ${Object.entries(violations).map(([name, count]) => {
+            const intensity = count / maxViol;
+            const bg = intensity === 0 ? 'var(--bg-tertiary)' : `rgba(239, 68, 68, ${0.15 + intensity * 0.5})`;
+            const color = intensity > 0.5 ? 'white' : intensity > 0 ? 'var(--danger)' : 'var(--text-muted)';
+            return `
+              <div class="heatmap-cell" style="background:${bg}; color:${color};">
+                ${count}
+                <div class="heatmap-label" style="color:${intensity > 0.5 ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'}">${escapeHtml(name)}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      // Pipeline Velocity
+      const completedTasksByModule = {};
+      allTasks.forEach(t => {
+        if (!completedTasksByModule[t.module]) completedTasksByModule[t.module] = { done: 0, total: 0 };
+        completedTasksByModule[t.module].total++;
+        if (t.status === 'DONE') completedTasksByModule[t.module].done++;
+      });
+      document.getElementById('pipelineVelocity').innerHTML = `
+        <div style="margin-bottom:16px;">
+          ${Object.entries(completedTasksByModule).map(([mod, data]) => `
+            <div style="margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-primary)">${mod}</span>
+                <span style="font-size:12px; color:var(--text-muted)">${data.done}/${data.total} tasks</span>
+              </div>
+              <div class="progress-bar" style="height:10px;">
+                <div class="progress-fill" style="width:${data.total?Math.round(data.done/data.total*100):0}%"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div style="text-align:center; padding:12px; background:var(--bg-tertiary); border-radius:var(--radius);">
+          <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">Overall Velocity</div>
+          <div style="font-size:24px; font-weight:700; color:var(--accent)">${doneTasks} / ${totalTasks}</div>
+          <div style="font-size:12px; color:var(--text-muted);">tasks completed</div>
+        </div>
+      `;
+
+      // System logs
+      document.getElementById('logCount').textContent = `${logs.length} entries`;
+      const typeColors = { SYSTEM: 'var(--info)', AUTH: 'var(--purple)', PROJECT: 'var(--success)', PIPELINE: 'var(--accent)', AGENT: 'var(--warning)', TASK: 'var(--info)', GATE: 'var(--success)', ESCALATION: 'var(--orange)', DECISION: 'var(--purple)', REQUIREMENTS: 'var(--info)' };
+      document.getElementById('sysLogs').innerHTML = logs.slice(0, 30).map(log => `
+        <div style="display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px;">
+          <span style="color:${typeColors[log.type]||'var(--text-muted)'}; font-weight:600; min-width:80px; text-transform:uppercase; font-size:10px;">${log.type}</span>
+          <span style="color:var(--text-secondary); flex:1;">${escapeHtml(log.message)}</span>
+          <span style="color:var(--text-muted); white-space:nowrap;">${formatTime(log.timestamp)}</span>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    render();
+  </script>
+</body>
+</html>

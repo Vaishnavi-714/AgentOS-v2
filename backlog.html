@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Backlog</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Product Backlog</h1>
+        <p class="page-subtitle">Epics, Features, and User Stories with MoSCoW prioritization</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="backlogStats" style="margin-bottom:24px;"></div>
+
+    <!-- View Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchView('hierarchy')">Hierarchy View</button>
+      <button class="tab" onclick="switchView('kanban')">Kanban Board</button>
+      <button class="tab" onclick="switchView('table')">Table View</button>
+    </div>
+
+    <div id="view-hierarchy" class="tab-content active"></div>
+    <div id="view-kanban" class="tab-content"></div>
+    <div id="view-table" class="tab-content"></div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('backlog');
+    let currentProjectId = createProjectSelector('projectSelector', renderBacklog);
+
+    function switchView(view) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('view-' + view).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function renderBacklog() {
+      currentProjectId = getSelectedProject();
+      const backlog = NexusStore.getBacklog(currentProjectId);
+
+      const epics = backlog.filter(b => b.type === 'EPIC');
+      const features = backlog.filter(b => b.type === 'FEATURE');
+      const stories = backlog.filter(b => b.type === 'USER_STORY');
+      const totalPoints = stories.reduce((a, s) => a + (s.storyPoints || 0), 0);
+
+      // Stats
+      document.getElementById('backlogStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Epics</span><span class="stat-value">${epics.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Features</span><span class="stat-value">${features.length}</span></div>
+        <div class="stat-card"><span class="stat-label">User Stories</span><span class="stat-value">${stories.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Total Story Points</span><span class="stat-value">${totalPoints}</span></div>
+      `;
+
+      renderHierarchy(backlog, epics, features, stories);
+      renderKanban(backlog, stories);
+      renderTable(stories);
+    }
+
+    function renderHierarchy(backlog, epics, features, stories) {
+      document.getElementById('view-hierarchy').innerHTML = epics.map(epic => {
+        const epicFeatures = features.filter(f => f.parentId === epic.id);
+        return `
+          <div class="card fade-in" style="border-left:3px solid var(--purple);">
+            <div class="card-header">
+              <div>
+                <span style="font-size:11px; color:var(--purple); font-weight:600;">EPIC</span>
+                <h3 class="card-title">${escapeHtml(epic.title)}</h3>
+                <span class="card-subtitle">${epic.id} · ${epic.module}</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                ${priorityBadge(epic.priority)}
+                ${statusBadge(epic.status)}
+              </div>
+            </div>
+            <div style="padding-left:20px; border-left:2px solid var(--border); margin-left:8px;">
+              ${epicFeatures.map(feat => {
+                const featStories = stories.filter(s => s.parentId === feat.id);
+                return `
+                  <div style="margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:8px 12px; background:var(--bg-tertiary); border-radius:var(--radius);">
+                      <div>
+                        <span style="font-size:11px; color:var(--info); font-weight:600;">FEATURE</span>
+                        <div style="font-size:13px; font-weight:600;">${escapeHtml(feat.title)}</div>
+                        <span style="font-size:11px; color:var(--text-muted);">${feat.id}</span>
+                      </div>
+                      <div style="display:flex;gap:6px;">${priorityBadge(feat.priority)}${statusBadge(feat.status)}</div>
+                    </div>
+                    ${featStories.map(story => `
+                      <div style="margin-left:20px; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                          <span style="font-size:11px; color:var(--success); font-weight:600;">USER STORY</span>
+                          <div style="font-size:13px;">${escapeHtml(story.title)}</div>
+                          <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${story.id} · ${story.module} · ${story.storyPoints || 0} pts (${story.size || '?'})</div>
+                          ${story.acceptanceCriteria ? `<div style="margin-top:6px;">${story.acceptanceCriteria.map(ac => `<span class="tag" style="margin:2px;">${escapeHtml(ac)}</span>`).join('')}</div>` : ''}
+                        </div>
+                        <div style="display:flex; gap:6px; flex-direction:column; align-items:flex-end;">
+                          ${priorityBadge(story.priority)}
+                          ${statusBadge(story.status)}
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon">📝</div><h3 class="empty-state-title">No Backlog Items</h3><p class="empty-state-text">Run the pipeline to generate backlog items</p></div>';
+    }
+
+    function renderKanban(backlog, stories) {
+      const columns = ['SPECIFIED', 'IN_PROGRESS', 'DONE'];
+      const labels = { SPECIFIED: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' };
+      const colors = { SPECIFIED: 'var(--warning)', IN_PROGRESS: 'var(--info)', DONE: 'var(--success)' };
+
+      document.getElementById('view-kanban').innerHTML = `
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
+          ${columns.map(col => `
+            <div style="background:var(--bg-secondary); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="font-size:14px; font-weight:600; color:${colors[col]}">${labels[col]}</h3>
+                <span class="tag">${stories.filter(s => s.status === col).length}</span>
+              </div>
+              ${stories.filter(s => s.status === col).map(s => `
+                <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px;">
+                  <div style="font-size:12px; color:var(--accent); font-family:var(--mono);">${s.id}</div>
+                  <div style="font-size:13px; font-weight:500; margin:4px 0;">${escapeHtml(s.title)}</div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    <span class="tag">${s.module}</span>
+                    <span style="font-size:11px; color:var(--text-muted)">${s.storyPoints || 0} pts</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderTable(stories) {
+      document.getElementById('view-table').innerHTML = `
+        <div class="table-container">
+          <table>
+            <thead><tr><th>ID</th><th>Title</th><th>Module</th><th>Priority</th><th>Size</th><th>Points</th><th>Status</th></tr></thead>
+            <tbody>
+              ${stories.map(s => `
+                <tr>
+                  <td style="font-family:var(--mono); font-size:12px; color:var(--accent);">${s.id}</td>
+                  <td>${escapeHtml(s.title)}</td>
+                  <td><span class="tag">${s.module}</span></td>
+                  <td>${priorityBadge(s.priority)}</td>
+                  <td><span class="tag">${s.size || '?'}</span></td>
+                  <td style="font-weight:600;">${s.storyPoints || 0}</td>
+                  <td>${statusBadge(s.status)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    renderBacklog();
+  </script>
+</body>
+</html>

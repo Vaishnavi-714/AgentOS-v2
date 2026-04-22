@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Agent Management</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Agent Management</h1>
+        <p class="page-subtitle">Create, configure, and monitor AI agents in the governed hierarchy</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openCreateAgent()">+ Create Agent</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="agentStats" style="margin-bottom:24px;"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('orgchart')">Org Chart</button>
+      <button class="tab" onclick="switchTab('list')">Agent List</button>
+      <button class="tab" onclick="switchTab('performance')">Performance</button>
+    </div>
+
+    <div id="tab-orgchart" class="tab-content active"></div>
+    <div id="tab-list" class="tab-content"></div>
+    <div id="tab-performance" class="tab-content"></div>
+  </div>
+
+  <!-- Create Agent Modal -->
+  <div class="modal-overlay" id="createAgentModal">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Create New Agent</h3>
+        <button class="modal-close" onclick="closeModal('createAgentModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">Agent Name</label>
+            <input type="text" id="agentName" class="form-input" placeholder="e.g., Module Architect - Inventory">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Role</label>
+            <select id="agentRole" class="form-select">
+              <option value="business_analyst">Business Analyst</option>
+              <option value="product_manager">Product Manager</option>
+              <option value="product_owner">Product Owner</option>
+              <option value="scrum_master">Scrum Master</option>
+              <option value="chief_architect">Chief / Solution Architect</option>
+              <option value="module_architect">Module Architect</option>
+              <option value="developer">Developer</option>
+              <option value="integration_architect">Integration Architect</option>
+              <option value="qa">QA Agent</option>
+              <option value="security_devops">Security / DevOps</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label">Model Provider</label>
+            <select id="agentProvider" class="form-select" onchange="updateModelVariants()">
+              <option value="anthropic_claude">Anthropic Claude</option>
+              <option value="openai_gpt">OpenAI GPT</option>
+              <option value="google_gemini">Google Gemini</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Model Variant</label>
+            <select id="agentVariant" class="form-select">
+              <option value="claude-3-opus">claude-3-opus</option>
+              <option value="claude-3-sonnet">claude-3-sonnet</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Module Scope</label>
+          <select id="agentScope" class="form-select">
+            <option value="global">Global</option>
+            <option value="auth">Auth</option>
+            <option value="payments">Payments</option>
+            <option value="orders">Orders</option>
+            <option value="inventory">Inventory</option>
+            <option value="notifications">Notifications</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Capabilities (select multiple)</label>
+          <div class="checkbox-group" id="capabilitiesGroup">
+            <label class="checkbox-label"><input type="checkbox" value="write_code"> Write Code</label>
+            <label class="checkbox-label"><input type="checkbox" value="run_unit_tests"> Run Tests</label>
+            <label class="checkbox-label"><input type="checkbox" value="create_mock_apis"> Mock APIs</label>
+            <label class="checkbox-label"><input type="checkbox" value="design_module_architecture"> Design Architecture</label>
+            <label class="checkbox-label"><input type="checkbox" value="create_task_breakdown"> Task Breakdown</label>
+            <label class="checkbox-label"><input type="checkbox" value="review_dev_output"> Code Review</label>
+            <label class="checkbox-label"><input type="checkbox" value="generate_tests"> Generate Tests</label>
+            <label class="checkbox-label"><input type="checkbox" value="vulnerability_scanning"> Security Scan</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Risk Sensitivity</label>
+          <select id="agentRisk" class="form-select">
+            <option value="LOW">Low</option>
+            <option value="MEDIUM" selected>Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ceiling — Must Escalate (comma-separated)</label>
+          <input type="text" id="agentEscalate" class="form-input" placeholder="e.g., modify_data_model, change_api_contract">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ceiling — Strictly Forbidden (comma-separated)</label>
+          <input type="text" id="agentForbidden" class="form-input" placeholder="e.g., cross_module_writes, production_db_access">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('createAgentModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="createAgent()">Create & Register Agent</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent Detail Modal -->
+  <div class="modal-overlay" id="agentDetailModal">
+    <div class="modal" style="max-width:800px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="detailTitle">Agent Details</h3>
+        <button class="modal-close" onclick="closeModal('agentDetailModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="detailBody"></div>
+      <div class="modal-footer">
+        <a id="workspaceLink" class="btn btn-primary" href="#">Open Workspace →</a>
+        <button class="btn btn-outline" onclick="closeModal('agentDetailModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('agents');
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    function updateModelVariants() {
+      const provider = document.getElementById('agentProvider').value;
+      const variants = {
+        anthropic_claude: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
+        openai_gpt: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+        google_gemini: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro']
+      };
+      const sel = document.getElementById('agentVariant');
+      sel.innerHTML = (variants[provider] || []).map(v => `<option value="${v}">${v}</option>`).join('');
+    }
+
+    function render() {
+      const agents = NexusStore.getAgents();
+      const active = agents.filter(a => a.status === 'ACTIVE').length;
+      const blocked = agents.filter(a => a.status === 'BLOCKED').length;
+      const totalTasks = agents.reduce((a, ag) => a + ag.metrics.tasks_completed, 0);
+      const avgGate = agents.length ? (agents.reduce((a, ag) => a + ag.metrics.gate_pass_rate, 0) / agents.length).toFixed(0) : 0;
+
+      document.getElementById('agentStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Agents</span><span class="stat-value">${agents.length}</span><span class="stat-change up">${active} active</span></div>
+        <div class="stat-card"><span class="stat-label">Blocked</span><span class="stat-value" style="color:${blocked>0?'var(--danger)':'var(--text-primary)'}">${blocked}</span></div>
+        <div class="stat-card"><span class="stat-label">Tasks Completed</span><span class="stat-value">${totalTasks}</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Gate Pass Rate</span><span class="stat-value">${avgGate}%</span></div>
+      `;
+
+      renderOrgChart(agents);
+      renderAgentList(agents);
+      renderPerformance(agents);
+    }
+
+    function renderOrgChart(agents) {
+      const byRole = (role) => agents.filter(a => a.role === role);
+      const modArchs = byRole('module_architect');
+      const devs = byRole('developer');
+
+      document.getElementById('tab-orgchart').innerHTML = `
+        <div class="org-chart">
+          <div class="org-level">
+            <div class="org-node" style="border-color:var(--warning)" onclick="showAgent(null)">
+              <div class="org-node-name">👤 Human Orchestrator</div>
+              <div class="org-node-role">Final Authority</div>
+            </div>
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${byRole('business_analyst').map(a => agentNode(a)).join('')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${byRole('product_manager').map(a => agentNode(a)).join('')}
+            ${byRole('product_owner').map(a => agentNode(a)).join('')}
+            ${byRole('scrum_master').map(a => agentNode(a)).join('')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${byRole('chief_architect').map(a => agentNode(a)).join('')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${modArchs.map(a => `
+              <div class="org-branch">
+                ${agentNode(a)}
+                <div class="org-connector"></div>
+                <div class="org-level">
+                  ${devs.filter(d => d.module_scope === a.module_scope).map(d => agentNode(d)).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${byRole('integration_architect').map(a => agentNode(a)).join('')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${byRole('qa').map(a => agentNode(a)).join('')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            ${byRole('security_devops').map(a => agentNode(a)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function agentNode(agent) {
+      const colors = { ACTIVE: 'var(--success)', BLOCKED: 'var(--danger)', IDLE: 'var(--text-muted)' };
+      return `
+        <div class="org-node" onclick="showAgent('${agent.agent_id}')" style="border-color:${colors[agent.status]||'var(--border)'}">
+          <div class="org-node-name">${escapeHtml(agent.agent_name)}</div>
+          <div class="org-node-role">${agent.model_provider.split('_')[1] || agent.model_provider} · ${agent.module_scope}</div>
+          <div class="org-node-status">${statusBadge(agent.status)}</div>
+        </div>
+      `;
+    }
+
+    function renderAgentList(agents) {
+      document.getElementById('tab-list').innerHTML = `
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Agent</th><th>Role</th><th>Module</th><th>Model</th><th>Lifecycle</th><th>Status</th><th>Tasks</th><th>Gate %</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${agents.map(a => `
+                <tr>
+                  <td style="font-weight:600;">${escapeHtml(a.agent_name)}</td>
+                  <td><span class="tag">${a.role.replace(/_/g,' ')}</span></td>
+                  <td><span class="tag">${a.module_scope}</span></td>
+                  <td style="font-size:12px; color:var(--text-muted)">${a.model_variant}</td>
+                  <td>${statusBadge(a.lifecycle)}</td>
+                  <td>${statusBadge(a.status)}</td>
+                  <td style="font-weight:600;">${a.metrics.tasks_completed}</td>
+                  <td>${a.metrics.gate_pass_rate}%</td>
+                  <td>
+                    <button class="btn btn-outline btn-sm" onclick="showAgent('${a.agent_id}')">Details</button>
+                    <a class="btn btn-outline btn-sm" href="agent-workspace.html?id=${a.agent_id}">Workspace</a>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderPerformance(agents) {
+      document.getElementById('tab-performance').innerHTML = `
+        <div class="grid grid-2">
+          ${agents.map(a => `
+            <div class="card">
+              <div class="card-header">
+                <div><h3 class="card-title">${escapeHtml(a.agent_name)}</h3><span class="card-subtitle">${a.role.replace(/_/g,' ')} · ${a.module_scope}</span></div>
+                ${statusBadge(a.status)}
+              </div>
+              <div class="metric-bar">
+                <span class="metric-label">Tasks Completed</span>
+                <div class="metric-track"><div class="metric-fill" style="width:${Math.min(a.metrics.tasks_completed*3,100)}%;background:var(--success)"></div></div>
+                <span class="metric-value">${a.metrics.tasks_completed}</span>
+              </div>
+              <div class="metric-bar">
+                <span class="metric-label">Escalations</span>
+                <div class="metric-track"><div class="metric-fill" style="width:${Math.min(a.metrics.escalations_raised*15,100)}%;background:var(--warning)"></div></div>
+                <span class="metric-value">${a.metrics.escalations_raised}</span>
+              </div>
+              <div class="metric-bar">
+                <span class="metric-label">Gate Pass Rate</span>
+                <div class="metric-track"><div class="metric-fill" style="width:${a.metrics.gate_pass_rate}%;background:${a.metrics.gate_pass_rate>=90?'var(--success)':a.metrics.gate_pass_rate>=70?'var(--warning)':'var(--danger)'}"></div></div>
+                <span class="metric-value">${a.metrics.gate_pass_rate}%</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function showAgent(id) {
+      if (!id) return;
+      const agent = NexusStore.getAgent(id);
+      if (!agent) return;
+
+      document.getElementById('detailTitle').textContent = agent.agent_name;
+      document.getElementById('workspaceLink').href = 'agent-workspace.html?id=' + agent.agent_id;
+
+      document.getElementById('detailBody').innerHTML = `
+        <div class="grid grid-2" style="margin-bottom:20px;">
+          <div>
+            <div class="form-label">Agent ID</div>
+            <div style="font-family:var(--mono); font-size:13px; color:var(--accent);">${agent.agent_id}</div>
+          </div>
+          <div>
+            <div class="form-label">Created</div>
+            <div style="font-size:13px;">${formatTime(agent.createdAt)}</div>
+          </div>
+          <div>
+            <div class="form-label">Model</div>
+            <div style="font-size:13px;">${agent.model_provider} / ${agent.model_variant}</div>
+          </div>
+          <div>
+            <div class="form-label">Lifecycle</div>
+            <div>${statusBadge(agent.lifecycle)}</div>
+          </div>
+        </div>
+
+        <div class="form-label">Capabilities</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">
+          ${agent.capabilities.map(c => `<span class="chip">${c.replace(/_/g,' ')}</span>`).join('')}
+        </div>
+
+        <div class="form-label">Ceiling Configuration</div>
+        <div class="code-block" style="margin-bottom:16px; font-size:12px;">${JSON.stringify(agent.ceiling_profile, null, 2)}</div>
+
+        <div class="form-label">Performance Metrics</div>
+        <div class="metric-bar">
+          <span class="metric-label">Tasks Completed</span>
+          <div class="metric-track"><div class="metric-fill" style="width:${Math.min(agent.metrics.tasks_completed*3,100)}%;background:var(--success)"></div></div>
+          <span class="metric-value">${agent.metrics.tasks_completed}</span>
+        </div>
+        <div class="metric-bar">
+          <span class="metric-label">Escalations</span>
+          <div class="metric-track"><div class="metric-fill" style="width:${Math.min(agent.metrics.escalations_raised*15,100)}%;background:var(--warning)"></div></div>
+          <span class="metric-value">${agent.metrics.escalations_raised}</span>
+        </div>
+        <div class="metric-bar">
+          <span class="metric-label">Gate Pass Rate</span>
+          <div class="metric-track"><div class="metric-fill" style="width:${agent.metrics.gate_pass_rate}%;background:var(--success)"></div></div>
+          <span class="metric-value">${agent.metrics.gate_pass_rate}%</span>
+        </div>
+      `;
+      document.getElementById('agentDetailModal').classList.add('show');
+    }
+
+    function openCreateAgent() { document.getElementById('createAgentModal').classList.add('show'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    async function createAgent() {
+      const name = document.getElementById('agentName').value.trim();
+      if (!name) { showToast('Agent name required', 'error'); return; }
+
+      const caps = Array.from(document.querySelectorAll('#capabilitiesGroup input:checked')).map(c => c.value);
+      showLoading('Creating agent...');
+
+      const result = await MockAPI.createAgent({
+        agent_name: name,
+        role: document.getElementById('agentRole').value,
+        module_scope: document.getElementById('agentScope').value,
+        model_provider: document.getElementById('agentProvider').value,
+        model_variant: document.getElementById('agentVariant').value,
+        capabilities: caps,
+        ceiling_profile: {
+          can_autonomously: caps,
+          must_escalate: document.getElementById('agentEscalate').value.split(',').map(s=>s.trim()).filter(Boolean),
+          strictly_forbidden: document.getElementById('agentForbidden').value.split(',').map(s=>s.trim()).filter(Boolean),
+          risk_sensitivity: document.getElementById('agentRisk').value
+        }
+      });
+
+      hideLoading();
+      closeModal('createAgentModal');
+      if (result.success) {
+        showToast(`Agent "${name}" created and registered`, 'success');
+        render();
+      }
+    }
+
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    render();
+  </script>
+</body>
+</html>

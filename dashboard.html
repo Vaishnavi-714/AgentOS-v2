@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Dashboard</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Project Dashboard</h1>
+        <p class="page-subtitle">Manage your software projects and track progress</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openCreateProject()">+ New Project</button>
+        <button class="btn btn-outline btn-sm" onclick="resetData()">Reset Demo Data</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="statsGrid" style="margin-bottom: 24px;"></div>
+
+    <!-- Projects -->
+    <div id="projectsList"></div>
+
+    <!-- Recent Activity -->
+    <div class="card" style="margin-top: 24px;">
+      <div class="card-header">
+        <h3 class="card-title">Recent Activity</h3>
+      </div>
+      <div id="activityLog" class="timeline"></div>
+    </div>
+  </div>
+
+  <!-- Create Project Modal -->
+  <div class="modal-overlay" id="createProjectModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Create New Project</h3>
+        <button class="modal-close" onclick="closeModal('createProjectModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Project Name</label>
+          <input type="text" id="projName" class="form-input" placeholder="e.g., E-Commerce Platform">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="projDesc" class="form-textarea" placeholder="Describe the project scope and goals..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Domain</label>
+          <select id="projDomain" class="form-select">
+            <option value="E-Commerce">E-Commerce</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Finance">Finance</option>
+            <option value="Education">Education</option>
+            <option value="SaaS">SaaS</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tech Stack (comma-separated)</label>
+          <input type="text" id="projTech" class="form-input" placeholder="e.g., Node.js, React, PostgreSQL">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Modules (comma-separated)</label>
+          <input type="text" id="projModules" class="form-input" placeholder="e.g., auth, payments, orders">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="createProject()">Create Project</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('dashboard');
+
+    function render() {
+      const projects = NexusStore.getProjects();
+      const agents = NexusStore.getAgents();
+      const escalations = NexusStore.getEscalations();
+      const decisions = NexusStore.getDecisions();
+
+      // Stats
+      document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card">
+          <span class="stat-label">Total Projects</span>
+          <span class="stat-value">${projects.length}</span>
+          <span class="stat-change up">${projects.filter(p=>p.status==='ACTIVE').length} active</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Active Agents</span>
+          <span class="stat-value">${agents.filter(a=>a.status==='ACTIVE').length}</span>
+          <span class="stat-change">${agents.length} total</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Pending Escalations</span>
+          <span class="stat-value" style="color: ${escalations.filter(e=>e.status==='PENDING').length > 0 ? 'var(--warning)' : 'var(--text-primary)'}">${escalations.filter(e=>e.status==='PENDING').length}</span>
+          <span class="stat-change">${escalations.length} total</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Decisions Logged</span>
+          <span class="stat-value">${decisions.length}</span>
+          <span class="stat-change up">${decisions.filter(d=>d.human_reviewed).length} human-reviewed</span>
+        </div>
+      `;
+
+      // Projects
+      if (projects.length === 0) {
+        document.getElementById('projectsList').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📂</div>
+            <h3 class="empty-state-title">No Projects Yet</h3>
+            <p class="empty-state-text">Create your first project to get started with NEXUS</p>
+            <button class="btn btn-primary" onclick="openCreateProject()">+ Create Project</button>
+          </div>
+        `;
+      } else {
+        document.getElementById('projectsList').innerHTML = `
+          <div class="grid grid-2">
+            ${projects.map(p => {
+              const pipeline = NexusStore.getPipeline(p.id);
+              const tasks = NexusStore.getTasks(p.id);
+              const completedTasks = tasks.filter(t => t.status === 'DONE').length;
+              const pipelineProgress = pipeline ? (pipeline.stages.filter(s => s.status === 'COMPLETED').length / 13 * 100) : 0;
+              return `
+                <div class="card" style="cursor:pointer" onclick="openProject('${p.id}')">
+                  <div class="card-header">
+                    <div>
+                      <h3 class="card-title">${escapeHtml(p.name)}</h3>
+                      <p class="card-subtitle">${escapeHtml(p.domain)} · Created ${formatTime(p.createdAt)}</p>
+                    </div>
+                    ${statusBadge(p.status)}
+                  </div>
+                  <p style="font-size:13px; color:var(--text-secondary); margin-bottom: 16px;">${escapeHtml(p.description)}</p>
+                  <div style="margin-bottom: 12px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                      <span style="font-size:12px; color:var(--text-muted)">Pipeline Progress</span>
+                      <span style="font-size:12px; color:var(--text-primary)">${Math.round(pipelineProgress)}%</span>
+                    </div>
+                    <div class="progress-bar">
+                      <div class="progress-fill" style="width:${pipelineProgress}%"></div>
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                    ${(p.techStack||[]).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
+                    <span>Tasks: ${completedTasks}/${tasks.length}</span>
+                    <span>Modules: ${(p.modules||[]).length}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      // Activity log
+      const logs = NexusStore.getLogs().slice(0, 10);
+      document.getElementById('activityLog').innerHTML = logs.map(log => {
+        const typeColors = { SYSTEM: 'var(--info)', AUTH: 'var(--purple)', PROJECT: 'var(--success)', PIPELINE: 'var(--accent)', AGENT: 'var(--warning)', TASK: 'var(--info)', GATE: 'var(--success)', ESCALATION: 'var(--orange)', DECISION: 'var(--purple)', REQUIREMENTS: 'var(--info)' };
+        return `
+          <div class="timeline-item completed">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span style="font-size:11px; font-weight:600; color:${typeColors[log.type]||'var(--text-muted)'}; text-transform:uppercase;">${log.type}</span>
+              <span style="font-size:11px; color:var(--text-muted)">${formatTime(log.timestamp)}</span>
+            </div>
+            <p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(log.message)}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openProject(id) {
+      sessionStorage.setItem('nexus_selected_project', id);
+      window.location.href = 'pipeline.html';
+    }
+
+    function openCreateProject() {
+      document.getElementById('createProjectModal').classList.add('show');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    async function createProject() {
+      const name = document.getElementById('projName').value.trim();
+      if (!name) { showToast('Project name is required', 'error'); return; }
+      showLoading('Creating project...');
+      const result = await MockAPI.createProject({
+        name,
+        description: document.getElementById('projDesc').value.trim(),
+        domain: document.getElementById('projDomain').value,
+        techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean),
+        modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean)
+      });
+      hideLoading();
+      closeModal('createProjectModal');
+      if (result.success) {
+        showToast('Project created successfully', 'success');
+        render();
+      }
+    }
+
+    function resetData() {
+      if (confirm('Reset all data to initial demo state?')) {
+        NexusStore.clearAll();
+        seedNexusData();
+        showToast('Data reset to demo state', 'info');
+        render();
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    render();
+  </script>
+</body>
+</html>

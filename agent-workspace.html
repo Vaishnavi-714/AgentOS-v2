@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Agent Workspace</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title" id="agentTitle">Agent Workspace</h1>
+        <p class="page-subtitle" id="agentSubtitle">4-File Execution System</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-outline" onclick="window.location.href='agents.html'">← Back to Agents</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveFile()">Save Changes</button>
+      </div>
+    </div>
+
+    <!-- Agent Info Bar -->
+    <div class="card" id="agentInfo" style="margin-bottom:20px;"></div>
+
+    <!-- Workspace Files -->
+    <div class="workspace-tabs" id="fileTabs"></div>
+    <div class="workspace-editor" id="fileEditor"></div>
+
+    <!-- Agent Lifecycle -->
+    <div class="card" style="margin-top:24px;">
+      <div class="card-header">
+        <h3 class="card-title">Agent Lifecycle</h3>
+        <div id="lifecycleStatus"></div>
+      </div>
+      <div id="lifecycleTimeline"></div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('agents');
+
+    const params = new URLSearchParams(window.location.search);
+    const agentId = params.get('id');
+    let activeFile = 'skills';
+    let editMode = false;
+    const fileNames = ['skills', 'tools', 'heartbeat', 'souls'];
+    const fileLabels = { skills: '📚 skills.md', tools: '🔧 tools.md', heartbeat: '💓 heartbeat.md', souls: '🧠 souls.md' };
+    const fileDescriptions = { skills: 'Capability Brain — What the agent knows and can do', tools: 'Execution Layer — Available tools and usage rules', heartbeat: 'State & Memory — Current operational state', souls: 'Decision Memory & Personality — Behavioral intelligence' };
+
+    function render() {
+      const agent = NexusStore.getAgent(agentId);
+      if (!agent) {
+        document.getElementById('agentInfo').innerHTML = '<div class="empty-state"><h3 class="empty-state-title">Agent Not Found</h3><p class="empty-state-text">Select an agent from the Agent Management page</p><a class="btn btn-primary" href="agents.html">Go to Agents</a></div>';
+        return;
+      }
+
+      document.getElementById('agentTitle').textContent = agent.agent_name + ' — Workspace';
+      document.getElementById('agentSubtitle').textContent = `/agents/${agent.agent_id}/`;
+
+      // Info bar
+      document.getElementById('agentInfo').innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap;">
+            <div>
+              <span class="form-label" style="margin-bottom:2px;">Role</span>
+              <div><span class="tag">${agent.role.replace(/_/g,' ')}</span></div>
+            </div>
+            <div>
+              <span class="form-label" style="margin-bottom:2px;">Module</span>
+              <div><span class="tag">${agent.module_scope}</span></div>
+            </div>
+            <div>
+              <span class="form-label" style="margin-bottom:2px;">Model</span>
+              <div style="font-size:13px;">${agent.model_variant}</div>
+            </div>
+            <div>
+              <span class="form-label" style="margin-bottom:2px;">Status</span>
+              <div>${statusBadge(agent.status)}</div>
+            </div>
+            <div>
+              <span class="form-label" style="margin-bottom:2px;">Lifecycle</span>
+              <div>${statusBadge(agent.lifecycle)}</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:12px;">
+            <div class="stat-card" style="padding:10px 16px; min-width:80px;">
+              <span class="stat-label" style="font-size:10px;">Tasks</span>
+              <span class="stat-value" style="font-size:20px;">${agent.metrics.tasks_completed}</span>
+            </div>
+            <div class="stat-card" style="padding:10px 16px; min-width:80px;">
+              <span class="stat-label" style="font-size:10px;">Escalations</span>
+              <span class="stat-value" style="font-size:20px;">${agent.metrics.escalations_raised}</span>
+            </div>
+            <div class="stat-card" style="padding:10px 16px; min-width:80px;">
+              <span class="stat-label" style="font-size:10px;">Gate %</span>
+              <span class="stat-value" style="font-size:20px;">${agent.metrics.gate_pass_rate}%</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // File tabs
+      document.getElementById('fileTabs').innerHTML = fileNames.map(f =>
+        `<div class="workspace-tab ${f === activeFile ? 'active' : ''}" onclick="switchFile('${f}')">${fileLabels[f]}</div>`
+      ).join('');
+
+      renderFile();
+      renderLifecycle(agent);
+    }
+
+    function switchFile(file) {
+      activeFile = file;
+      editMode = false;
+      render();
+    }
+
+    function renderFile() {
+      const content = NexusStore.getWorkspaceFile(agentId, activeFile);
+      const desc = fileDescriptions[activeFile];
+
+      if (editMode) {
+        document.getElementById('fileEditor').innerHTML = `
+          <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-size:13px; font-weight:600; color:var(--accent);">${fileLabels[activeFile]}</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${desc}</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="editMode=false; render();">Cancel</button>
+              <button class="btn btn-success btn-sm" onclick="saveFile()">Save</button>
+            </div>
+          </div>
+          <textarea id="fileContent" class="form-textarea" style="min-height:450px; font-family:var(--mono); font-size:13px; line-height:1.7;">${escapeHtml(content)}</textarea>
+        `;
+      } else {
+        const rendered = renderMarkdown(content);
+        document.getElementById('fileEditor').innerHTML = `
+          <div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-size:13px; font-weight:600; color:var(--accent);">${fileLabels[activeFile]}</span>
+              <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${desc}</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="editMode=true; render();">✏️ Edit</button>
+          </div>
+          <div class="workspace-content">${rendered || '<span style="color:var(--text-muted);">No content yet</span>'}</div>
+        `;
+      }
+    }
+
+    function saveFile() {
+      const textarea = document.getElementById('fileContent');
+      if (!textarea) return;
+      NexusStore.setWorkspaceFile(agentId, activeFile, textarea.value);
+      editMode = false;
+      showToast(`${activeFile}.md saved successfully`, 'success');
+      NexusStore.addLog({ type: 'AGENT', message: `Workspace file ${activeFile}.md updated for ${agentId}`, agent: 'human_orchestrator' });
+      render();
+    }
+
+    function renderMarkdown(md) {
+      if (!md) return '';
+      return md
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+        .replace(/^### (.+)$/gm, '<h3 style="font-size:14px;font-weight:600;color:var(--text-secondary);margin:10px 0 4px;">$3</h3>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/gs, (match) => '<ul>' + match + '</ul>')
+        .replace(/<\/ul>\s*<ul>/g, '')
+        .replace(/\n\n/g, '<br>')
+        .replace(/`([^`]+)`/g, '<code style="background:var(--bg-tertiary);padding:2px 6px;border-radius:3px;font-family:var(--mono);font-size:12px;">$1</code>');
+    }
+
+    function renderLifecycle(agent) {
+      const stages = ['CREATED', 'CONFIGURED', 'ACTIVE', 'EXECUTING', 'LEARNING', 'OPTIMIZED', 'RETIRED'];
+      const currentIdx = stages.indexOf(agent.lifecycle);
+
+      document.getElementById('lifecycleStatus').innerHTML = statusBadge(agent.lifecycle);
+      document.getElementById('lifecycleTimeline').innerHTML = `
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          ${stages.map((s, i) => {
+            const isActive = i === currentIdx;
+            const isPast = i < currentIdx;
+            const color = isActive ? 'var(--accent)' : isPast ? 'var(--success)' : 'var(--text-muted)';
+            return `
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div style="padding:6px 14px; border-radius:var(--radius); border:1px solid ${color}; background:${isActive ? color+'20' : 'transparent'}; color:${color}; font-size:11px; font-weight:600;">
+                  ${isPast ? '✓ ' : ''}${s}
+                </div>
+                ${i < stages.length - 1 ? '<div style="width:20px; height:2px; background:' + (isPast ? 'var(--success)' : 'var(--border)') + '"></div>' : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+    if (agentId) render();
+    else {
+      document.getElementById('agentInfo').innerHTML = '<div class="empty-state"><h3 class="empty-state-title">Select an Agent</h3><a class="btn btn-primary" href="agents.html">Go to Agent Management</a></div>';
+    }
+  </script>
+</body>
+</html>
