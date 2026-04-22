@@ -5,6 +5,150 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Agent Management</title>
   <link rel="stylesheet" href="css/common.css">
+  <style>
+    .runtime-org-node.active {
+      border-color: var(--success)70;
+      box-shadow: 0 0 0 1px var(--success)35, 0 0 18px var(--success)18;
+    }
+
+    .runtime-org-node.inactive {
+      opacity: 0.68;
+      border-style: dashed;
+      filter: grayscale(0.25);
+    }
+
+    .org-flow-note {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .flow-route-strip {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-tertiary);
+      padding: 10px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .flow-route-strip strong {
+      color: var(--accent);
+      margin-right: 4px;
+    }
+
+    .flow-status-completed {
+      border-left: 3px solid var(--success);
+    }
+
+    .flow-status-active {
+      border-left: 3px solid var(--info);
+      box-shadow: 0 0 0 1px var(--info)25;
+    }
+
+    .flow-status-pending {
+      border-left: 3px solid var(--border);
+    }
+
+    .runtime-agent-chip {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-tertiary);
+      padding: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .ai-task-list {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .ai-task-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-tertiary);
+      padding: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .activity-card.active {
+      border-color: var(--success)55;
+      box-shadow: 0 0 0 1px var(--success)22;
+    }
+
+    .activity-card.inactive {
+      opacity: 0.72;
+      border-style: dashed;
+    }
+
+    .orchestration-popup-stack {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 2400;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: min(420px, calc(100vw - 24px));
+      pointer-events: none;
+    }
+
+    .orchestration-popup {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+      animation: popupSlideIn 0.25s ease;
+    }
+
+    .orchestration-popup .label {
+      font-size: 10px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .orchestration-popup .message {
+      font-size: 12px;
+      color: var(--text-primary);
+      line-height: 1.45;
+    }
+
+    .orchestration-popup .time {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .popup-task_start { border-left: 3px solid var(--info); }
+    .popup-task_complete { border-left: 3px solid var(--success); }
+    .popup-handoff { border-left: 3px solid var(--accent); }
+    .popup-escalation { border-left: 3px solid var(--warning); }
+
+    @keyframes popupSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1100px) {
+      .ai-task-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="main-content">
@@ -169,6 +313,7 @@
   <script src="js/data.js"></script>
   <script src="js/mock-api.js"></script>
   <script src="js/nav.js"></script>
+  <script src="js/orchestration-runtime.js"></script>
   <script>
     seedNexusData();
     createNavigation('agents');
@@ -180,77 +325,9 @@
       heartbeat: 'heartbeat.md',
       souls: 'souls.md'
     };
-    const flowExpanded = {};
-    const liveActivityState = {};
     let activeWorkspaceAgentId = null;
     let activeWorkspaceFile = 'heartbeat';
     let liveTicker = null;
-
-    const FLOW_DEFINITION = [
-      {
-        agentId: 'agent_ba_001',
-        fallbackName: 'Business Analyst',
-        taskId: 'TASK-AUTH-101',
-        inputs: ['Raw requirements', 'Stakeholder notes'],
-        outputs: ['Refined backlog', 'Clarified constraints'],
-        actions: ['Refining requirements', 'Clarifying domain language', 'Eliminating ambiguity'],
-        tokenStart: 1200
-      },
-      {
-        agentId: 'agent_po_001',
-        fallbackName: 'Product Owner',
-        taskId: 'TASK-AUTH-101',
-        inputs: ['Refined backlog', 'Priority matrix'],
-        outputs: ['Approved acceptance criteria', 'Ready-for-architecture PBI'],
-        actions: ['Validating acceptance', 'Prioritizing backlog', 'Aligning business goals'],
-        tokenStart: 1260
-      },
-      {
-        agentId: 'agent_chief_arch_001',
-        fallbackName: 'Chief Architect',
-        taskId: 'TASK-AUTH-101',
-        inputs: ['Approved backlog', 'Epics'],
-        outputs: ['DB Schema', 'API Contracts'],
-        actions: ['Designing system architecture', 'Defining API contracts', 'Reviewing risk boundaries'],
-        tokenStart: 1500
-      },
-      {
-        agentId: 'agent_mod_arch_auth',
-        fallbackName: 'Module Architect - Auth',
-        taskId: 'TASK-AUTH-101',
-        inputs: ['DB schema', 'API contracts'],
-        outputs: ['Module blueprint', 'Task breakdown'],
-        actions: ['Breaking down tasks', 'Designing module APIs', 'Preparing implementation guide'],
-        tokenStart: 1320
-      },
-      {
-        agentId: 'agent_dev_auth_01',
-        fallbackName: 'Developer Agent - Auth 01',
-        taskId: 'TASK-AUTH-101',
-        inputs: ['Task breakdown', 'Module contracts'],
-        outputs: ['Code changes', 'Unit tests'],
-        actions: ['Writing login API', 'Implementing auth handlers', 'Refactoring token service'],
-        tokenStart: 1240
-      },
-      {
-        agentId: 'agent_qa_001',
-        fallbackName: 'QA Agent',
-        taskId: 'TASK-AUTH-102',
-        inputs: ['Code build', 'Acceptance criteria'],
-        outputs: ['Test evidence', 'Defect report'],
-        actions: ['Executing test suites', 'Validating acceptance scenarios', 'Running regression checks'],
-        tokenStart: 1180
-      },
-      {
-        agentId: 'agent_secdevops_001',
-        fallbackName: 'DevOps Agent',
-        taskId: 'TASK-AUTH-102',
-        inputs: ['QA-approved build', 'Release checklist'],
-        outputs: ['Deployment package', 'Release telemetry'],
-        actions: ['Preparing deployment bundle', 'Running security gates', 'Publishing release candidate'],
-        tokenStart: 1300
-      }
-    ];
 
     function switchTab(tab, evt) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -270,33 +347,130 @@
       sel.innerHTML = (variants[provider] || []).map(v => `<option value="${v}">${v}</option>`).join('');
     }
 
-    function render() {
-      const agents = NexusStore.getAgents();
-      initLiveActivity(agents);
-      const active = agents.filter(a => a.status === 'ACTIVE').length;
-      const blocked = agents.filter(a => a.status === 'BLOCKED').length;
-      const totalTasks = agents.reduce((a, ag) => a + ag.metrics.tasks_completed, 0);
-      const avgGate = agents.length ? (agents.reduce((a, ag) => a + ag.metrics.gate_pass_rate, 0) / agents.length).toFixed(0) : 0;
-
-      document.getElementById('agentStats').innerHTML = `
-        <div class="stat-card"><span class="stat-label">Total Agents</span><span class="stat-value">${agents.length}</span><span class="stat-change up">${active} active</span></div>
-        <div class="stat-card"><span class="stat-label">Blocked</span><span class="stat-value" style="color:${blocked>0?'var(--danger)':'var(--text-primary)'}">${blocked}</span></div>
-        <div class="stat-card"><span class="stat-label">Tasks Completed</span><span class="stat-value">${totalTasks}</span></div>
-        <div class="stat-card"><span class="stat-label">Avg Gate Pass Rate</span><span class="stat-value">${avgGate}%</span></div>
-      `;
-
-      renderOrgChart(agents);
-      renderAgentFlow(agents);
-      renderLiveActivity(agents);
-      renderAgentList(agents);
-      renderPerformance(agents);
+    function escapeHtml(str) {
+      if (!str) return '';
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
     }
 
-    function renderOrgChart(agents) {
-      const byRole = (role) => agents.filter(a => a.role === role);
-      const modArchs = byRole('module_architect');
-      const devs = byRole('developer');
+    function formatDuration(ms) {
+      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      const hours = Math.floor(minutes / 60);
+      if (hours > 0) {
+        return String(hours).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+      }
+      return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    }
 
+    function formatTimer(seconds) {
+      return formatDuration((seconds || 0) * 1000);
+    }
+
+    function runtimePresence(status) {
+      return statusBadge(status === 'ACTIVE' ? 'ACTIVE' : 'IDLE');
+    }
+
+    function getRuntimeAgent(snapshot, agentId) {
+      return NexusOrchestration.getAgentById(snapshot, agentId);
+    }
+
+    function runtimeNode(snapshot, key) {
+      const agent = snapshot.agents[key];
+      if (!agent) return '';
+
+      const statusClass = agent.status === 'ACTIVE' ? 'active' : 'inactive';
+      const hasWorkspace = !!NexusStore.getAgent(agent.agentId);
+      const click = hasWorkspace
+        ? `openAgentWorkspacePanel('${agent.agentId}')`
+        : `showToast('Runtime-only simulated agent: workspace unavailable', 'info')`;
+
+      return `
+        <div class="org-node runtime-org-node ${statusClass}" onclick="${click}">
+          <div class="org-node-name">${escapeHtml(agent.name)}</div>
+          <div class="org-node-role">${escapeHtml(agent.role.replace(/_/g, ' '))} · ${escapeHtml(agent.module)}</div>
+          <div class="org-node-status">${runtimePresence(agent.status)}</div>
+        </div>
+      `;
+    }
+
+    function flowStatus(snapshot, index) {
+      if (index < snapshot.phaseIndex) return 'COMPLETED';
+      if (index === snapshot.phaseIndex) return 'EXECUTING';
+      return 'PENDING';
+    }
+
+    function flowClass(status) {
+      if (status === 'COMPLETED') return 'flow-status-completed';
+      if (status === 'EXECUTING') return 'flow-status-active';
+      return 'flow-status-pending';
+    }
+
+    function runtimeChip(agent) {
+      return `
+        <div class="runtime-agent-chip">
+          <strong>${escapeHtml(agent.name)}</strong><br>
+          ${runtimePresence(agent.status)} ${statusBadge(agent.stageStatus || 'PENDING')}<br>
+          ${escapeHtml(agent.currentTaskId || 'N/A')} - ${escapeHtml(agent.currentTaskName || 'Awaiting assignment')}<br>
+          Timer ${formatTimer(agent.timerSec)} · Tokens ${agent.tokens}
+        </div>
+      `;
+    }
+
+    function renderFlowStageDetails(snapshot, phase) {
+      if (phase.id === 'ai_pipeline') {
+        return `
+          <div class="ai-task-list">
+            ${(snapshot.aiPipelineTasks || []).map(task => `
+              <div class="ai-task-item">
+                <strong>${escapeHtml(task.name)}</strong><br>
+                ${statusBadge(task.status)}<br>
+                Timer ${formatTimer(task.timerSec)} · Tokens ${task.tokens}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      return phase.members
+        .map(memberKey => snapshot.agents[memberKey])
+        .filter(Boolean)
+        .map(runtimeChip)
+        .join('');
+    }
+
+    function render() {
+      const snapshot = NexusOrchestration.getSnapshot();
+      const agents = NexusStore.getAgents() || [];
+      const runtimeAgents = Object.values(snapshot.agents || {});
+      const active = runtimeAgents.filter(a => a.status === 'ACTIVE').length;
+      const inactive = runtimeAgents.length - active;
+      const totalTokens = runtimeAgents.reduce((acc, item) => acc + (item.tokens || 0), 0);
+      const escalations = snapshot.scrum && snapshot.scrum.escalations
+        ? snapshot.scrum.escalations.filter(e => e.status === 'OPEN').length
+        : 0;
+      const avgGate = agents.length ? (agents.reduce((a, ag) => a + (ag.metrics ? ag.metrics.gate_pass_rate : 0), 0) / agents.length).toFixed(0) : 0;
+
+      document.getElementById('agentStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Runtime Agents</span><span class="stat-value">${runtimeAgents.length}</span><span class="stat-change up">${active} active</span></div>
+        <div class="stat-card"><span class="stat-label">Inactive</span><span class="stat-value">${inactive}</span></div>
+        <div class="stat-card"><span class="stat-label">Open Escalations</span><span class="stat-value" style="color:${escalations>0?'var(--warning)':'var(--text-primary)'}">${escalations}</span></div>
+        <div class="stat-card"><span class="stat-label">Total Tokens</span><span class="stat-value">${totalTokens}</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Gate Pass Rate</span><span class="stat-value">${avgGate}%</span></div>
+      `;
+      renderOrgChart(snapshot);
+      renderAgentFlow(snapshot);
+      renderLiveActivity(snapshot);
+      renderAgentList(agents, snapshot);
+      renderPerformance(agents, snapshot);
+      syncHeartbeatFiles(snapshot, agents);
+      if (activeWorkspaceAgentId) renderWorkspacePanel(snapshot);
+      renderPopups(snapshot);
+    }
+
+    function renderOrgChart(snapshot) {
       document.getElementById('tab-orgchart').innerHTML = `
         <div class="org-chart">
           <div class="org-level">
@@ -307,142 +481,149 @@
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
-            ${byRole('business_analyst').map(a => agentNode(a)).join('')}
+            ${runtimeNode(snapshot, 'businessAnalyst')}
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
-            ${byRole('product_manager').map(a => agentNode(a)).join('')}
-            ${byRole('product_owner').map(a => agentNode(a)).join('')}
-            ${byRole('scrum_master').map(a => agentNode(a)).join('')}
+            ${runtimeNode(snapshot, 'aiPipeline')}
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
-            ${byRole('chief_architect').map(a => agentNode(a)).join('')}
+            ${runtimeNode(snapshot, 'productOwner')}
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
-            ${modArchs.map(a => `
-              <div class="org-branch">
-                ${agentNode(a)}
-                <div class="org-connector"></div>
-                <div class="org-level">
-                  ${devs.filter(d => d.module_scope === a.module_scope).map(d => agentNode(d)).join('')}
+            ${runtimeNode(snapshot, 'chiefArchitect')}
+            ${runtimeNode(snapshot, 'scrumMaster')}
+          </div>
+          <div class="org-connector"></div>
+          <div class="org-level">
+            <div class="org-branch">
+              ${runtimeNode(snapshot, 'moduleArchitectAuth')}
+              <div class="org-connector"></div>
+              <div class="org-level">
+                ${runtimeNode(snapshot, 'devAuth01')}
+                ${runtimeNode(snapshot, 'devAuth02')}
+              </div>
+            </div>
+            <div class="org-branch">
+              ${runtimeNode(snapshot, 'moduleArchitectPayments')}
+              <div class="org-connector"></div>
+              <div class="org-level">
+                ${runtimeNode(snapshot, 'devPay01')}
+              </div>
+            </div>
+            <div class="org-branch">
+              ${runtimeNode(snapshot, 'moduleArchitectOrders')}
+              <div class="org-connector"></div>
+              <div class="org-level">
+                <div class="org-node runtime-org-node inactive">
+                  <div class="org-node-name">No developer assigned</div>
+                  <div class="org-node-role">orders</div>
+                  <div class="org-node-status">${statusBadge('PENDING')}</div>
                 </div>
               </div>
-            `).join('')}
+            </div>
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
-            ${byRole('integration_architect').map(a => agentNode(a)).join('')}
+            ${runtimeNode(snapshot, 'qaAgent')}
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
-            ${byRole('qa').map(a => agentNode(a)).join('')}
-          </div>
-          <div class="org-connector"></div>
-          <div class="org-level">
-            ${byRole('security_devops').map(a => agentNode(a)).join('')}
+            ${runtimeNode(snapshot, 'releaseAgent')}
           </div>
         </div>
+        <div class="org-flow-note">ACTIVE agents glow. INACTIVE agents are dimmed. Scrum Master is connected to all module architects and developers.</div>
       `;
     }
 
-    function agentNode(agent) {
-      const status = getLiveStatus(agent.agent_id, agent.status);
-      const colors = { ACTIVE: 'var(--success)', BLOCKED: 'var(--danger)', IDLE: 'var(--text-muted)' };
-      return `
-        <div class="org-node" onclick="openAgentWorkspacePanel('${agent.agent_id}')" style="border-color:${colors[status]||'var(--border)'}">
-          <div class="org-node-name">${escapeHtml(agent.agent_name)}</div>
-          <div class="org-node-role">${agent.model_provider.split('_')[1] || agent.model_provider} · ${agent.module_scope}</div>
-          <div class="org-node-status">${statusBadge(status)}</div>
-        </div>
-      `;
-    }
-
-    function renderAgentFlow(agents) {
+    function renderAgentFlow(snapshot) {
+      const phases = NexusOrchestration.getPhases();
       document.getElementById('tab-flow').innerHTML = `
+        <div class="flow-route-strip">
+          <strong>Flow:</strong>
+          <span>BA</span><span>-></span>
+          <span>AI Pipeline</span><span>-></span>
+          <span>PO</span><span>-></span>
+          <span>CA</span><span>-></span>
+          <span>Scrum</span><span>-></span>
+          <span>Module</span><span>-></span>
+          <span>Dev</span><span>-></span>
+          <span>QA</span><span>-></span>
+          <span>Release</span>
+        </div>
         <div class="flow-stack">
-          ${FLOW_DEFINITION.map((stage, idx) => {
-            const agent = agents.find(a => a.agent_id === stage.agentId);
-            const state = liveActivityState[stage.agentId];
-            const name = agent ? agent.agent_name : stage.fallbackName;
-            const status = getLiveStatus(stage.agentId, agent ? agent.status : 'ACTIVE');
-            const payload = {
-              agentId: stage.agentId,
-              agentName: name,
-              currentTask: state ? state.taskId : stage.taskId,
-              status,
-              input: stage.inputs,
-              output: stage.outputs,
-              lastAction: state ? state.action : stage.actions[0],
-              tokensUsed: state ? state.tokens : stage.tokenStart,
-              generatedAt: new Date().toISOString()
-            };
-
+          ${phases.map((phase, idx) => {
+            const status = flowStatus(snapshot, idx);
             return `
-              <div>
-                <div class="flow-card clickable" onclick="toggleFlowBlock('${stage.agentId}')">
+                <div class="flow-card ${flowClass(status)}">
                   <div class="card-header" style="margin-bottom:8px;">
                     <div>
-                      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openAgentWorkspacePanel('${stage.agentId}')">${escapeHtml(name)}</button>
-                      <span class="card-subtitle" style="display:block; margin-top:6px;">Task ${state ? state.taskId : stage.taskId}</span>
+                      <h3 class="card-title">${escapeHtml(phase.title)}</h3>
+                      <span class="card-subtitle">${phase.parallel ? 'Parallel stage' : 'Sequential stage'}</span>
                     </div>
                     ${statusBadge(status)}
+                  </div>
+
+                  <div class="flow-route-strip" style="margin-bottom:0;">
+                    <span><strong>From:</strong> ${escapeHtml(phase.from)}</span>
+                    <span>-></span>
+                    <span><strong>To:</strong> ${escapeHtml(phase.to)}</span>
                   </div>
 
                   <div class="flow-io-grid">
                     <div class="flow-io-box">
                       <div class="flow-io-title">Input</div>
-                      <div class="flow-io-list">${stage.inputs.map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('')}</div>
+                      <div class="flow-io-list">${phase.input.map(item => `<span class="tag">${escapeHtml(item)}</span>`).join('')}</div>
                     </div>
                     <div class="flow-io-box">
                       <div class="flow-io-title">Output</div>
-                      <div class="flow-io-list">${stage.outputs.map(v => `<span class="tag">${escapeHtml(v)}</span>`).join('')}</div>
+                      <div class="flow-io-list">${phase.output.map(item => `<span class="tag">${escapeHtml(item)}</span>`).join('')}</div>
                     </div>
                   </div>
 
-                  <div class="json-panel ${flowExpanded[stage.agentId] ? 'show' : ''}">
-                    <div class="code-block">${escapeHtml(JSON.stringify(payload, null, 2))}</div>
-                  </div>
-                </div>
-                ${idx < FLOW_DEFINITION.length - 1 ? '<div class="flow-arrow">↓</div>' : ''}
+                  ${renderFlowStageDetails(snapshot, phase)}
               </div>
+              ${idx < phases.length - 1 ? '<div class="flow-arrow">↓</div>' : ''}
             `;
           }).join('')}
         </div>
       `;
     }
 
-    function toggleFlowBlock(agentId) {
-      flowExpanded[agentId] = !flowExpanded[agentId];
-      renderAgentFlow(NexusStore.getAgents());
-    }
 
-    function renderLiveActivity(agents) {
+    function renderLiveActivity(snapshot) {
+      const runtimeAgents = NexusOrchestration.getAgentOrder()
+        .map(key => snapshot.agents[key])
+        .filter(Boolean);
+
       document.getElementById('tab-live').innerHTML = `
         <div class="grid grid-3">
-          ${FLOW_DEFINITION.map(stage => {
-            const agent = agents.find(a => a.agent_id === stage.agentId);
-            const state = liveActivityState[stage.agentId];
-            const name = agent ? agent.agent_name : stage.fallbackName;
-            const status = state ? state.status : 'ACTIVE';
+          ${runtimeAgents.map(agent => {
+            const hasWorkspace = !!NexusStore.getAgent(agent.agentId);
+            const click = hasWorkspace
+              ? `openAgentWorkspacePanel('${agent.agentId}')`
+              : `showToast('Runtime-only simulated agent: workspace unavailable', 'info')`;
             return `
-              <div class="activity-card" onclick="openAgentWorkspacePanel('${stage.agentId}')">
-                <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+              <div class="activity-card ${agent.status === 'ACTIVE' ? 'active' : 'inactive'}" onclick="${click}">
+                <div class="card-header" style="margin-bottom:8px;">
                   <div>
-                    <h3 class="card-title">${escapeHtml(name)}</h3>
-                    <span class="tag" style="font-family:var(--mono); margin-top:6px;">${state ? state.taskId : stage.taskId}</span>
+                    <h3 class="card-title">${escapeHtml(agent.name)}</h3>
+                    <span class="tag" style="font-family:var(--mono); margin-top:6px;">${escapeHtml(agent.currentTaskId || 'N/A')}</span>
                   </div>
-                  ${statusBadge(status)}
+                  ${runtimePresence(agent.status)}
                 </div>
 
                 <div style="margin-top:10px; font-size:13px; color:var(--text-secondary);">
-                  <span style="color:var(--text-muted);">Current Action:</span> ${escapeHtml(state ? state.action : stage.actions[0])}
+                  <span style="color:var(--text-muted);">Current Action:</span> ${escapeHtml(agent.currentAction || 'Awaiting assignment')}
                 </div>
 
                 <div class="activity-meta">
-                  <div class="activity-kv"><span>Tokens Used</span>${state ? state.tokens : stage.tokenStart}</div>
-                  <div class="activity-kv"><span>Timer</span>${state ? formatDuration(Date.now() - state.startedAt) : '00:00'}</div>
+                  <div class="activity-kv"><span>Tokens Used</span>${agent.tokens}</div>
+                  <div class="activity-kv"><span>Timer</span>${formatTimer(agent.timerSec)}</div>
+                  <div class="activity-kv"><span>Status</span>${escapeHtml(agent.stageStatus || 'PENDING')}</div>
+                  <div class="activity-kv"><span>Task</span>${escapeHtml(agent.currentTaskName || 'Awaiting assignment')}</div>
                 </div>
               </div>
             `;
@@ -451,60 +632,77 @@
       `;
     }
 
-    function renderAgentList(agents) {
+    function renderAgentList(agents, snapshot) {
       document.getElementById('tab-list').innerHTML = `
         <div class="table-container">
           <table>
-            <thead><tr><th>Agent</th><th>Role</th><th>Module</th><th>Model</th><th>Lifecycle</th><th>Status</th><th>Tasks</th><th>Gate %</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Agent</th><th>Role</th><th>Module</th><th>Model</th><th>Lifecycle</th><th>Runtime</th><th>Task</th><th>Timer</th><th>Tokens</th><th>Actions</th></tr></thead>
             <tbody>
-              ${agents.map(a => `
+              ${agents.map(a => {
+                  const runtime = getRuntimeAgent(snapshot, a.agent_id);
+                  const runtimeStatus = runtime ? runtime.status : 'INACTIVE';
+                  const taskId = runtime ? runtime.currentTaskId : 'N/A';
+                  const timer = runtime ? formatTimer(runtime.timerSec) : '00:00';
+                  const tokens = runtime ? runtime.tokens : '-';
+                  return `
                 <tr>
                   <td style="font-weight:600;">${escapeHtml(a.agent_name)}</td>
                   <td><span class="tag">${a.role.replace(/_/g,' ')}</span></td>
                   <td><span class="tag">${a.module_scope}</span></td>
                   <td style="font-size:12px; color:var(--text-muted)">${a.model_variant}</td>
                   <td>${statusBadge(a.lifecycle)}</td>
-                  <td>${statusBadge(getLiveStatus(a.agent_id, a.status))}</td>
-                  <td style="font-weight:600;">${a.metrics.tasks_completed}</td>
-                  <td>${a.metrics.gate_pass_rate}%</td>
+                  <td>${runtimePresence(runtimeStatus)}</td>
+                  <td style="font-family:var(--mono); font-size:12px;">${escapeHtml(taskId)}</td>
+                  <td>${timer}</td>
+                  <td>${tokens}</td>
                   <td>
                     <button class="btn btn-outline btn-sm" onclick="openAgentWorkspacePanel('${a.agent_id}')">Workspace Panel</button>
                     <a class="btn btn-outline btn-sm" href="agent-workspace.html?id=${a.agent_id}">Workspace</a>
                   </td>
                 </tr>
-              `).join('')}
+                  `;
+              }).join('')}
             </tbody>
           </table>
         </div>
       `;
     }
 
-    function renderPerformance(agents) {
+    function renderPerformance(agents, snapshot) {
       document.getElementById('tab-performance').innerHTML = `
         <div class="grid grid-2">
-          ${agents.map(a => `
+          ${agents.map(a => {
+              const runtime = getRuntimeAgent(snapshot, a.agent_id);
+              const runtimeStatus = runtime ? runtime.status : 'INACTIVE';
+              const runtimeTimer = runtime ? formatTimer(runtime.timerSec) : '00:00';
+              const gatePassRate = a.metrics ? a.metrics.gate_pass_rate : 0;
+              const tasksCompleted = a.metrics ? a.metrics.tasks_completed : 0;
+              const escalationsRaised = a.metrics ? a.metrics.escalations_raised : 0;
+              return `
             <div class="card" onclick="openAgentWorkspacePanel('${a.agent_id}')" style="cursor:pointer;">
               <div class="card-header">
                 <div><h3 class="card-title">${escapeHtml(a.agent_name)}</h3><span class="card-subtitle">${a.role.replace(/_/g,' ')} · ${a.module_scope}</span></div>
-                ${statusBadge(getLiveStatus(a.agent_id, a.status))}
+                ${runtimePresence(runtimeStatus)}
               </div>
+              <div style="margin-bottom:10px; font-size:12px; color:var(--text-muted);">Runtime Timer: ${runtimeTimer}</div>
               <div class="metric-bar">
                 <span class="metric-label">Tasks Completed</span>
-                <div class="metric-track"><div class="metric-fill" style="width:${Math.min(a.metrics.tasks_completed*3,100)}%;background:var(--success)"></div></div>
-                <span class="metric-value">${a.metrics.tasks_completed}</span>
+                <div class="metric-track"><div class="metric-fill" style="width:${Math.min(tasksCompleted*3,100)}%;background:var(--success)"></div></div>
+                <span class="metric-value">${tasksCompleted}</span>
               </div>
               <div class="metric-bar">
                 <span class="metric-label">Escalations</span>
-                <div class="metric-track"><div class="metric-fill" style="width:${Math.min(a.metrics.escalations_raised*15,100)}%;background:var(--warning)"></div></div>
-                <span class="metric-value">${a.metrics.escalations_raised}</span>
+                <div class="metric-track"><div class="metric-fill" style="width:${Math.min(escalationsRaised*15,100)}%;background:var(--warning)"></div></div>
+                <span class="metric-value">${escalationsRaised}</span>
               </div>
               <div class="metric-bar">
                 <span class="metric-label">Gate Pass Rate</span>
-                <div class="metric-track"><div class="metric-fill" style="width:${a.metrics.gate_pass_rate}%;background:${a.metrics.gate_pass_rate>=90?'var(--success)':a.metrics.gate_pass_rate>=70?'var(--warning)':'var(--danger)'}"></div></div>
-                <span class="metric-value">${a.metrics.gate_pass_rate}%</span>
+                <div class="metric-track"><div class="metric-fill" style="width:${gatePassRate}%;background:${gatePassRate>=90?'var(--success)':gatePassRate>=70?'var(--warning)':'var(--danger)'}"></div></div>
+                <span class="metric-value">${gatePassRate}%</span>
               </div>
             </div>
-          `).join('')}
+              `;
+          }).join('')}
         </div>
       `;
     }
@@ -514,77 +712,19 @@
       openAgentWorkspacePanel(id);
     }
 
-    function getLiveStatus(agentId, fallback) {
-      return liveActivityState[agentId]?.status || fallback;
+    function buildHeartbeatMarkdown(agent, runtime) {
+      return `# HEARTBEAT\n\n## Current Task\n- ${runtime ? runtime.currentTaskId : 'N/A'}\n\n## Current Action\n- ${runtime ? runtime.currentAction : 'Awaiting assignment'}\n\n## Status\n${runtime ? runtime.status : 'INACTIVE'}\n\n## Tokens Used\n${runtime ? runtime.tokens : 0}\n\n## Active Timer\n${runtime ? formatTimer(runtime.timerSec) : '00:00'}\n\n## Agent\n${agent.agent_name}`;
     }
 
-    function initLiveActivity(agents) {
-      FLOW_DEFINITION.forEach(stage => {
-        const agent = agents.find(a => a.agent_id === stage.agentId);
-        if (!liveActivityState[stage.agentId]) {
-          const startedAt = Date.now() - (Math.floor(Math.random() * 120) + 30) * 1000;
-          liveActivityState[stage.agentId] = {
-            taskId: stage.taskId,
-            action: stage.actions[0],
-            status: agent ? agent.status : 'ACTIVE',
-            tokens: stage.tokenStart,
-            startedAt,
-            milestoneIndex: stage.tokenStart >= 2100 ? 2 : stage.tokenStart >= 1500 ? 1 : 0,
-            milestones: [1200, 1500, 2100]
-          };
+    function syncHeartbeatFiles(snapshot, agents) {
+      agents.forEach(agent => {
+        const runtime = getRuntimeAgent(snapshot, agent.agent_id);
+        if (!runtime) return;
+        const heartbeat = buildHeartbeatMarkdown(agent, runtime);
+        if (NexusStore.getWorkspaceFile(agent.agent_id, 'heartbeat') !== heartbeat) {
+          NexusStore.setWorkspaceFile(agent.agent_id, 'heartbeat', heartbeat);
         }
       });
-
-      if (!liveTicker) {
-        liveTicker = setInterval(stepLiveActivity, 2000);
-      }
-    }
-
-    function stepLiveActivity() {
-      FLOW_DEFINITION.forEach(stage => {
-        const state = liveActivityState[stage.agentId];
-        if (!state) return;
-
-        const roll = Math.random();
-        state.status = roll < 0.72 ? 'ACTIVE' : roll < 0.9 ? 'IDLE' : 'BLOCKED';
-
-        if (state.status === 'ACTIVE') {
-          state.action = stage.actions[Math.floor(Math.random() * stage.actions.length)];
-        } else if (state.status === 'BLOCKED') {
-          state.action = 'Waiting on escalation approval';
-        } else {
-          state.action = 'Awaiting next assignment';
-        }
-
-        if (state.milestoneIndex < state.milestones.length - 1) {
-          state.milestoneIndex += 1;
-          state.tokens = state.milestones[state.milestoneIndex];
-        } else {
-          state.tokens += 40 + Math.floor(Math.random() * 120);
-        }
-
-        if (Math.random() > 0.78) {
-          state.taskId = state.taskId === 'TASK-AUTH-101' ? 'TASK-AUTH-102' : 'TASK-AUTH-101';
-          state.startedAt = Date.now();
-        }
-
-        syncHeartbeatFile(stage.agentId);
-      });
-
-      renderLiveActivity(NexusStore.getAgents());
-      renderAgentFlow(NexusStore.getAgents());
-      if (activeWorkspaceAgentId) renderWorkspacePanel();
-    }
-
-    function syncHeartbeatFile(agentId) {
-      const agent = NexusStore.getAgent(agentId);
-      const state = liveActivityState[agentId];
-      if (!agent || !state) return;
-      NexusStore.setWorkspaceFile(agentId, 'heartbeat', buildHeartbeatMarkdown(agent, state));
-    }
-
-    function buildHeartbeatMarkdown(agent, state) {
-      return `# HEARTBEAT\n\n## Current Task\n- ${state.taskId}\n\n## Current Action\n- ${state.action}\n\n## Status\n${state.status}\n\n## Tokens Used\n${state.tokens}\n\n## Active Timer\n${formatDuration(Date.now() - state.startedAt)}\n\n## Agent\n${agent.agent_name}`;
     }
 
     function ensureWorkspaceDefaults(agentId, agentName) {
@@ -599,14 +739,7 @@
         }
       });
       if (!NexusStore.getWorkspaceFile(agentId, 'heartbeat')) {
-        const state = liveActivityState[agentId] || {
-          taskId: 'TASK-AUTH-101',
-          action: 'Awaiting simulation update',
-          status: 'IDLE',
-          tokens: 1200,
-          startedAt: Date.now()
-        };
-        NexusStore.setWorkspaceFile(agentId, 'heartbeat', buildHeartbeatMarkdown({ agent_name: agentName }, state));
+        NexusStore.setWorkspaceFile(agentId, 'heartbeat', buildHeartbeatMarkdown({ agent_name: agentName }, null));
       }
     }
 
@@ -617,30 +750,30 @@
       activeWorkspaceAgentId = agentId;
       activeWorkspaceFile = 'heartbeat';
       ensureWorkspaceDefaults(agentId, agent.agent_name);
-      renderWorkspacePanel();
+      renderWorkspacePanel(NexusOrchestration.getSnapshot());
       document.getElementById('workspacePanel').classList.add('show');
     }
 
     function switchWorkspaceFile(fileName) {
       activeWorkspaceFile = fileName;
-      renderWorkspacePanel();
+      renderWorkspacePanel(NexusOrchestration.getSnapshot());
     }
 
-    function renderWorkspacePanel() {
+    function renderWorkspacePanel(snapshot) {
       if (!activeWorkspaceAgentId) return;
       const agent = NexusStore.getAgent(activeWorkspaceAgentId);
       if (!agent) return;
 
-      const state = liveActivityState[activeWorkspaceAgentId];
+      const runtime = getRuntimeAgent(snapshot, activeWorkspaceAgentId);
       document.getElementById('workspacePanelTitle').textContent = agent.agent_name + ' Workspace';
       document.getElementById('workspacePanelOpenFull').href = 'agent-workspace.html?id=' + agent.agent_id;
       document.getElementById('workspaceAgentMeta').innerHTML = `
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <span class="tag">${agent.agent_id}</span>
           <span class="tag">${agent.role.replace(/_/g, ' ')}</span>
-          ${statusBadge(getLiveStatus(agent.agent_id, agent.status))}
-          ${state ? `<span class="tag" style="font-family:var(--mono);">${state.taskId}</span>` : ''}
-          ${state ? `<span class="tag">Tokens ${state.tokens}</span>` : ''}
+          ${runtimePresence(runtime ? runtime.status : 'INACTIVE')}
+          ${runtime ? `<span class="tag" style="font-family:var(--mono);">${runtime.currentTaskId}</span>` : ''}
+          ${runtime ? `<span class="tag">Tokens ${runtime.tokens}</span>` : ''}
         </div>
       `;
 
@@ -649,22 +782,41 @@
       ).join('');
 
       let content = NexusStore.getWorkspaceFile(activeWorkspaceAgentId, activeWorkspaceFile);
-      if (activeWorkspaceFile === 'heartbeat' && state) {
-        content = buildHeartbeatMarkdown(agent, state);
+      if (activeWorkspaceFile === 'heartbeat') {
+        content = buildHeartbeatMarkdown(agent, runtime);
       }
 
       document.getElementById('workspacePanelContent').innerHTML = `<pre>${escapeHtml(content)}</pre>`;
     }
 
-    function formatDuration(ms) {
-      const totalSeconds = Math.floor(ms / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      const hours = Math.floor(minutes / 60);
-      if (hours > 0) {
-        return String(hours).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+    function ensurePopupStack() {
+      let stack = document.getElementById('orchestrationPopupStack');
+      if (!stack) {
+        stack = document.createElement('div');
+        stack.id = 'orchestrationPopupStack';
+        stack.className = 'orchestration-popup-stack';
+        document.body.appendChild(stack);
       }
-      return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+      return stack;
+    }
+
+    function renderPopups(snapshot) {
+      const stack = ensurePopupStack();
+      const notification = snapshot.activeNotification;
+
+      if (!notification) {
+        stack.innerHTML = '';
+        return;
+      }
+
+      const type = String(notification.type || 'TASK_START').toUpperCase();
+      stack.innerHTML = `
+        <div class="orchestration-popup popup-${type.toLowerCase()}">
+          <div class="label">${escapeHtml(type.replace('_', ' '))}</div>
+          <div class="message">${escapeHtml(notification.message)}</div>
+          <div class="time">${formatTime(notification.timestamp)}</div>
+        </div>
+      `;
     }
 
     function openCreateAgent() { document.getElementById('createAgentModal').classList.add('show'); }
@@ -703,13 +855,33 @@
       }
     }
 
+    function startRuntimeTicker() {
+      if (!liveTicker) {
+        liveTicker = setInterval(() => {
+          const project = NexusStore.getProject(getSelectedProject());
+          if (project && project.isRunning === false) {
+            clearInterval(liveTicker);
+            liveTicker = null;
+            render(); // Render one last time to show final state
+            return;
+          }
+          render();
+        }, 1000);
+      }
+    }
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'nexus_orchestration_runtime_v1') {
+        render();
+      }
+    });
+
     window.addEventListener('beforeunload', () => {
       if (liveTicker) clearInterval(liveTicker);
     });
 
-    function escapeHtml(str) { if (!str) return ''; const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-
     render();
+    startRuntimeTicker();
   </script>
 </body>
 </html>

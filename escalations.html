@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Escalations</title>
   <link rel="stylesheet" href="css/common.css">
+  <style>
+    .escalation-pending-highlight {
+      border: 1px solid var(--warning)50;
+      box-shadow: 0 0 0 1px var(--warning)30, 0 0 20px var(--warning)20;
+      animation: pendingPulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes pendingPulse {
+      0%, 100% { box-shadow: 0 0 0 1px var(--warning)30, 0 0 14px var(--warning)15; }
+      50% { box-shadow: 0 0 0 1px var(--warning)45, 0 0 24px var(--warning)30; }
+    }
+  </style>
 </head>
 <body>
   <div class="main-content">
@@ -96,12 +108,64 @@
     seedNexusData();
     createNavigation('escalations');
 
+    const NEW_PENDING_ESCALATION_ID = 'ESC-2024-0052';
+    const AUTO_RESOLVED_ESCALATION_ID = 'ESC-2024-0047';
+
+    let pendingEscalationState = {
+      escalation_id: NEW_PENDING_ESCALATION_ID,
+      status: 'PENDING',
+      taskRef: 'TASK-AUTH-102',
+      context: 'User story AUTH-15 requires modifying API contract for login response',
+      raised_by_name: 'Developer Agent - Auth 02',
+      escalated_to_name: 'Module Architect - Auth',
+      ceiling_violated: 'change_api_contract',
+      reasoning: 'Cannot proceed because login API response structure must include additional user metadata, which affects frontend and other services.',
+      impact_analysis: 'Affects Auth module, frontend login flow, and session handling services.',
+      options: [
+        { option: 'Modify existing API response structure', risk: 'MEDIUM' },
+        { option: 'Create new versioned API (v2/login)', risk: 'LOW' },
+        { option: 'Keep current API and send metadata separately', risk: 'HIGH' }
+      ],
+      recommended_action: 'Option B — Create versioned API (v2/login)',
+      timestamp: '2024-01-16T10:20:00Z',
+      resolvedAt: null,
+      resolution: null,
+      projectId: 'proj_001',
+      awaitingDecision: true,
+      highlightPending: true
+    };
+
+    function getEscalationsForDashboard() {
+      const existingEscalations = NexusStore.getEscalations().map(esc => {
+        if (esc.escalation_id === AUTO_RESOLVED_ESCALATION_ID && esc.status === 'PENDING') {
+          return {
+            ...esc,
+            status: 'RESOLVED',
+            resolvedAt: esc.resolvedAt || '2024-01-15T23:44:00Z',
+            resolution: esc.resolution || {
+              action: 'APPROVED',
+              chosen_option: 'Add refresh_token field to users table with migration script',
+              decided_by: 'agent_chief_arch_001',
+              notes: 'Approved with rollback-safe migration based on architecture review.'
+            }
+          };
+        }
+        return esc;
+      });
+
+      return [pendingEscalationState, ...existingEscalations].sort((a, b) => {
+        if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+        if (a.status !== 'PENDING' && b.status === 'PENDING') return 1;
+        return new Date(b.timestamp || 0) - new Date(a.timestamp || 0);
+      });
+    }
+
     function renderEscalations() {
-      let escalations = NexusStore.getEscalations();
+      const all = getEscalationsForDashboard();
+      let escalations = all;
       const filterStatus = document.getElementById('filterStatus').value;
       if (filterStatus) escalations = escalations.filter(e => e.status === filterStatus);
 
-      const all = NexusStore.getEscalations();
       const pending = all.filter(e => e.status === 'PENDING').length;
       const resolved = all.filter(e => e.status === 'RESOLVED').length;
       const avgResTime = resolved > 0 ? all.filter(e => e.status === 'RESOLVED').reduce((a, e) => {
@@ -122,13 +186,14 @@
       }
 
       document.getElementById('escalationList').innerHTML = escalations.map(esc => `
-        <div class="card fade-in" style="border-left:3px solid ${esc.status === 'PENDING' ? 'var(--warning)' : 'var(--success)'};">
+        <div class="card fade-in ${esc.status === 'PENDING' && esc.highlightPending ? 'escalation-pending-highlight' : ''}" style="border-left:3px solid ${esc.status === 'PENDING' ? 'var(--warning)' : 'var(--success)'};">
           <div class="card-header">
             <div>
               <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
                 <span style="font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:600;">${esc.escalation_id}</span>
                 ${statusBadge(esc.status)}
                 ${esc.taskRef ? `<span class="tag">${esc.taskRef}</span>` : ''}
+                ${esc.status === 'PENDING' && esc.awaitingDecision ? '<span class="status-badge" style="background: var(--warning)20; color: var(--warning); border:1px solid var(--warning)40;">Awaiting Decision</span>' : ''}
               </div>
               <h3 class="card-title" style="font-size:14px;">${escapeHtml(esc.context)}</h3>
             </div>
@@ -179,6 +244,12 @@
               <div style="font-size:12px; color:var(--text-secondary)">${escapeHtml(esc.resolution?.notes || '')}</div>
               <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Decided by: ${escapeHtml(esc.resolution?.decided_by || '')} · ${formatTime(esc.resolvedAt)}</div>
             </div>
+          ` : esc.escalation_id === NEW_PENDING_ESCALATION_ID ? `
+            <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+              <button class="btn btn-success btn-sm" onclick="applyPendingDecision('APPROVED')">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="applyPendingDecision('REJECTED')">Reject</button>
+              <button class="btn btn-outline btn-sm" onclick="applyPendingDecision('DELEGATED')">Delegate</button>
+            </div>
           ` : `
             <div style="display:flex; gap:8px; margin-top:12px;">
               <button class="btn btn-success btn-sm" onclick="openResolve('${esc.escalation_id}', 'APPROVED')">✅ Approve</button>
@@ -188,6 +259,40 @@
           `}
         </div>
       `).join('');
+    }
+
+    function applyPendingDecision(action) {
+      if (pendingEscalationState.status === 'RESOLVED') return;
+
+      let chosenOption = 'Create new versioned API (v2/login)';
+      let notes = 'APPROVED: Create versioned API v2/login to maintain backward compatibility';
+
+      if (action === 'REJECTED') {
+        chosenOption = 'Keep current API and send metadata separately';
+        notes = 'REJECTED: Keep current API and send metadata separately to avoid introducing API versioning at this stage';
+      }
+
+      if (action === 'DELEGATED') {
+        chosenOption = 'Create new versioned API (v2/login)';
+        notes = 'DELEGATED: Architecture owner delegated implementation details for versioned login API';
+      }
+
+      pendingEscalationState = {
+        ...pendingEscalationState,
+        status: 'RESOLVED',
+        awaitingDecision: false,
+        highlightPending: false,
+        resolvedAt: new Date().toISOString(),
+        resolution: {
+          action,
+          chosen_option: chosenOption,
+          decided_by: NexusStore.getUser()?.name || 'Human Orchestrator',
+          notes
+        }
+      };
+
+      showToast(`Escalation ${NEW_PENDING_ESCALATION_ID} ${action.toLowerCase()}`, action === 'APPROVED' ? 'success' : action === 'REJECTED' ? 'danger' : 'warning');
+      renderEscalations();
     }
 
     let currentEscId = null;

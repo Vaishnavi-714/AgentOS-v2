@@ -161,7 +161,15 @@
 
     function startTaskSimulation() {
       if (!taskTicker) {
-        taskTicker = setInterval(stepTaskSimulation, 2000);
+        taskTicker = setInterval(() => {
+          const project = NexusStore.getProject(getSelectedProject());
+          if (project && project.isRunning === false) {
+            clearInterval(taskTicker);
+            taskTicker = null;
+            return;
+          }
+          stepTaskSimulation();
+        }, 2000);
       }
     }
 
@@ -217,7 +225,7 @@
 
     function renderListView(tasks) {
       if (tasks.length === 0) {
-        document.getElementById('taskList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><h3 class="empty-state-title">No Tasks Found</h3></div>';
+        document.getElementById('taskList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><h3 class="empty-state-title">Waiting for pipeline completion</h3></div>';
         return;
       }
 
@@ -252,7 +260,7 @@
 
     function renderKanbanView(tasks) {
       if (tasks.length === 0) {
-        document.getElementById('task-view-kanban').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧩</div><h3 class="empty-state-title">No Tasks for Kanban</h3></div>';
+        document.getElementById('task-view-kanban').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧩</div><h3 class="empty-state-title">Waiting for pipeline completion</h3></div>';
         return;
       }
 
@@ -349,7 +357,7 @@
         .slice(0, 6);
 
       if (priorityTasks.length === 0) {
-        document.getElementById('task-view-flow').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔁</div><h3 class="empty-state-title">No Tasks for Flow View</h3></div>';
+        document.getElementById('task-view-flow').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔁</div><h3 class="empty-state-title">Waiting for pipeline completion</h3></div>';
         return;
       }
 

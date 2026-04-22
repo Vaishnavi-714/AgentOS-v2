@@ -132,7 +132,7 @@
               const pipeline = NexusStore.getPipeline(p.id);
               const tasks = NexusStore.getTasks(p.id);
               const completedTasks = tasks.filter(t => t.status === 'DONE').length;
-              const pipelineProgress = pipeline ? (pipeline.stages.filter(s => s.status === 'COMPLETED').length / 13 * 100) : 0;
+              const pipelineProgress = p.status === 'DONE' ? 100 : (pipeline ? (pipeline.stages.filter(s => s.status === 'COMPLETED').length / 13 * 100) : 0);
               return `
                 <div class="card" style="cursor:pointer" onclick="openProject('${p.id}')">
                   <div class="card-header">
