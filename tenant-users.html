@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Tenant Users</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Tenant Users</h1>
+        <p class="page-subtitle">Manage users for the current tenant</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openInvite()">+ Invite User</button>
+      </div>
+    </div>
+    <div class="grid grid-4" id="userStats" style="margin-bottom:24px"></div>
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title" id="usersTitle">Users</h3>
+        <div class="page-actions">
+          <select id="roleFilter" class="form-select" style="max-width:160px;padding:6px 10px;font-size:12px" onchange="render()">
+            <option value="">All Roles</option>
+            <option value="Admin">Admin</option>
+            <option value="Developer">Developer</option>
+            <option value="Operator">Operator</option>
+            <option value="Viewer">Viewer</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+          <tbody id="usersTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="inviteModal">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-header">
+        <h3 class="modal-title">Invite User</h3>
+        <button class="modal-close" onclick="document.getElementById('inviteModal').classList.remove('show')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Name</label><input type="text" id="invName" class="form-input" placeholder="Full name" required></div>
+        <div class="form-group"><label class="form-label">Email</label><input type="email" id="invEmail" class="form-input" placeholder="user@company.com" required></div>
+        <div class="form-group"><label class="form-label">Role</label>
+          <select id="invRole" class="form-select">
+            <option value="Developer">Developer</option><option value="Operator">Operator</option><option value="Viewer">Viewer</option><option value="Admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="document.getElementById('inviteModal').classList.remove('show')">Cancel</button>
+        <button class="btn btn-primary" onclick="inviteUser()">Send Invite</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData(); createNavigation('tenant-users'); injectTenantInfoCard();
+
+    function render() {
+      const t = TenantState.getCurrentTenant(); if(!t) return;
+      const users = TenantState.getTenantUsers(t.tenant_id);
+      const roleFilter = document.getElementById('roleFilter')?.value || '';
+      const filtered = roleFilter ? users.filter(u => u.role === roleFilter) : users;
+      const limits = TenantState.getSubscriptionLimits(t.subscription);
+
+      const activeCount = users.filter(u=>u.status==='ACTIVE').length;
+      const roles = {};
+      users.forEach(u => { roles[u.role] = (roles[u.role]||0)+1; });
+
+      document.getElementById('userStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Users</span><span class="stat-value">${users.length}</span><span class="stat-change">${limits.users} limit</span></div>
+        <div class="stat-card"><span class="stat-label">Active</span><span class="stat-value" style="color:var(--success)">${activeCount}</span><span class="stat-change up">Online now</span></div>
+        <div class="stat-card"><span class="stat-label">Roles</span><span class="stat-value">${Object.keys(roles).length}</span><span class="stat-change">${Object.entries(roles).map(([k,v])=>k+': '+v).join(', ')}</span></div>
+        <div class="stat-card"><span class="stat-label">Capacity</span><span class="stat-value">${Math.round((users.length/limits.users)*100)}%</span>
+          <span class="stat-change ${users.length>=limits.users*0.8?'down':'up'}">${limits.users-users.length} remaining</span></div>`;
+
+      document.getElementById('usersTitle').textContent = `${t.name} Users (${filtered.length})`;
+
+      document.getElementById('usersTable').innerHTML = filtered.length === 0 
+        ? `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px">No users found</td></tr>`
+        : filtered.map(u => {
+          const sc = u.status==='ACTIVE'?'#10b981':'#6b7280';
+          const rc = {Admin:'#a855f7',Developer:'#3b82f6',Operator:'#f59e0b',Viewer:'#6b7280',Guest:'#6b7280'};
+          return `<tr>
+            <td style="font-weight:600;color:var(--text-primary)">${esc(u.name)}</td>
+            <td>${esc(u.email)}</td>
+            <td><span class="status-badge" style="background:${rc[u.role]||'#6b7280'}20;color:${rc[u.role]||'#6b7280'};border:1px solid ${rc[u.role]||'#6b7280'}40">${u.role}</span></td>
+            <td><span class="status-badge" style="background:${sc}20;color:${sc};border:1px solid ${sc}40">${u.status}</span></td>
+            <td style="font-size:12px;color:var(--text-muted)">${fmtTime(u.last_login)}</td>
+            <td><button class="btn btn-outline btn-sm" onclick="removeUser('${u.id}')">Remove</button></td>
+          </tr>`;
+        }).join('');
+    }
+
+    function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+    function fmtTime(ts){if(!ts)return'—';const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
+    function openInvite(){document.getElementById('inviteModal').classList.add('show');}
+
+    function inviteUser() {
+      const t = TenantState.getCurrentTenant();
+      const name = document.getElementById('invName').value.trim();
+      const email = document.getElementById('invEmail').value.trim();
+      const role = document.getElementById('invRole').value;
+      if(!name||!email){showToast('Name and email required','error');return;}
+      const limits = TenantState.getSubscriptionLimits(t.subscription);
+      const users = TenantState.getTenantUsers(t.tenant_id);
+      if(users.length>=limits.users){showToast('User limit reached! Upgrade your plan.','error');return;}
+      TenantState.addTenantUser(t.tenant_id,{id:TenantState.generateUserId(),name,email,role,status:'ACTIVE',last_login:new Date().toISOString()});
+      TenantState.updateTenant(t.tenant_id,{users:t.users+1});
+      document.getElementById('inviteModal').classList.remove('show');
+      document.getElementById('invName').value='';document.getElementById('invEmail').value='';
+      showToast(`${name} invited as ${role}`,'success'); render();
+    }
+
+    function removeUser(userId) {
+      if(!confirm('Remove this user?'))return;
+      const t = TenantState.getCurrentTenant();
+      TenantState.removeTenantUser(t.tenant_id,userId);
+      TenantState.updateTenant(t.tenant_id,{users:Math.max(0,t.users-1)});
+      showToast('User removed','info'); render();
+    }
+    render();
+  </script>
+</body>
+</html>

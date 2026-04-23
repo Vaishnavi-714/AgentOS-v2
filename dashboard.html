@@ -80,10 +80,14 @@
   <script src="js/store.js"></script>
   <script src="js/data.js"></script>
   <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
   <script src="js/nav.js"></script>
   <script>
     seedNexusData();
     createNavigation('dashboard');
+    
+    injectTenantInfoCard();
 
     function render() {
       const projects = NexusStore.getProjects();
@@ -91,27 +95,34 @@
       const escalations = NexusStore.getEscalations();
       const decisions = NexusStore.getDecisions();
 
-      // Stats
+      // Tenant-aware stats
+      const tenant = TenantState.getCurrentTenant();
+      const tProjects = tenant ? tenant.projects : projects.length;
+      const tAgents = tenant ? tenant.agents : agents.filter(a=>a.status==='ACTIVE').length;
+      const tApiUsage = tenant ? tenant.api_usage : 0;
+      const tEscalations = tenant ? (tenant.escalations || 0) : escalations.filter(e=>e.status==='PENDING').length;
+      const limits = tenant ? TenantState.getSubscriptionLimits(tenant.subscription) : null;
+
       document.getElementById('statsGrid').innerHTML = `
         <div class="stat-card">
           <span class="stat-label">Total Projects</span>
-          <span class="stat-value">${projects.length}</span>
+          <span class="stat-value">${tProjects}</span>
           <span class="stat-change up">${projects.filter(p=>p.status==='ACTIVE').length} active</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Active Agents</span>
-          <span class="stat-value">${agents.filter(a=>a.status==='ACTIVE').length}</span>
-          <span class="stat-change">${agents.length} total</span>
+          <span class="stat-value">${tAgents}</span>
+          <span class="stat-change">${limits ? limits.agents + ' limit' : agents.length + ' total'}</span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">Pending Escalations</span>
-          <span class="stat-value" style="color: ${escalations.filter(e=>e.status==='PENDING').length > 0 ? 'var(--warning)' : 'var(--text-primary)'}">${escalations.filter(e=>e.status==='PENDING').length}</span>
-          <span class="stat-change">${escalations.length} total</span>
+          <span class="stat-label">API Usage</span>
+          <span class="stat-value" style="color: ${tApiUsage > (limits ? limits.api * 0.8 : 99999) ? 'var(--warning)' : 'var(--text-primary)'}">${tApiUsage.toLocaleString()}</span>
+          <span class="stat-change">${limits ? limits.api.toLocaleString() + ' limit' : 'N/A'}</span>
         </div>
         <div class="stat-card">
-          <span class="stat-label">Decisions Logged</span>
-          <span class="stat-value">${decisions.length}</span>
-          <span class="stat-change up">${decisions.filter(d=>d.human_reviewed).length} human-reviewed</span>
+          <span class="stat-label">Escalations</span>
+          <span class="stat-value" style="color: ${tEscalations > 0 ? 'var(--warning)' : 'var(--text-primary)'}">${tEscalations}</span>
+          <span class="stat-change">${tenant ? tenant.name : 'System'}</span>
         </div>
       `;
 

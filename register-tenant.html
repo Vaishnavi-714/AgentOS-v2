@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Register Tenant</title>
+  <meta name="description" content="Register a new tenant on the NEXUS Agent-OS multi-tenant platform.">
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="register-page">
+    <div class="register-container fade-in">
+      <div class="register-header">
+        <div style="margin-bottom: 12px;">
+          <a href="landing.html" style="color: var(--text-muted); text-decoration: none; font-size: 12px;">← Back to Home</a>
+        </div>
+        <span style="font-size: 36px; display: block; margin-bottom: 10px;">🏢</span>
+        <h1>Register New Tenant</h1>
+        <p>Set up your organization on NEXUS Agent-OS</p>
+      </div>
+
+      <form id="registerForm" onsubmit="handleRegister(event)">
+        <div class="register-body">
+          <div class="form-group">
+            <label class="form-label">Tenant Name *</label>
+            <input type="text" id="tenantName" class="form-input" placeholder="e.g., Acme Corporation" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Domain *</label>
+            <input type="text" id="tenantDomain" class="form-input" placeholder="e.g., acme.com" required>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div class="form-group">
+              <label class="form-label">Tenant Type</label>
+              <select id="tenantType" class="form-select">
+                <option value="Enterprise">Enterprise</option>
+                <option value="SMB">SMB</option>
+                <option value="Startup">Startup</option>
+                <option value="Education">Education</option>
+                <option value="Government">Government</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Region</label>
+              <select id="tenantRegion" class="form-select">
+                <option value="AP-SOUTH-1">Asia Pacific (Mumbai)</option>
+                <option value="US-EAST-1">US East (Virginia)</option>
+                <option value="US-WEST-2">US West (Oregon)</option>
+                <option value="EU-WEST-1">Europe (Ireland)</option>
+                <option value="EU-CENTRAL-1">Europe (Frankfurt)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px;">
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Admin Account</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Admin Name *</label>
+            <input type="text" id="adminName" class="form-input" placeholder="e.g., John Doe" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Admin Email *</label>
+            <input type="email" id="adminEmail" class="form-input" placeholder="e.g., john@acme.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Subscription Plan</label>
+            <select id="tenantPlan" class="form-select">
+              <option value="BASIC">Basic — Up to 50 users</option>
+              <option value="STANDARD" selected>Standard — Up to 200 users</option>
+              <option value="PREMIUM">Premium — Up to 1000 users</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="register-footer">
+          <a href="landing.html" class="btn btn-outline">Cancel</a>
+          <button type="submit" class="btn btn-primary" id="registerBtn">Register Tenant</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/state.js"></script>
+  <script>
+    function handleRegister(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('tenantName').value.trim();
+      const domain = document.getElementById('tenantDomain').value.trim();
+      const tenantType = document.getElementById('tenantType').value;
+      const region = document.getElementById('tenantRegion').value;
+      const adminName = document.getElementById('adminName').value.trim();
+      const adminEmail = document.getElementById('adminEmail').value.trim();
+      const subscription = document.getElementById('tenantPlan').value;
+
+      if (!name || !domain || !adminName || !adminEmail) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
+      // Check if domain already exists
+      const existing = TenantState.getTenants().find(t => t.domain === domain);
+      if (existing) {
+        alert('A tenant with this domain already exists.');
+        return;
+      }
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      const newTenant = {
+        tenant_id: TenantState.generateTenantId(),
+        name: name,
+        domain: domain,
+        status: "REGISTERED",
+        subscription: subscription,
+        users: 1,
+        projects: 0,
+        agents: 0,
+        storage_used: 0,
+        api_usage: 0,
+        region: region,
+        created_at: new Date().toISOString(),
+        admin_name: adminName,
+        admin_email: adminEmail,
+        tenant_type: tenantType
+      };
+
+      // Add the tenant
+      TenantState.addTenant(newTenant);
+
+      // Add admin user
+      TenantState.addTenantUser(newTenant.tenant_id, {
+        id: TenantState.generateUserId(),
+        name: adminName,
+        email: adminEmail,
+        role: 'Admin',
+        status: 'ACTIVE',
+        last_login: new Date().toISOString()
+      });
+
+      // Set as current and store provisioning target
+      TenantState.setCurrentTenant(newTenant);
+      sessionStorage.setItem('nexus_provisioning_tenant', newTenant.tenant_id);
+
+      // Redirect to provisioning
+      setTimeout(() => {
+        window.location.href = 'tenant-provisioning.html';
+      }, 500);
+    }
+  </script>
+</body>
+</html>

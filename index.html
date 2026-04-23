@@ -12,7 +12,7 @@
       <div class="login-brand">
         <span class="login-brand-icon">🧠</span>
         <span class="login-brand-text">NEXUS</span>
-        <span class="login-brand-sub">Multi-Agent Governed Software Development OS</span>
+        <span class="login-brand-sub" id="loginWorkspaceTitle">Multi-Agent Governed Software Development OS</span>
       </div>
       <div id="loginError" class="login-error"></div>
       <form id="loginForm" onsubmit="handleLogin(event)">
@@ -34,6 +34,11 @@
           <button class="btn btn-outline btn-sm" onclick="fillDemo('admin','admin123')">Admin / admin123</button>
           <button class="btn btn-outline btn-sm" onclick="fillDemo('pm','pm123')">PM / pm123</button>
         </div>
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <a href="landing.html" style="color: var(--accent); font-size: 13px; text-decoration: none;">← Back to Home</a>
+          <span style="color: var(--text-muted); margin: 0 8px;">·</span>
+          <a href="register-tenant.html" style="color: var(--text-secondary); font-size: 13px; text-decoration: none;">Register Tenant</a>
+        </div>
       </div>
     </div>
   </div>
@@ -41,9 +46,24 @@
   <script src="js/store.js"></script>
   <script src="js/data.js"></script>
   <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
   <script>
     // Seed data on first load
     seedNexusData();
+
+    // Check for selected tenant (optional — user may arrive directly)
+    const selectedTenantId = localStorage.getItem("selectedTenantId");
+    let selectedTenant = null;
+    
+    if (selectedTenantId) {
+      selectedTenant = TenantState.getTenants().find(t => t.tenant_id === selectedTenantId);
+      if (selectedTenant) {
+        document.getElementById('loginWorkspaceTitle').textContent = `Signing into ${selectedTenant.name} Workspace`;
+        document.getElementById('loginWorkspaceTitle').style.color = 'var(--text-primary)';
+        document.getElementById('loginWorkspaceTitle').style.fontWeight = '600';
+        document.getElementById('loginWorkspaceTitle').style.fontSize = '14px';
+      }
+    }
 
     // If already logged in, redirect
     if (NexusStore.isLoggedIn()) {
@@ -68,6 +88,9 @@
 
       const result = await MockAPI.login(username, password);
       if (result.success) {
+        if (selectedTenant) {
+          TenantState.setCurrentTenant(selectedTenant);
+        }
         window.location.href = 'dashboard.html';
       } else {
         errorEl.textContent = result.error;

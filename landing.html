@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Multi-Tenant Agent OS Platform</title>
+  <meta name="description" content="NEXUS Agent-OS: Enterprise multi-tenant platform for governed AI software development. Manage tenants, agents, and projects at scale.">
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="landing-page">
+    <div class="landing-hero fade-in">
+      <span class="landing-hero-icon">🧠</span>
+      <h1>NEXUS</h1>
+      <p>Multi-Agent Governed Software Development OS — Enterprise multi-tenant platform for AI-powered project orchestration</p>
+      <div class="landing-actions">
+        <a href="tenant-select.html" class="btn btn-primary" style="padding: 14px 32px; font-size: 15px;">Sign In</a>
+        <a href="register-tenant.html" class="btn btn-outline" style="padding: 14px 32px; font-size: 15px;">Register Tenant</a>
+      </div>
+
+      <div class="landing-stats" id="landingStats"></div>
+    </div>
+
+    <div class="landing-footer">
+      <p>NEXUS Agent-OS &copy; 2026 — Multi-Tenant Governed AI Development Platform</p>
+    </div>
+  </div>
+
+  <script src="js/state.js"></script>
+  <script>
+    function render() {
+      const tenants = TenantState.getTenants();
+      const activeTenants = tenants.filter(t => t.status === 'ACTIVE');
+
+      // Stats
+      document.getElementById('landingStats').innerHTML = `
+        <div class="landing-stat-card fade-in">
+          <span class="landing-stat-value">${tenants.length}</span>
+          <span class="landing-stat-label">Total Tenants</span>
+        </div>
+        <div class="landing-stat-card fade-in" style="animation-delay: 0.1s">
+          <span class="landing-stat-value">${activeTenants.length}</span>
+          <span class="landing-stat-label">Active Tenants</span>
+        </div>
+        <div class="landing-stat-card fade-in" style="animation-delay: 0.2s">
+          <span class="landing-stat-value">${tenants.reduce((sum, t) => sum + (t.users || 0), 0)}</span>
+          <span class="landing-stat-label">Total Users</span>
+        </div>
+      `;
+    }
+
+    render();
+  </script>
+</body>
+</html>

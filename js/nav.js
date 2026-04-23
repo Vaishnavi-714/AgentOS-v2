@@ -1,8 +1,15 @@
 // NEXUS Navigation Component — shared across all pages
 function createNavigation(activePage) {
-  if (!NexusStore.isLoggedIn() && activePage !== 'login') {
-    window.location.href = 'index.html';
-    return;
+  // Session protection: must be logged in AND have a tenant
+  if (activePage !== 'login' && activePage !== 'landing') {
+    if (!NexusStore.isLoggedIn()) {
+      window.location.href = 'index.html';
+      return;
+    }
+    if (typeof TenantState !== 'undefined' && !TenantState.getCurrentTenant()) {
+      window.location.href = 'tenant-select.html';
+      return;
+    }
   }
 
   const user = NexusStore.getUser();
@@ -22,6 +29,13 @@ function createNavigation(activePage) {
     { id: 'decisions', label: 'Decisions', icon: '📜', href: 'decisions.html' },
     { id: 'gates', label: 'Quality Gates', icon: '🛡️', href: 'quality-gates.html' },
     { id: 'monitoring', label: 'Monitoring', icon: '📈', href: 'monitoring.html' }
+  ];
+
+  const tenantNavItems = [
+    { id: 'tenants', label: 'Tenants', icon: '🏢', href: 'tenants.html' },
+    { id: 'subscription', label: 'Subscription', icon: '💎', href: 'subscription.html' },
+    { id: 'resources', label: 'Resources', icon: '📦', href: 'resources.html' },
+    { id: 'tenant-users', label: 'Users', icon: '👥', href: 'tenant-users.html' }
   ];
 
   const pendingEscalations = NexusStore.getEscalations().filter(e => e.status === 'PENDING').length;
@@ -49,6 +63,13 @@ function createNavigation(activePage) {
           ${item.id === 'escalations' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
         </a>
       `).join('')}
+      <div class="nav-section-divider">Multi-Tenant</div>
+      ${tenantNavItems.map(item => `
+        <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}">
+          <span class="nav-icon">${item.icon}</span>
+          <span class="nav-label">${item.label}</span>
+        </a>
+      `).join('')}
     </div>
     <div class="nav-footer">
       <div class="nav-user">
@@ -63,12 +84,34 @@ function createNavigation(activePage) {
   `;
 
   document.body.prepend(nav);
+
+  // Show locked tenant label (NO dropdown — tenant is locked to session)
+  if (typeof TenantState !== 'undefined') {
+    const navHeader = document.querySelector('.nav-header');
+    if (navHeader) {
+      const current = TenantState.getCurrentTenant();
+      if (current) {
+        const tenantLabel = document.createElement('div');
+        tenantLabel.className = 'tenant-switcher';
+        tenantLabel.innerHTML = `
+          <label class="tenant-switcher-label">TENANT</label>
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; padding: 6px 0;">
+            <span>🏢</span> ${current.name} <span style="font-size: 11px; color: var(--text-muted);">🔒</span>
+          </div>
+        `;
+        navHeader.appendChild(tenantLabel);
+      }
+    }
+  }
 }
 
 function handleLogout() {
   NexusStore.addLog({ type: 'AUTH', message: `${NexusStore.getUser()?.name} logged out`, agent: 'system' });
   NexusStore.logout();
-  window.location.href = 'index.html';
+  // Clear tenant session data
+  localStorage.removeItem('nexus_currentTenant');
+  localStorage.removeItem('selectedTenantId');
+  window.location.href = 'landing.html';
 }
 
 // Project selector component for pages that need it

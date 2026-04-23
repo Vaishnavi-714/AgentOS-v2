@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Resources</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Resource Usage</h1>
+        <p class="page-subtitle">Monitor storage, compute, and API consumption</p>
+      </div>
+    </div>
+    <div id="resourceContent"></div>
+  </div>
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData(); createNavigation('resources'); injectTenantInfoCard();
+
+    function getLevel(pct) { return pct>=90?'critical':pct>=70?'high':pct>=50?'medium':'low'; }
+
+    function render() {
+      const t = TenantState.getCurrentTenant(); if(!t) return;
+      const limits = TenantState.getSubscriptionLimits(t.subscription);
+      const computePct = 35 + Math.floor(Math.random()*25);
+      const memoryPct = 40 + Math.floor(Math.random()*20);
+      const networkPct = 15 + Math.floor(Math.random()*30);
+
+      const storagePct = Math.min((t.storage_used/limits.storage)*100,100);
+      const apiPct = Math.min((t.api_usage/limits.api)*100,100);
+
+      const resources = [
+        {label:'Storage',icon:'💾',used:`${t.storage_used} GB`,total:`${limits.storage} GB`,pct:storagePct},
+        {label:'API Usage',icon:'🔌',used:t.api_usage.toLocaleString()+' calls',total:limits.api.toLocaleString()+' calls',pct:apiPct},
+        {label:'Compute (CPU)',icon:'🖥️',used:computePct+'%',total:'100%',pct:computePct},
+        {label:'Memory',icon:'🧠',used:memoryPct+'%',total:'100%',pct:memoryPct},
+        {label:'Network I/O',icon:'🌐',used:networkPct+'%',total:'100%',pct:networkPct}
+      ];
+
+      document.getElementById('resourceContent').innerHTML = `
+        <div class="grid grid-3" style="margin-bottom:24px">
+          <div class="stat-card">
+            <span class="stat-label">Storage Used</span>
+            <span class="stat-value">${t.storage_used} GB</span>
+            <span class="stat-change">${limits.storage} GB limit</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">API Calls (Month)</span>
+            <span class="stat-value">${t.api_usage.toLocaleString()}</span>
+            <span class="stat-change">${limits.api.toLocaleString()} limit</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Active Agents</span>
+            <span class="stat-value">${t.agents}</span>
+            <span class="stat-change">${limits.agents} limit</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Resource Utilization</h3></div>
+          ${resources.map(r => `
+            <div class="resource-gauge">
+              <div class="resource-gauge-header">
+                <span class="resource-gauge-label">${r.icon} ${r.label}</span>
+                <span class="resource-gauge-value">${r.used} / ${r.total}</span>
+              </div>
+              <div class="resource-gauge-bar">
+                <div class="resource-gauge-fill ${getLevel(r.pct)}" style="width:${r.pct}%"></div>
+              </div>
+              <div class="resource-gauge-ticks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="grid grid-2" style="margin-top:24px">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">📊 Resource Breakdown</h3></div>
+            <div class="table-container">
+              <table>
+                <thead><tr><th>Resource</th><th>Used</th><th>Limit</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td>👥 Users</td><td>${t.users}</td><td>${limits.users}</td><td>${t.users>=limits.users?'<span style="color:var(--danger)">⛔ At Limit</span>':t.users>=limits.users*0.8?'<span style="color:var(--warning)">⚠ Near Limit</span>':'<span style="color:var(--success)">✓ OK</span>'}</td></tr>
+                  <tr><td>📁 Projects</td><td>${t.projects}</td><td>${limits.projects}</td><td><span style="color:var(--success)">✓ OK</span></td></tr>
+                  <tr><td>🤖 Agents</td><td>${t.agents}</td><td>${limits.agents}</td><td><span style="color:var(--success)">✓ OK</span></td></tr>
+                  <tr><td>💾 Storage</td><td>${t.storage_used} GB</td><td>${limits.storage} GB</td><td>${storagePct>=90?'<span style="color:var(--danger)">⛔ Critical</span>':'<span style="color:var(--success)">✓ OK</span>'}</td></tr>
+                  <tr><td>🔌 API</td><td>${t.api_usage.toLocaleString()}</td><td>${limits.api.toLocaleString()}</td><td>${apiPct>=90?'<span style="color:var(--danger)">⛔ Critical</span>':apiPct>=70?'<span style="color:var(--warning)">⚠ Warning</span>':'<span style="color:var(--success)">✓ OK</span>'}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">💡 Recommendations</h3></div>
+            <div style="display:flex;flex-direction:column;gap:10px" id="recommendations"></div>
+          </div>
+        </div>`;
+
+      // Recommendations
+      const recs = [];
+      if(apiPct >= 70) recs.push({icon:'🔌',text:'API usage is high. Consider upgrading your plan or optimizing API calls.',type:'warning'});
+      if(storagePct >= 60) recs.push({icon:'💾',text:'Storage usage is growing. Review old artifacts and enable auto-cleanup.',type:'warning'});
+      if(t.subscription==='BASIC') recs.push({icon:'⬆',text:'Upgrade to Standard for 4x more users, 3x more projects, and priority support.',type:'info'});
+      if(recs.length===0) recs.push({icon:'✅',text:'All resources are within healthy limits. No action needed.',type:'success'});
+      document.getElementById('recommendations').innerHTML = recs.map(r => {
+        const colors = {warning:'var(--warning)',info:'var(--info)',success:'var(--success)'};
+        return `<div style="padding:12px;border-radius:var(--radius);border:1px solid ${colors[r.type]}40;background:${colors[r.type]}10">
+          <span style="font-size:13px;color:var(--text-secondary)">${r.icon} ${r.text}</span></div>`;
+      }).join('');
+    }
+    render();
+  </script>
+</body>
+</html>

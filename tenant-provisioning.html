@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Tenant Provisioning</title>
+  <meta name="description" content="Provisioning infrastructure for your new NEXUS Agent-OS tenant.">
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="provisioning-page">
+    <div class="provisioning-container fade-in">
+      <div class="provisioning-header">
+        <span style="font-size: 36px; display: block; margin-bottom: 10px;">⚙️</span>
+        <h1>Provisioning Tenant</h1>
+        <p id="provTenantName">Setting up your infrastructure...</p>
+      </div>
+
+      <div class="provisioning-body">
+        <div class="provisioning-steps" id="provSteps"></div>
+
+        <div class="provisioning-progress" id="provProgress">
+          <div class="provisioning-progress-label">
+            <span>Progress</span>
+            <span id="provPercent">0%</span>
+          </div>
+          <div class="progress-bar" style="height: 10px;">
+            <div class="progress-fill" id="provBar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="provisioning-complete" id="provComplete">
+          <span class="provisioning-complete-icon">✅</span>
+          <h2>Tenant Provisioned Successfully!</h2>
+          <p id="provCompleteMsg">Your tenant is now active and ready to use.</p>
+          <a href="dashboard.html" class="btn btn-primary" id="goToDashboard" style="display: none;">Go to Dashboard →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/state.js"></script>
+  <script>
+    const provisioningSteps = [
+      { name: "Database Initialization", icon: "🗄️", log: "Creating PostgreSQL schema...", successLog: "Database cluster online. Schema migrated (v4.2.1)." },
+      { name: "Storage Allocation", icon: "💾", log: "Provisioning S3-compatible object store...", successLog: "Storage bucket created. Encryption: AES-256. CDN: enabled." },
+      { name: "Compute Resources", icon: "🖥️", log: "Spinning up container orchestration...", successLog: "Kubernetes namespace created. 3 pods scheduled. Auto-scale: enabled." },
+      { name: "API Gateway & Limits", icon: "🔌", log: "Configuring rate limits and API keys...", successLog: "API gateway configured. Rate limiting active. JWT auth: enabled." },
+      { name: "Roles & Permissions", icon: "🔑", log: "Setting up RBAC policies...", successLog: "5 roles created (Admin, Developer, Operator, Viewer, Guest). RBAC active." },
+      { name: "Module Installation", icon: "📦", log: "Installing platform modules...", successLog: "12 modules installed: Dashboard, Agents, Pipeline, Tasks, LLM Bridge..." },
+      { name: "Health Check", icon: "🩺", log: "Running system diagnostics...", successLog: "All 8 services healthy. Latency: 12ms avg. Uptime target: 99.9%." },
+      { name: "Activation", icon: "🚀", log: "Finalizing tenant activation...", successLog: "Tenant ACTIVATED. Welcome aboard!" }
+    ];
+
+    const tenantId = sessionStorage.getItem('nexus_provisioning_tenant');
+    let tenant = null;
+
+    if (tenantId) {
+      tenant = TenantState.getTenants().find(t => t.tenant_id === tenantId);
+    }
+
+    if (!tenant) {
+      // Fallback: use current tenant or last one
+      tenant = TenantState.getCurrentTenant();
+    }
+
+    if (tenant) {
+      document.getElementById('provTenantName').textContent = `Setting up ${tenant.name} (${tenant.tenant_id})`;
+    }
+
+    // Render steps
+    function renderSteps() {
+      document.getElementById('provSteps').innerHTML = provisioningSteps.map((step, i) => `
+        <div class="provision-step" id="step-${i}">
+          <div class="provision-step-name">${step.icon} ${step.name}</div>
+          <div class="provision-step-log" id="step-log-${i}">Waiting...</div>
+        </div>
+      `).join('');
+    }
+
+    renderSteps();
+
+    // Run provisioning animation
+    let currentStep = 0;
+
+    function runStep(index) {
+      if (index >= provisioningSteps.length) {
+        // All done!
+        finishProvisioning();
+        return;
+      }
+
+      const step = provisioningSteps[index];
+      const el = document.getElementById(`step-${index}`);
+      const logEl = document.getElementById(`step-log-${index}`);
+
+      // Mark as active
+      el.classList.add('active');
+      logEl.textContent = step.log;
+      logEl.className = 'provision-step-log';
+
+      // Update progress
+      const percent = Math.round(((index + 0.5) / provisioningSteps.length) * 100);
+      document.getElementById('provPercent').textContent = percent + '%';
+      document.getElementById('provBar').style.width = percent + '%';
+
+      // Simulate processing time (800ms - 2000ms)
+      const delay = 800 + Math.random() * 1200;
+
+      setTimeout(() => {
+        // Mark as completed
+        el.classList.remove('active');
+        el.classList.add('completed');
+        logEl.textContent = '✓ ' + step.successLog;
+        logEl.className = 'provision-step-log success';
+
+        // Update progress
+        const donePercent = Math.round(((index + 1) / provisioningSteps.length) * 100);
+        document.getElementById('provPercent').textContent = donePercent + '%';
+        document.getElementById('provBar').style.width = donePercent + '%';
+
+        // Next step
+        setTimeout(() => runStep(index + 1), 300);
+      }, delay);
+    }
+
+    function finishProvisioning() {
+      // Update tenant status to ACTIVE
+      if (tenant) {
+        TenantState.updateTenant(tenant.tenant_id, { status: 'ACTIVE' });
+        document.getElementById('provCompleteMsg').textContent = 
+          `${tenant.name} is now active and ready to use. All systems operational.`;
+      }
+
+      // Show completion UI
+      document.getElementById('provProgress').style.display = 'none';
+      const complete = document.getElementById('provComplete');
+      complete.classList.add('show');
+
+      // Show dashboard button after a beat
+      setTimeout(() => {
+        document.getElementById('goToDashboard').style.display = 'inline-flex';
+      }, 600);
+
+      // Clean up session
+      sessionStorage.removeItem('nexus_provisioning_tenant');
+    }
+
+    // Start provisioning after small delay
+    setTimeout(() => runStep(0), 800);
+  </script>
+</body>
+</html>
