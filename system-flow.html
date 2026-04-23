@@ -319,6 +319,53 @@
     .popup-handoff { border-left: 3px solid var(--accent); }
     .popup-escalation { border-left: 3px solid var(--warning); }
 
+    .testcase-bridge-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .testcase-column {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-tertiary);
+      padding: 10px;
+    }
+
+    .testcase-list {
+      max-height: 190px;
+      overflow-y: auto;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .testcase-row {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      padding: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .testcase-flow-strip {
+      margin-top: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      padding: 8px;
+      font-size: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      color: var(--text-secondary);
+    }
+
     @keyframes popupSlideIn {
       from { opacity: 0; transform: translateY(-6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -334,6 +381,10 @@
       .dev-grid,
       .ai-task-grid,
       .scrum-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .testcase-bridge-grid {
         grid-template-columns: 1fr;
       }
 
@@ -363,7 +414,7 @@
 
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">BA → AI Pipeline → PO → Chief Architect → Scrum → Module Architects → Developers → QA → Release</h3>
+        <h3 class="card-title">BA → AI Pipeline → PO → (Test Case Generator + Chief Architect + Scrum) → Module Architects → Developers → QA → Release</h3>
         <span class="tag">Connected System Flow</span>
       </div>
       <div id="systemFlowStack" class="flow-stack"></div>
@@ -514,6 +565,67 @@
       `;
     }
 
+    function renderTestCaseBridge(snapshot) {
+      const flow = snapshot.testCaseFlow || {
+        status: 'IDLE',
+        acceptanceCriteria: [],
+        cases: [],
+        generatedCount: 0
+      };
+      const acceptance = flow.acceptanceCriteria || [];
+      const testCases = flow.cases || [];
+
+      return `
+        <div class="stage-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <strong>Product Owner -> Test Case Generator -> Test Case Page -> QA Agent</strong>
+            ${statusBadge(flow.status || 'IDLE')}
+          </div>
+
+          <div class="testcase-flow-strip">
+            <span class="tag">Product Owner</span>
+            <span>-></span>
+            <span class="tag">Test Case Generator</span>
+            <span>-></span>
+            <span class="tag">Test Case Page</span>
+            <span>-></span>
+            <span class="tag">QA Agent</span>
+            <span class="tag">Generated: ${testCases.length || flow.generatedCount || 0}</span>
+          </div>
+
+          <div class="testcase-bridge-grid">
+            <div class="testcase-column">
+              <div class="flow-io-title">Input: Acceptance Criteria</div>
+              ${acceptance.length ? `
+                <div class="testcase-list">
+                  ${acceptance.slice(0, 10).map((item) => `
+                    <div class="testcase-row">
+                      <strong>${escapeHtml(item.storyId || 'Story')}</strong><br>
+                      ${escapeHtml(item.criterion || 'Acceptance criteria')}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '<div class="subtle-empty">Acceptance criteria will appear here after Product Owner approval.</div>'}
+            </div>
+            <div class="testcase-column">
+              <div class="flow-io-title">Output: Generated Test Cases</div>
+              ${testCases.length ? `
+                <div class="testcase-list">
+                  ${testCases.slice(0, 10).map((testCase) => `
+                    <div class="testcase-row">
+                      <strong>${escapeHtml(testCase.id)}</strong> · ${escapeHtml(testCase.type)}<br>
+                      ${escapeHtml(testCase.story || 'User Story')}<br>
+                      ${statusBadge(testCase.status || 'PENDING')}
+                    </div>
+                  `).join('')}
+                </div>
+              ` : '<div class="subtle-empty">Generated test cases will appear here.</div>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     function renderDevelopersPhase(snapshot) {
       const devAuth01 = snapshot.agents.devAuth01;
       const devAuth02 = snapshot.agents.devAuth02;
@@ -560,11 +672,20 @@
       }
 
       if (phase.id === 'chief_scrum_parallel') {
+        const testCaseGenerator = snapshot.agents.testCaseGenerator;
         const chief = snapshot.agents.chiefArchitect;
         const scrum = snapshot.agents.scrumMaster;
         return `
+          ${testCaseGenerator ? renderAgentPanel(testCaseGenerator) : ''}
+          ${renderTestCaseBridge(snapshot)}
           ${renderAgentPanel(chief)}
           <div class="stage-output">
+            <span class="tag">Test Case Output: Positive</span>
+            <span class="tag">Test Case Output: Negative</span>
+            <span class="tag">Test Case Output: Edge</span>
+            <span class="tag">Task: Extract acceptance criteria</span>
+            <span class="tag">Task: Generate test cases</span>
+            <span class="tag">Task: Publish to Test Case page</span>
             <span class="tag">Chief Output: Schema</span>
             <span class="tag">Chief Output: APIs</span>
             <span class="tag">Chief Output: Module breakdown</span>
@@ -734,13 +855,6 @@
     function startFlowTicker() {
       if (!flowTicker) {
         flowTicker = setInterval(() => {
-          const project = NexusStore.getProject(currentProjectId);
-          if (project && project.isRunning === false) {
-            clearInterval(flowTicker);
-            flowTicker = null;
-            renderSystemFlow(); // Render one last time
-            return;
-          }
           renderSystemFlow();
         }, 1000);
       }

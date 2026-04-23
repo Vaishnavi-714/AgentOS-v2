@@ -128,13 +128,6 @@
     function startRuntimeTicker() {
       if (!liveTicker) {
         liveTicker = setInterval(() => {
-          const project = NexusStore.getProject(getSelectedProject());
-          if (project && project.isRunning === false) {
-            clearInterval(liveTicker);
-            liveTicker = null;
-            renderPipeline();
-            return;
-          }
           renderPipeline();
         }, 1000);
       }

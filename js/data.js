@@ -18,14 +18,16 @@ function seedNexusData() {
       domain: 'E-Commerce', techStack: ['Node.js', 'React', 'PostgreSQL', 'Redis'],
       status: 'ACTIVE', pipelineStatus: 'COMPLETED', createdAt: '2024-01-10T09:00:00Z', updatedAt: '2024-01-15T15:00:00Z',
       modules: ['auth', 'payments', 'orders', 'inventory', 'notifications'],
-      createdBy: 'user_001'
+      createdBy: 'user_001',
+      testCases: []
     },
     {
       id: 'proj_002', name: 'Healthcare Portal', description: 'Patient management system with appointment scheduling and telemedicine',
       domain: 'Healthcare', techStack: ['Python', 'Django', 'PostgreSQL', 'Docker'],
       status: 'IN_PROGRESS', pipelineStatus: 'STAGE_6', createdAt: '2024-02-01T10:00:00Z', updatedAt: '2024-02-05T11:00:00Z',
       modules: ['patients', 'appointments', 'telemedicine', 'billing'],
-      createdBy: 'user_001'
+      createdBy: 'user_001',
+      testCases: []
     }
   ];
   NexusStore.setProjects(projects);
@@ -128,6 +130,13 @@ function seedNexusData() {
       capabilities: ['story_acceptance', 'story_rejection', 'priority_decisions'],
       ceiling_profile: { can_autonomously: ['accept_stories', 'reject_stories', 'reprioritize'], must_escalate: ['epic_cancellation', 'major_scope_change'], strictly_forbidden: ['code_changes', 'architecture_decisions'], risk_sensitivity: 'LOW' },
       metrics: { tasks_completed: 18, escalations_raised: 2, gate_pass_rate: 100 }, createdAt: '2024-01-09T08:00:00Z'
+    },
+    {
+      agent_id: 'agent_tcg_001', agent_name: 'Test Case Generator Agent', created_by: 'human_orchestrator', role: 'test_case_generator', module_scope: 'global',
+      model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'ACTIVE',
+      capabilities: ['extract_acceptance_criteria', 'generate_positive_tests', 'generate_negative_tests', 'generate_edge_tests'],
+      ceiling_profile: { can_autonomously: ['create_test_cases', 'structure_test_data', 'update_test_case_status'], must_escalate: ['acceptance_criteria_conflicts'], strictly_forbidden: ['modify_implementation', 'change_backlog_priority'], risk_sensitivity: 'LOW' },
+      metrics: { tasks_completed: 14, escalations_raised: 1, gate_pass_rate: 100 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_sm_001', agent_name: 'Scrum Master', created_by: 'human_orchestrator', role: 'scrum_master', module_scope: 'global',
@@ -332,6 +341,32 @@ function seedNexusData() {
   ensureNexusExtensionData();
 }
 
+function ensureBacklogAndTestCaseShape(projectId) {
+  const backlog = NexusStore.getBacklog(projectId);
+  if (Array.isArray(backlog) && backlog.length) {
+    let changed = false;
+    const normalized = backlog.map(item => {
+      if (item.type !== 'USER_STORY') return item;
+      if (Array.isArray(item.acceptanceCriteria)) return item;
+      changed = true;
+      return { ...item, acceptanceCriteria: [] };
+    });
+    if (changed) NexusStore.setBacklog(projectId, normalized);
+  }
+
+  const project = NexusStore.getProject(projectId);
+  if (project && !Array.isArray(project.testCases)) {
+    project.testCases = [];
+    NexusStore.saveProject(project);
+  }
+
+  const testCaseKey = 'test_cases_' + projectId;
+  const existingCases = NexusStore.get(testCaseKey);
+  if (!Array.isArray(existingCases)) {
+    NexusStore.set(testCaseKey, Array.isArray(project?.testCases) ? project.testCases : []);
+  }
+}
+
 function ensureNexusExtensionData() {
   // Required task dataset used by Flow/Kanban/Live simulation demos.
   const requiredTasks = [
@@ -393,6 +428,7 @@ function ensureNexusExtensionData() {
   [
     'agent_ba_001',
     'agent_po_001',
+    'agent_tcg_001',
     'agent_chief_arch_001',
     'agent_mod_arch_auth',
     'agent_dev_auth_01',
@@ -404,5 +440,9 @@ function ensureNexusExtensionData() {
         NexusStore.setWorkspaceFile(agentId, fileName, content);
       }
     });
+  });
+
+  NexusStore.getProjects().forEach(project => {
+    ensureBacklogAndTestCaseShape(project.id);
   });
 }

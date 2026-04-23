@@ -388,10 +388,10 @@
         : `showToast('Runtime-only simulated agent: workspace unavailable', 'info')`;
 
       return `
-        <div class="org-node runtime-org-node ${statusClass}" onclick="${click}">
+        <div class="org-node runtime-org-node ${statusClass} ${agent.status === 'ACTIVE' ? 'active-glow' : ''}" data-agent="${key}" onclick="${click}">
           <div class="org-node-name">${escapeHtml(agent.name)}</div>
           <div class="org-node-role">${escapeHtml(agent.role.replace(/_/g, ' '))} · ${escapeHtml(agent.module)}</div>
-          <div class="org-node-status">${runtimePresence(agent.status)}</div>
+          <div class="org-node-status status" data-status="${agent.status}">${runtimePresence(agent.status)}</div>
         </div>
       `;
     }
@@ -493,6 +493,7 @@
           </div>
           <div class="org-connector"></div>
           <div class="org-level">
+            ${runtimeNode(snapshot, 'testCaseGenerator')}
             ${runtimeNode(snapshot, 'chiefArchitect')}
             ${runtimeNode(snapshot, 'scrumMaster')}
           </div>
@@ -546,6 +547,7 @@
           <span>BA</span><span>-></span>
           <span>AI Pipeline</span><span>-></span>
           <span>PO</span><span>-></span>
+          <span>Test Case Generator</span><span>-></span>
           <span>CA</span><span>-></span>
           <span>Scrum</span><span>-></span>
           <span>Module</span><span>-></span>
@@ -858,13 +860,6 @@
     function startRuntimeTicker() {
       if (!liveTicker) {
         liveTicker = setInterval(() => {
-          const project = NexusStore.getProject(getSelectedProject());
-          if (project && project.isRunning === false) {
-            clearInterval(liveTicker);
-            liveTicker = null;
-            render(); // Render one last time to show final state
-            return;
-          }
           render();
         }, 1000);
       }

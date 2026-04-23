@@ -18,6 +18,7 @@ const NexusOrchestration = (() => {
     'businessAnalyst',
     'aiPipeline',
     'productOwner',
+    'testCaseGenerator',
     'chiefArchitect',
     'scrumMaster',
     'moduleArchitectAuth',
@@ -73,6 +74,16 @@ const NexusOrchestration = (() => {
       tasks: [
         { id: 'PO-401', title: 'Approve backlog', action: 'Approving and refining generated backlog items' },
         { id: 'PO-402', title: 'Refine priorities', action: 'Refining delivery priorities and acceptance criteria' }
+      ]
+    },
+    testCaseGenerator: {
+      agentId: 'agent_tc_gen_001',
+      name: 'Test Case Generator Agent',
+      role: 'test_case_generator',
+      module: 'global',
+      tokenBase: 900,
+      tasks: [
+        { id: 'TC-GEN-001', title: 'Generate test cases', action: 'Generating test cases from acceptance criteria' }
       ]
     },
     chiefArchitect: {
@@ -193,7 +204,8 @@ const NexusOrchestration = (() => {
       output: ['Extracted requirement set'],
       startEvent: 'Business Analyst started extracting requirements',
       completeEvent: 'Requirements processed and sent to AI Pipeline',
-      handoffEvent: 'Output passed from Business Analyst → AI Processing Pipeline'
+      handoffEvent: 'Output passed from Business Analyst → AI Processing Pipeline',
+      duration: 5
     },
     {
       id: 'ai_pipeline',
@@ -222,23 +234,24 @@ const NexusOrchestration = (() => {
     },
     {
       id: 'chief_architect_primary',
-      title: 'Chief Architect',
+      title: 'Chief Architect + QA Automation',
       from: 'Product Owner',
       to: 'Chief Architect + Scrum Master',
-      members: ['chiefArchitect'],
-      input: ['Approved backlog'],
-      output: ['Architecture plan', 'Schema and API baseline'],
-      startEvent: 'Chief Architect started designing system architecture',
-      completeEvent: 'Architecture baseline ready',
-      handoffEvent: 'Output passed from Chief Architect → Scrum Master'
+      members: ['chiefArchitect', 'testCaseGenerator'],
+      input: ['Approved backlog', 'acceptanceCriteria[]'],
+      output: ['Architecture plan', 'Schema and API baseline', 'testCases[]'],
+      parallel: true,
+      startEvent: 'Test Case Generator started generating test cases',
+      completeEvent: 'Test cases generated and sent to QA',
+      handoffEvent: 'Output passed to Scrum Master and QA'
     },
     {
       id: 'chief_scrum_parallel',
       title: 'Chief Architect + Scrum Master (Parallel)',
       from: 'Chief Architect',
       to: 'Module Architects',
-      members: ['chiefArchitect', 'scrumMaster'],
-      input: ['Architecture baseline', 'Updated requirement notes'],
+      members: ['chiefArchitect', 'scrumMaster', 'testCaseGenerator'],
+      input: ['Architecture baseline', 'Updated requirement notes', 'testCases[]'],
       output: ['Updated architecture package', 'Task orchestration plan'],
       parallel: true,
       startEvent: 'Chief Architect re-activated to redesign DB schema due to updated requirements',
@@ -277,7 +290,7 @@ const NexusOrchestration = (() => {
       from: 'Developers',
       to: 'Release',
       members: ['qaAgent'],
-      input: ['Code changes', 'Unit tests'],
+      input: ['Code changes', 'Unit tests', 'testCases[]'],
       output: ['Validated release candidate'],
       startEvent: 'QA Agent started regression and contract validation',
       completeEvent: 'QA validation passed',
@@ -301,6 +314,7 @@ const NexusOrchestration = (() => {
     aiPipeline: 28,
     productOwner: 17,
     chiefArchitect: 22,
+    testCaseGenerator: 12,
     scrumMaster: 14,
     moduleArchitectAuth: 19,
     moduleArchitectPayments: 18,
@@ -386,6 +400,82 @@ const NexusOrchestration = (() => {
     }
   }
 
+  /* ── LLM Sessions ── */
+  const agentModelMap = {
+    "businessAnalyst": "gemini",
+    "aiPipeline": "gpt-4",
+    "productOwner": "gpt-4",
+    "chiefArchitect": "claude",
+    "moduleArchitectAuth": "claude-code",
+    "moduleArchitectPayments": "claude-code",
+    "devAuth01": "claude-code",
+    "devAuth02": "claude-code",
+    "devPay01": "claude-code",
+    "qa": "gpt-4",
+    "testCaseGenerator": "gemini",
+    "scrumMaster": "claude",
+    "release": "gpt-4"
+  };
+
+  function startLLMSession(agentKey, agentName, taskId, module) {
+    if (typeof NexusStore === 'undefined') return;
+    const projectId = getCurrentProjectId();
+    const sessions = NexusStore.getLlmSessions(projectId);
+    
+    // Close existing session for this agent if any
+    const existing = sessions.find(s => s.agentKey === agentKey && s.status === 'ACTIVE');
+    if (existing) existing.status = 'COMPLETED';
+
+    sessions.push({
+      id: `SESSION-${Math.floor(Math.random()*10000)}`,
+      agentKey: agentKey,
+      agent: agentName,
+      model: agentModelMap[agentKey] || "gpt-4",
+      module: module || "general",
+      taskId: taskId,
+      status: "ACTIVE",
+      logs: [`Initializing session for ${agentName}...`],
+      escalations: []
+    });
+    NexusStore.setLlmSessions(projectId, sessions);
+  }
+
+  function endLLMSession(agentKey) {
+    if (typeof NexusStore === 'undefined') return;
+    const projectId = getCurrentProjectId();
+    const sessions = NexusStore.getLlmSessions(projectId);
+    const existing = sessions.find(s => s.agentKey === agentKey && s.status === 'ACTIVE');
+    if (existing) {
+      existing.status = 'COMPLETED';
+      existing.logs.push(`Session completed successfully.`);
+      NexusStore.setLlmSessions(projectId, sessions);
+    }
+  }
+
+  function appendLLMLog(agentKey, logText) {
+    if (typeof NexusStore === 'undefined') return;
+    const projectId = getCurrentProjectId();
+    const sessions = NexusStore.getLlmSessions(projectId);
+    const existing = sessions.find(s => s.agentKey === agentKey && s.status === 'ACTIVE');
+    if (existing) {
+      existing.logs.push(logText);
+      NexusStore.setLlmSessions(projectId, sessions);
+    }
+  }
+
+  function escalateLLMSession(agentKey, escalationId) {
+    if (typeof NexusStore === 'undefined') return;
+    const projectId = getCurrentProjectId();
+    const sessions = NexusStore.getLlmSessions(projectId);
+    const existing = sessions.find(s => s.agentKey === agentKey && s.status === 'ACTIVE');
+    if (existing) {
+      existing.status = 'ESCALATED';
+      existing.logs.push(`⚠️ Issue detected. Escalation raised: ${escalationId}`);
+      existing.escalations.push({ id: escalationId, type: "ISSUE_DETECTED", status: "OPEN" });
+      NexusStore.setLlmSessions(projectId, sessions);
+    }
+  }
+
   /* ── Agent State Helpers ── */
 
   function setActive(state, key, phase) {
@@ -397,16 +487,61 @@ const NexusOrchestration = (() => {
       agent.currentTaskIndex = 0;
     }
 
-    const task = spec.tasks[agent.currentTaskIndex];
+    if (key === 'testCaseGenerator' && typeof NexusStore !== 'undefined') {
+      const backlog = NexusStore.getBacklog(getCurrentProjectId());
+      let hasCriteria = false;
+      if (backlog.length > 0 && backlog[0].epic) {
+        hasCriteria = backlog.some(e => e.features && e.features.some(f => f.userStories && f.userStories.some(s => s.acceptanceCriteria && s.acceptanceCriteria.length > 0)));
+      } else {
+        hasCriteria = backlog.some(i => i.type === 'USER_STORY' && i.acceptanceCriteria && i.acceptanceCriteria.length > 0);
+      }
+      if (!hasCriteria) {
+        agent.status = 'INACTIVE';
+        agent.stageStatus = 'PENDING';
+        agent.currentAction = 'Awaiting acceptance criteria';
+        return;
+      }
+    }
+
+    const task = spec.tasks[agent.currentTaskIndex] || { title: 'Unknown Task', action: 'Executing task' };
     agent.status = 'ACTIVE';
     agent.stageStatus = 'SPECIFIED';
     agent.currentTaskId = task.id;
     agent.currentTaskName = task.title;
     agent.currentAction = task.action;
+
+    if (state.flags && state.flags.isQaRetest) {
+      if (key.startsWith('moduleArchitect')) {
+        agent.currentTaskName = 'Process QA Escalation';
+        agent.currentAction = 'Analyzing issue and assigning fix';
+        
+        // Assign task to developer
+        const mod = key.replace('moduleArchitect', '').toLowerCase();
+        if (typeof NexusStore !== 'undefined') {
+          const pId = getCurrentProjectId();
+          const tasks = NexusStore.getTasks(pId) || [];
+          tasks.push({
+            task_id: `TASK-FIX-${Date.now()}`,
+            module: mod,
+            status: "SPECIFIED",
+            title: "Fixing failed test case issue",
+            assignedTo: `agent_dev_${mod}_01`,
+            type: "BUG_FIX"
+          });
+          NexusStore.setTasks(pId, tasks);
+        }
+      } else if (key.startsWith('dev')) {
+        agent.currentTaskName = 'Execute Bug Fix';
+        agent.currentAction = 'Fixing failed test case issue';
+      }
+    }
+
     agent.timerSec = 0;
     agent.startedAt = isoNow();
     agent.inputData = phase.input.join(', ');
     agent.outputData = phase.output.join(', ');
+
+    startLLMSession(key, agent.name || key, agent.currentTaskId || 'TASK-000', key.includes('Auth') ? 'auth' : key.includes('Pay') ? 'payments' : 'general');
   }
 
   function rotateTask(agent, spec) {
@@ -418,7 +553,7 @@ const NexusOrchestration = (() => {
     agent.currentAction = task.action;
   }
 
-  function setInactive(agent, completed) {
+  function setInactive(agent, completed, key) {
     agent.status = 'INACTIVE';
     agent.timerSec = completed ? MIN_TASK_SECONDS : 0;
     agent.stageStatus = completed ? 'COMPLETED' : 'PENDING';
@@ -426,6 +561,7 @@ const NexusOrchestration = (() => {
       agent.completedTasks += 1;
       agent.completedAt = isoNow();
       agent.currentAction = 'Completed task and awaiting next assignment';
+      if (key) endLLMSession(key);
     } else {
       agent.currentAction = 'Awaiting assignment';
     }
@@ -573,11 +709,169 @@ const NexusOrchestration = (() => {
       }
     });
 
-    // Activate ONLY current phase members
-    phase.members.forEach((key) => setActive(state, key, phase));
+    // Activate ONLY current phase members IF RUNNING
+    if (state.isRunning) {
+      phase.members.forEach((key) => setActive(state, key, phase));
 
-    if (phase.startEvent) {
-      pushEvent(state, 'TASK_START', phase.startEvent);
+      if (phase.startEvent) {
+        pushEvent(state, 'TASK_START', phase.startEvent);
+      }
+
+      // Automatically generate test cases when Test Case Generator phase begins
+      if (phase.id === 'chief_architect_primary' && typeof NexusStore !== 'undefined') {
+        const projectId = getCurrentProjectId();
+        const backlog = NexusStore.getBacklog(projectId);
+        let testCases = [];
+        let tcIndex = 1;
+
+        // NORMALIZE BACKLOG — ensure every user story has acceptanceCriteria
+        const normalizeBacklog = (items) => {
+          items.forEach(item => {
+            if (item.type === 'USER_STORY' || item.userStories) {
+              if (!item.acceptanceCriteria || item.acceptanceCriteria.length === 0) {
+                item.acceptanceCriteria = [
+                  `${item.title} should work correctly`,
+                  `${item.title} should handle invalid inputs`,
+                  `${item.title} should handle edge cases`
+                ];
+              }
+            }
+            // Handle nested hierarchical backlog
+            if (item.features) {
+              item.features.forEach(f => {
+                f.userStories = f.userStories || [];
+                f.userStories.forEach(s => {
+                  if (!s.acceptanceCriteria || s.acceptanceCriteria.length === 0) {
+                    s.acceptanceCriteria = [
+                      `${s.title} should work correctly`,
+                      `${s.title} should handle invalid inputs`,
+                      `${s.title} should handle edge cases`
+                    ];
+                  }
+                });
+              });
+            }
+          });
+        };
+        normalizeBacklog(backlog);
+        NexusStore.setBacklog(projectId, backlog);
+        console.log("normalizeBacklog completed. Backlog items:", backlog.length);
+        
+        const processCriteria = (storyId, storyTitle, criteriaList) => {
+          if (!criteriaList || criteriaList.length === 0) return;
+          const crit = criteriaList.join(', ');
+          
+          testCases.push({
+            id: `TC-${storyId.split('-').pop()}-${String(tcIndex++).padStart(3, '0')}`,
+            type: 'POSITIVE',
+            story: storyTitle,
+            steps: ['Enter valid inputs', 'Submit action'],
+            expectedResult: 'Operation succeeds according to criteria: ' + crit.substring(0, 30) + '...',
+            status: 'PENDING',
+            notes: ''
+          });
+          testCases.push({
+            id: `TC-${storyId.split('-').pop()}-${String(tcIndex++).padStart(3, '0')}`,
+            type: 'NEGATIVE',
+            story: storyTitle,
+            steps: ['Enter invalid data', 'Submit action'],
+            expectedResult: 'System throws validation error',
+            status: 'PENDING',
+            notes: ''
+          });
+          testCases.push({
+            id: `TC-${storyId.split('-').pop()}-${String(tcIndex++).padStart(3, '0')}`,
+            type: 'EDGE',
+            story: storyTitle,
+            steps: ['Leave optional fields empty or use boundaries', 'Submit action'],
+            expectedResult: 'System handles boundary safely',
+            status: 'PENDING',
+            notes: ''
+          });
+        };
+
+        if (backlog.length > 0 && backlog[0].epic) {
+          backlog.forEach((e, i) => {
+            (e.features || []).forEach((f, j) => {
+              (f.userStories || []).forEach((s, k) => {
+                processCriteria(s.id || `US-${i}-${j}-${k}`, s.title, s.acceptanceCriteria);
+              });
+            });
+          });
+        } else {
+          backlog.filter(i => i.type === 'USER_STORY').forEach((s, i) => {
+            processCriteria(s.id || `US-${i}`, s.title, s.acceptanceCriteria);
+          });
+        }
+
+        // HARD SAFETY FALLBACK — guarantee at least 1 test case
+        if (testCases.length === 0) {
+          console.warn("No test cases generated from backlog — fallback triggered");
+          testCases.push(
+            { id: 'TC-FALLBACK-001', type: 'POSITIVE', story: 'System Validation', steps: ['Verify system responds to valid input'], expectedResult: 'System works correctly', status: 'PENDING', notes: '' },
+            { id: 'TC-FALLBACK-002', type: 'NEGATIVE', story: 'System Validation', steps: ['Submit invalid input'], expectedResult: 'System rejects gracefully', status: 'PENDING', notes: '' },
+            { id: 'TC-FALLBACK-003', type: 'EDGE', story: 'System Validation', steps: ['Test boundary conditions'], expectedResult: 'System handles edge case', status: 'PENDING', notes: '' }
+          );
+        }
+        
+        NexusStore.setTestCases(projectId, testCases);
+        console.log("Generated Test Cases:", testCases.length);
+        pushEvent(state, 'SYSTEM', `Test Case Generator created ${testCases.length} test cases`);
+      }
+
+      // Simulate QA Agent executing test cases
+      if (phase.id === 'qa' && typeof NexusStore !== 'undefined') {
+        const projectId = getCurrentProjectId();
+        const testCases = NexusStore.getTestCases(projectId);
+        const isRetest = state.flags && state.flags.isQaRetest;
+        pushEvent(state, 'TASK_START', isRetest ? 'QA Agent re-testing previously failed cases' : 'QA Agent started executing test cases');
+        
+        let index = 0;
+        const executeNext = () => {
+          if (index >= testCases.length) {
+            pushEvent(loadState() || state, 'SYSTEM', 'All test cases executed');
+            return;
+          }
+          const tc = testCases[index];
+          
+          // Skip already-passed tests
+          if (tc.status === 'PASSED') {
+            index++;
+            executeNext();
+            return;
+          }
+
+          // Track execution round
+          tc.executionRound = (tc.executionRound || 0) + 1;
+
+          tc.status = 'EXECUTING';
+          NexusStore.setTestCases(projectId, testCases);
+          
+          setTimeout(() => {
+            let passed = false;
+            
+            if (tc.executionRound >= 2) {
+              // ROUND 2+: Force pass (developer already fixed it)
+              passed = true;
+              tc.resolved = true;
+              tc.resolvedBy = tc.resolvedBy || 'developer';
+              tc.notes = 'Fixed and verified on re-test';
+            } else {
+              // ROUND 1: Random outcome
+              passed = Math.random() > 0.3;
+              tc.notes = passed ? 'Working as expected' : 'Bug found - incorrect behavior';
+            }
+            
+            tc.status = passed ? 'PASSED' : 'FAILED';
+            NexusStore.setTestCases(projectId, testCases);
+            index++;
+            executeNext();
+          }, 3000);
+        };
+        if (testCases.length > 0) {
+          executeNext();
+        }
+      }
     }
 
     refreshScrumDashboard(state);
@@ -590,7 +884,7 @@ const NexusOrchestration = (() => {
     phase.members.forEach((key) => {
       const agent = state.agents[key];
       if (!agent) return;
-      setInactive(agent, true);
+      setInactive(agent, true, key);
       rotateTask(agent, AGENT_SPECS[key]);
     });
 
@@ -618,9 +912,12 @@ const NexusOrchestration = (() => {
         NexusStore.setBacklog(projectId, [
           { id: 'E-AUTH', title: 'User Authentication', type: 'EPIC', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE' },
           { id: 'F-AUTH-1', parentId: 'E-AUTH', title: 'Login', type: 'FEATURE', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE' },
-          { id: 'S-AUTH-1', parentId: 'F-AUTH-1', title: 'As a user, I can log in', type: 'USER_STORY', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE', storyPoints: 5 },
-          { id: 'S-AUTH-2', parentId: 'F-AUTH-1', title: 'As a user, I can register', type: 'USER_STORY', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE', storyPoints: 8 },
-          { id: 'S-AUTH-3', parentId: 'F-AUTH-1', title: 'As a user, I can reset my password', type: 'USER_STORY', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE', storyPoints: 3 }
+          { id: 'S-AUTH-1', parentId: 'F-AUTH-1', title: 'As a user, I can log in', type: 'USER_STORY', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE', storyPoints: 5,
+            acceptanceCriteria: ['User can login with valid email and password', 'System rejects invalid credentials with error message', 'Session token is generated on successful login'] },
+          { id: 'S-AUTH-2', parentId: 'F-AUTH-1', title: 'As a user, I can register', type: 'USER_STORY', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE', storyPoints: 8,
+            acceptanceCriteria: ['User can register with email, password, and name', 'Duplicate email is rejected', 'Password must meet strength requirements'] },
+          { id: 'S-AUTH-3', parentId: 'F-AUTH-1', title: 'As a user, I can reset my password', type: 'USER_STORY', module: 'auth', status: 'SPECIFIED', priority: 'MUST_HAVE', storyPoints: 3,
+            acceptanceCriteria: ['Reset link sent to registered email', 'Link expires after 24 hours', 'User can set new password via reset link'] }
         ]);
         const project = NexusStore.getProject(projectId);
         if (project) {
@@ -693,6 +990,20 @@ const NexusOrchestration = (() => {
   /* ── Tick Engine ── */
 
   function advanceOneSecond(state) {
+    if (typeof NexusStore !== 'undefined') {
+      const pid = getCurrentProjectId();
+      const currentProject = NexusStore.getProject(pid);
+      if (!currentProject || currentProject.status === "CREATED") {
+        state.isRunning = false;
+        return;
+      }
+      const reqs = NexusStore.getRequirements(pid);
+      if (!reqs || reqs.length === 0) {
+        state.isRunning = false;
+        return;
+      }
+    }
+
     if (state.isRunning === false) return;
 
     state.tick += 1;
@@ -700,11 +1011,97 @@ const NexusOrchestration = (() => {
     updateCurrentPhase(state);
     advanceNotificationQueue(state);
 
+    if (state.isRunning && typeof NexusStore !== 'undefined') {
+      const projectId = getCurrentProjectId();
+      const sessions = NexusStore.getLlmSessions(projectId);
+      let changed = false;
+      sessions.forEach(s => {
+        if (s.status === 'ACTIVE') {
+          if (Math.random() > 0.6) {
+            const logs = [
+              "Loading context window...", "Analyzing schema...", "Extracting parameters...", 
+              "Generating code snippet...", "Validating syntax...", "Running local linter...",
+              "Cross-referencing rules...", "Reviewing output...", "Finalizing task..."
+            ];
+            s.logs.push(`> ${logs[Math.floor(Math.random() * logs.length)]}`);
+            changed = true;
+          }
+        }
+      });
+      if (changed) NexusStore.setLlmSessions(projectId, sessions);
+    }
+
     const phase = PHASES[state.phaseIndex];
     const maxPhaseDuration = phase.duration || MIN_TASK_SECONDS;
 
     if (state.phaseElapsed >= maxPhaseDuration) {
       completeCurrentPhase(state);
+
+      if (phase.id === 'qa') {
+        const projectId = getCurrentProjectId();
+        if (typeof NexusStore !== 'undefined') {
+          const testCases = NexusStore.getTestCases(projectId) || [];
+          const allPassed = testCases.length > 0 && testCases.every(tc => tc.status === 'PASSED');
+          
+          // Track QA execution rounds
+          state.flags.qaExecutionRound = (state.flags.qaExecutionRound || 0) + 1;
+          console.log("QA Gate Check — Round:", state.flags.qaExecutionRound, "All Passed:", allPassed);
+          
+          if (!allPassed && state.flags.qaExecutionRound < 2) {
+            // ROUND 1 FAILURE → Escalate (allow ONE retry)
+            pushEvent(state, 'ESCALATION', 'QA detected failures. Escalation raised to Module Architects');
+            
+            const project = NexusStore.getProject(projectId);
+            project.escalations = project.escalations || [];
+            
+            testCases.filter(tc => tc.status !== 'PASSED').forEach((tc, idx) => {
+              let mod = 'general';
+              const storyText = (tc.story || '').toLowerCase();
+              if (storyText.includes('login') || storyText.includes('auth')) mod = 'auth';
+              else if (storyText.includes('payment')) mod = 'payments';
+              else if (storyText.includes('order')) mod = 'orders';
+              
+              // Mark which developer will fix this
+              tc.resolvedBy = `developer_${mod}`;
+              
+              project.escalations.push({
+                id: `ESC-QA-${Date.now()}-${idx}`,
+                testCaseId: tc.id,
+                module: mod,
+                issue: tc.notes || 'Test failed',
+                status: 'OPEN',
+                assignedTo: `module_architect_${mod}`
+              });
+            });
+            NexusStore.setTestCases(projectId, testCases);
+            NexusStore.saveProject(project);
+            
+            // Escalate QA LLM session
+            const lastEsc = project.escalations[project.escalations.length - 1];
+            if (lastEsc) escalateLLMSession('qa', lastEsc.id);
+
+            // JUMP TO MODULE ARCHITECT PHASE for fix cycle
+            state.flags.isQaRetest = true;
+            state.phaseIndex = PHASES.findIndex(p => p.id === 'module_architects_parallel');
+            enterPhase(state);
+            return;
+          } else if (!allPassed && state.flags.qaExecutionRound >= 2) {
+            // ROUND 2+ FAILURE → Force-resolve remaining and proceed to release
+            console.log("QA Round 2+ reached — force-passing remaining failures");
+            testCases.forEach(tc => {
+              if (tc.status !== 'PASSED') {
+                tc.status = 'PASSED';
+                tc.resolved = true;
+                tc.resolvedBy = tc.resolvedBy || 'auto_resolved';
+                tc.notes = 'Force-resolved after max retry limit';
+              }
+            });
+            NexusStore.setTestCases(projectId, testCases);
+            pushEvent(state, 'SYSTEM', 'QA max retries reached — all cases force-resolved. Proceeding to Release.');
+          }
+          // allPassed === true OR force-resolved → fall through to normal phase advance (Release)
+        }
+      }
 
       if (state.phaseIndex === PHASES.length - 1) {
         // TERMINAL STATE REACHED
@@ -785,13 +1182,15 @@ const NexusOrchestration = (() => {
       },
       flags: {
         escalationRaisedInCycle: false,
-        escalationResolved: false
+        escalationResolved: false,
+        isQaRetest: false,
+        qaExecutionRound: 0
       },
       // Notification queue — only one visible at a time
       notificationQueue: [],
       activeNotification: null,
       notificationTimer: 0,
-      isRunning: true
+      isRunning: false
     };
 
     enterPhase(state);
@@ -810,6 +1209,13 @@ const NexusOrchestration = (() => {
 
   function catchUp(state) {
     if (state.isRunning === false) return;
+    if (typeof NexusStore !== 'undefined') {
+      const pid = getCurrentProjectId();
+      const currentProject = NexusStore.getProject(pid);
+      if (!currentProject || currentProject.status === "CREATED") return;
+      const reqs = NexusStore.getRequirements(pid);
+      if (!reqs || reqs.length === 0) return;
+    }
     const now = nowMs();
     let seconds = Math.floor((now - state.updatedAt) / 1000);
     if (seconds <= 0) return;
@@ -876,6 +1282,64 @@ const NexusOrchestration = (() => {
     saveState(fresh);
   }
 
+  function startPipeline(targetProjectId) {
+    // Accept explicit projectId or fall back to sessionStorage
+    const projectId = targetProjectId || getCurrentProjectId();
+    
+    // Force sessionStorage to match so all downstream reads are correct
+    sessionStorage.setItem('nexus_selected_project', projectId);
+    
+    if (typeof NexusStore !== 'undefined') {
+      const project = NexusStore.getProject(projectId);
+      const reqs = NexusStore.getRequirements(projectId);
+      // SAFETY CHECK
+      if (!project || !reqs || reqs.length === 0) {
+        console.log("startPipeline BLOCKED: no requirements for", projectId);
+        return;
+      }
+      
+      // PREVENT MULTIPLE RUNS (check isRunning on orchestration state, not project)
+      const existingState = loadState();
+      if (existingState && existingState.isRunning === true) {
+        console.log("startPipeline BLOCKED: already running for", projectId);
+        return;
+      }
+      
+      // UPDATE PROJECT STATE
+      project.isRunning = true;
+      project.status = 'PIPELINE';
+      project.pipelineProgress = 0;
+      NexusStore.saveProject(project);
+      
+      console.log("startPipeline EXECUTING for:", projectId);
+    }
+    
+    // Build fresh orchestration state
+    let state = buildInitialState();
+    
+    state.isRunning = true;
+    state.updatedAt = nowMs();
+    const phase = PHASES[0]; // business_analyst phase
+    
+    // RESET ALL AGENTS
+    AGENT_ORDER.forEach((key) => {
+      const agent = state.agents[key];
+      if (agent) {
+        agent.status = 'INACTIVE';
+        agent.currentAction = 'Awaiting assignment';
+      }
+    });
+    
+    // START FIRST AGENT (Business Analyst)
+    phase.members.forEach((key) => setActive(state, key, phase));
+    if (phase.startEvent) {
+      pushEvent(state, 'TASK_START', 'Business Analyst started processing requirements');
+    }
+    
+    console.log("startPipeline: Business Analyst ACTIVATED, state saved");
+    saveState(state);
+  }
+
   function getPhases() {
     return deepClone(PHASES);
   }
@@ -907,6 +1371,7 @@ const NexusOrchestration = (() => {
     getAgentOrder,
     getAgentById,
     reset,
-    restartPipeline
+    restartPipeline,
+    startPipeline
   };
 })();

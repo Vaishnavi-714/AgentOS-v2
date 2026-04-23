@@ -383,6 +383,11 @@ tbody tr:last-child td { border-bottom: none; }
 .org-node-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .org-node-role { font-size: 11px; color: var(--text-muted); }
 .org-node-status { margin-top: 6px; }
+.active-glow {
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
 
 /* Workspace files */
 .workspace-tabs { display: flex; gap: 0; margin-bottom: 0; }

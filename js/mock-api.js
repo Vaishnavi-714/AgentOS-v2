@@ -25,7 +25,8 @@ const MockAPI = {
       techStack: data.techStack || [], modules: data.modules || [],
       status: 'CREATED', pipelineStatus: 'NOT_STARTED',
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      createdBy: NexusStore.getUser()?.id || 'unknown'
+      createdBy: NexusStore.getUser()?.id || 'unknown',
+      testCases: []
     };
     NexusStore.saveProject(project);
     NexusStore.addLog({ type: 'PROJECT', message: `Project "${project.name}" created`, agent: 'human_orchestrator' });
@@ -46,6 +47,15 @@ const MockAPI = {
     });
     newReqs.forEach(r => NexusStore.addRequirement(projectId, r));
     NexusStore.addLog({ type: 'REQUIREMENTS', message: `${newReqs.length} requirements ingested for project ${projectId}`, agent: 'system' });
+    
+    // IMPORTANT: Fix context bug by forcing active project before trigger
+    sessionStorage.setItem('nexus_selected_project', projectId);
+    
+    // Trigger flow
+    if (typeof onRequirementsIngested === 'function') {
+      onRequirementsIngested(projectId);
+    }
+    
     return { success: true, requirements: newReqs };
   },
 
@@ -279,5 +289,51 @@ const MockAPI = {
     NexusStore.addLog({ type: 'ESCALATION', message: `Escalation ${esc.escalation_id} raised by ${esc.raised_by_name}`, agent: esc.raised_by });
     NexusStore.setSystemState('ESCALATION_PENDING');
     return { success: true, escalation: esc };
+  }
+};
+
+// Global trigger function — called from MockAPI.uploadRequirements
+window.onRequirementsIngested = function(projectId) {
+  console.log("onRequirementsIngested called for:", projectId);
+  
+  const project = NexusStore.getProject(projectId);
+
+  // VALIDATION
+  if (!project) {
+    console.log("onRequirementsIngested BLOCKED: project not found");
+    return;
+  }
+  
+  const reqs = NexusStore.getRequirements(projectId);
+  if (!reqs || reqs.length === 0) {
+    console.log("onRequirementsIngested BLOCKED: no requirements stored");
+    return;
+  }
+
+  // PREVENT RE-RUN: only trigger if status is still CREATED
+  if (project.status !== "CREATED" && project.status !== "REQUIREMENTS_READY") {
+    console.log("onRequirementsIngested BLOCKED: project already in", project.status);
+    return;
+  }
+
+  // UPDATE STATE
+  project.status = "REQUIREMENTS_READY";
+  project.requirements = reqs;
+  project.pipelineProgress = 0;
+  NexusStore.saveProject(project);
+
+  console.log("Requirements ingested for:", projectId, "| Count:", reqs.length);
+  console.log("Pipeline starting...");
+
+  // START FLOW via Orchestrator
+  if (typeof NexusOrchestration !== 'undefined') {
+    NexusOrchestration.startPipeline(projectId);
+    
+    // Redirect to system-flow so user can watch Business Analyst execute
+    setTimeout(() => {
+      window.location.href = "system-flow.html";
+    }, 500);
+  } else {
+    console.error("NexusOrchestration NOT LOADED — pipeline cannot start!");
   }
 };

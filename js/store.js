@@ -52,6 +52,41 @@ const NexusStore = {
   getBacklog(projectId) { return this.get('backlog_' + projectId) || []; },
   setBacklog(projectId, backlog) { this.set('backlog_' + projectId, backlog); },
 
+  // Test Cases
+  getTestCases(projectId) {
+    const fromKey = this.get('test_cases_' + projectId);
+    if (Array.isArray(fromKey)) return fromKey;
+    const project = this.getProject(projectId);
+    return Array.isArray(project?.testCases) ? project.testCases : [];
+  },
+  setTestCases(projectId, testCases) {
+    const normalized = Array.isArray(testCases) ? testCases : [];
+    this.set('test_cases_' + projectId, normalized);
+    const project = this.getProject(projectId);
+    if (project) {
+      project.testCases = normalized;
+      project.updatedAt = new Date().toISOString();
+      this.saveProject(project);
+    }
+  },
+
+  // LLM Sessions
+  getLlmSessions(projectId) {
+    const fromKey = this.get('llm_sessions_' + projectId);
+    if (Array.isArray(fromKey)) return fromKey;
+    const project = this.getProject(projectId);
+    return Array.isArray(project?.llmSessions) ? project.llmSessions : [];
+  },
+  setLlmSessions(projectId, sessions) {
+    const normalized = Array.isArray(sessions) ? sessions : [];
+    this.set('llm_sessions_' + projectId, normalized);
+    const project = this.getProject(projectId);
+    if (project) {
+      project.llmSessions = normalized;
+      this.saveProject(project);
+    }
+  },
+
   // Agents
   getAgents() { return this.get('agents') || []; },
   setAgents(a) { this.set('agents', a); },
