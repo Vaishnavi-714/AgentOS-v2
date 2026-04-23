@@ -927,16 +927,75 @@ const NexusOrchestration = (() => {
       }
     } else if (phase.id === 'product_owner') {
       if (typeof NexusStore !== 'undefined') {
-        NexusStore.setTasks(projectId, [
-          { task_id: "TASK-AUTH-101", module: "auth", status: "SPECIFIED", title: "Create login API", assignedTo: "agent_dev_auth_01" },
-          { task_id: "TASK-AUTH-102", module: "auth", status: "SPECIFIED", title: "Build registration flow", assignedTo: "agent_dev_auth_02" },
-          { task_id: "TASK-PAY-201", module: "payments", status: "SPECIFIED", title: "Integrate payment gateway", assignedTo: "agent_dev_pay_01" }
-        ]);
         const project = NexusStore.getProject(projectId);
         if (project) {
           project.status = 'tasks';
           NexusStore.saveProject(project);
         }
+      }
+    } else if (phase.id === 'chief_scrum_parallel') {
+      if (typeof NexusStore !== 'undefined') {
+        const backlog = NexusStore.getBacklog(projectId) || [];
+        const tasks = [];
+        backlog.forEach((item, i) => {
+          if (item.type !== 'USER_STORY') return;
+          tasks.push({
+            task_id: `TASK-${item.module.toUpperCase()}-${Date.now()}-${i}`,
+            title: item.title,
+            module: item.module,
+            status: "ASSIGNED",
+            assignedTo: `module_architect_${item.module}`,
+            assignedBy: "scrum_master",
+            parentTaskId: null,
+            level: "MODULE",
+            children: []
+          });
+        });
+        NexusStore.setTasks(projectId, tasks);
+      }
+    } else if (phase.id === 'module_architects_parallel') {
+      if (typeof NexusStore !== 'undefined') {
+        const tasks = NexusStore.getTasks(projectId) || [];
+        const parentTasks = tasks.filter(t => t.level === 'MODULE');
+        parentTasks.forEach(parent => {
+          for (let i = 1; i <= 2; i++) {
+            const childId = `TASK-${parent.module.toUpperCase()}-DEV-${Date.now()}-${i}-${parent.task_id.slice(-4)}`;
+            const child = {
+              task_id: childId,
+              title: `${parent.title} - Part ${i}`,
+              module: parent.module,
+              status: "ASSIGNED",
+              assignedTo: `developer_${parent.module}_${i}`,
+              assignedBy: `module_architect_${parent.module}`,
+              parentTaskId: parent.task_id,
+              level: "DEV",
+              children: []
+            };
+            parent.children = parent.children || [];
+            parent.children.push(child);
+            tasks.push(child);
+          }
+          parent.status = "IN_PROGRESS";
+        });
+        NexusStore.setTasks(projectId, tasks);
+      }
+    } else if (phase.id === 'developers_parallel') {
+      if (typeof NexusStore !== 'undefined') {
+        const tasks = NexusStore.getTasks(projectId) || [];
+        const devTasks = tasks.filter(t => t.level === 'DEV');
+        devTasks.forEach(task => {
+          task.status = "DONE";
+          // UPDATE PARENT IF ALL CHILD DONE
+          const parent = tasks.find(p => p.task_id === task.parentTaskId);
+          if (parent) {
+            parent.children = parent.children || [];
+            const siblings = tasks.filter(t => t.parentTaskId === parent.task_id);
+            if (siblings.every(c => c.status === "DONE")) {
+              parent.status = "DONE";
+            }
+          }
+        });
+        NexusStore.setTasks(projectId, tasks);
       }
     }
   }
@@ -1232,12 +1291,20 @@ const NexusOrchestration = (() => {
 
   /* ── Public API ── */
 
+  let hasNavigatedToTasks = false;
+
   function handlePhaseNavigation(phase) {
     let target = null;
     if (phase.id === 'business_analyst') target = 'system-flow.html';
     else if (phase.id === 'ai_pipeline') target = 'pipeline.html';
     else if (phase.id === 'product_owner') target = 'backlog.html';
-    else if (phase.id === 'chief_scrum_parallel' || phase.id === 'module_architects_parallel' || phase.id === 'developers_parallel') target = 'tasks.html';
+    // ONLY SCRUM MASTER CAN NAVIGATE
+    else if (phase.id === 'chief_scrum_parallel') {
+      if (!hasNavigatedToTasks) {
+        hasNavigatedToTasks = true;
+        target = 'tasks.html';
+      }
+    }
 
     if (target && !window.location.pathname.endsWith(target)) {
       window.location.href = target;

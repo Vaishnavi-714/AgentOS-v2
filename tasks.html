@@ -229,28 +229,61 @@
         return;
       }
 
+      const parentTasks = tasks.filter(t => t.level === "MODULE" || !t.level);
+
       document.getElementById('taskList').innerHTML = `
         <div class="table-container">
           <table>
-            <thead><tr><th>Task ID</th><th>Title</th><th>Module</th><th>Assigned To</th><th>Risk</th><th>Tokens</th><th>Gate</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Task ID / Title</th><th>Module</th><th>Assignment Chain</th><th>Risk / Gate</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              ${tasks.map(t => {
-                const agent = NexusStore.getAgent(t.assignedTo);
-                return `
-                  <tr>
-                    <td style="font-family:var(--mono); font-size:12px; color:var(--accent);">${t.task_id}</td>
-                    <td style="font-weight:500;">${escapeHtml(t.title)}</td>
-                    <td><span class="tag">${t.module}</span></td>
-                    <td style="font-size:12px;">${agent ? escapeHtml(agent.agent_name) : t.assignedTo}</td>
-                    <td>${riskBadge(t.risk)}</td>
-                    <td><span class="tag">${getTaskTokens(t)}</span></td>
-                    <td><span class="tag">${t.gateLevel} ${t.gateStatus === 'PASS' ? '✓' : t.gateStatus === 'FAIL' ? '✗' : '⏳'}</span></td>
-                    <td>${statusBadge(t.status)}</td>
+              ${parentTasks.map(parent => {
+                const pAgent = NexusStore.getAgent(parent.assignedTo);
+                let rows = `
+                  <tr class="parent-row" style="background:var(--bg-tertiary);">
                     <td>
-                      <button class="btn btn-outline btn-sm" onclick="showTask('${t.task_id}')">Details</button>
+                      <div style="font-family:var(--mono); font-size:11px; color:var(--accent);">${parent.task_id}</div>
+                      <div style="font-weight:600;">▶ ${escapeHtml(parent.title)}</div>
+                    </td>
+                    <td><span class="tag">${parent.module}</span></td>
+                    <td style="font-size:12px;">
+                      <span style="color:var(--text-muted);">${escapeHtml(parent.assignedBy || 'system')}</span> → 
+                      <strong>${pAgent ? escapeHtml(pAgent.agent_name) : parent.assignedTo}</strong>
+                    </td>
+                    <td>${riskBadge(parent.risk)}</td>
+                    <td>${statusBadge(parent.status)}</td>
+                    <td>
+                      <button class="btn btn-outline btn-sm" onclick="showTask('${parent.task_id}')">Details</button>
                     </td>
                   </tr>
                 `;
+
+                if (parent.children && parent.children.length > 0) {
+                  const childrenHtml = parent.children.map(child => {
+                    const cAgent = NexusStore.getAgent(child.assignedTo);
+                    // Match against actual task in store for real-time status if available
+                    const realChild = tasks.find(t => t.task_id === child.task_id) || child;
+                    return `
+                      <tr class="child-row">
+                        <td style="padding-left:30px;">
+                          <div style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">${realChild.task_id}</div>
+                          <div style="font-weight:500;">↳ ${escapeHtml(realChild.title)}</div>
+                        </td>
+                        <td><span class="tag">${realChild.module}</span></td>
+                        <td style="font-size:12px;">
+                          <span style="color:var(--text-muted);">${escapeHtml(realChild.assignedBy || parent.assignedTo)}</span> → 
+                          <strong>${cAgent ? escapeHtml(cAgent.agent_name) : realChild.assignedTo}</strong>
+                        </td>
+                        <td><span class="tag">${realChild.gateLevel || 'CODE_REVIEW'} ${realChild.gateStatus === 'PASS' ? '✓' : realChild.gateStatus === 'FAIL' ? '✗' : '⏳'}</span></td>
+                        <td>${statusBadge(realChild.status)}</td>
+                        <td>
+                          <button class="btn btn-outline btn-sm" onclick="showTask('${realChild.task_id}')">Details</button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('');
+                  rows += childrenHtml;
+                }
+                return rows;
               }).join('')}
             </tbody>
           </table>
