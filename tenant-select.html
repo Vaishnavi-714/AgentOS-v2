@@ -29,47 +29,8 @@
 
   <script src="js/state.js"></script>
   <script>
-    function selectTenant(tenantId) {
-      localStorage.setItem("selectedTenantId", tenantId);
-      window.location.href = "index.html";
-    }
-
-    function render() {
-      const tenants = TenantState.getTenants();
-      // Show only active or registered tenants for selection
-      const availableTenants = tenants.filter(t => t.status === 'ACTIVE' || t.status === 'REGISTERED');
-
-      document.getElementById('tenantGrid').innerHTML = availableTenants.map((t, i) => {
-        const limits = TenantState.getSubscriptionLimits(t.subscription);
-        const statusColor = t.status === 'ACTIVE' ? '#10b981' : '#f59e0b';
-        return `
-          <div class="landing-tenant-card fade-in" style="animation-delay: ${i * 0.1}s; cursor: pointer;" onclick="selectTenant('${t.tenant_id}')">
-            <div class="tenant-card-header">
-              <span class="tenant-card-name">${limits.icon} ${t.name}</span>
-              <span class="status-badge" style="background: ${statusColor}20; color: ${statusColor}; border: 1px solid ${statusColor}40">
-                ${t.status}
-              </span>
-            </div>
-            <div style="margin-bottom: 12px;">
-              <span class="status-badge" style="background: ${limits.color}20; color: ${limits.color}; border: 1px solid ${limits.color}40">
-                ${limits.label}
-              </span>
-              <span class="tag" style="margin-left: 4px;">🌍 ${t.region}</span>
-            </div>
-            <div class="tenant-card-meta">
-              <div class="tenant-card-meta-item">
-                Domain <span>${t.domain}</span>
-              </div>
-              <div class="tenant-card-meta-item">
-                Users <span>${t.users}</span>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    render();
+    // Tenant selection is no longer needed — tenant is auto-detected from login email
+    window.location.href = 'index.html';
   </script>
 </body>
 </html>

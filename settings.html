@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Settings & Configurations</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Settings & Configurations</h1>
+        <p class="page-subtitle">Configure AI APIs, agent mappings, integrations, and environment settings</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-outline btn-sm" onclick="resetDefaults()">Reset to Default</button>
+        <button class="btn btn-primary" onclick="saveAllSettings()">💾 Save Config</button>
+      </div>
+    </div>
+
+    <!-- Section 1: AI API Configuration -->
+    <div class="card settings-section">
+      <div class="card-header">
+        <h3 class="card-title">🔑 AI API Configuration</h3>
+      </div>
+      <div id="apiKeysContainer"></div>
+    </div>
+
+    <!-- Section 2: Agent API Mapping -->
+    <div class="card settings-section">
+      <div class="card-header">
+        <h3 class="card-title">🤖 Agent API Mapping</h3>
+        <span class="status-badge" style="background:var(--info)20;color:var(--info);border:1px solid var(--info)40" id="agentCount"></span>
+      </div>
+      <div style="margin-bottom:12px;display:grid;grid-template-columns:180px 1fr 100px 120px 100px;gap:12px;padding:0 16px;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">
+        <span>Agent</span><span>API Provider</span><span>Token Limit</span><span>Temperature</span><span>Max Tokens</span>
+      </div>
+      <div id="agentMappingContainer"></div>
+    </div>
+
+    <!-- Section 3: Token Usage Control -->
+    <div class="card settings-section">
+      <div class="card-header">
+        <h3 class="card-title">📊 Token Usage Control</h3>
+      </div>
+      <div id="tokenUsageContainer"></div>
+    </div>
+
+    <!-- Grid: Git + Code Review side by side -->
+    <div class="grid grid-2">
+      <!-- Section 4: Git Integration -->
+      <div class="card settings-section">
+        <div class="card-header">
+          <h3 class="card-title">🔗 Git Integration</h3>
+        </div>
+        <div id="gitContainer"></div>
+      </div>
+
+      <!-- Section 5: Code Review Settings -->
+      <div class="card settings-section">
+        <div class="card-header">
+          <h3 class="card-title">🔍 Code Review Settings</h3>
+        </div>
+        <div id="codeReviewContainer"></div>
+      </div>
+    </div>
+
+    <!-- Grid: Environment + Security side by side -->
+    <div class="grid grid-2">
+      <!-- Section 6: Environment Settings -->
+      <div class="card settings-section">
+        <div class="card-header">
+          <h3 class="card-title">🌍 Environment Settings</h3>
+        </div>
+        <div id="envContainer"></div>
+      </div>
+
+      <!-- Section 7: Security & Access -->
+      <div class="card settings-section">
+        <div class="card-header">
+          <h3 class="card-title">🛡️ Security & Access</h3>
+        </div>
+        <div id="securityContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('settings');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+
+    // ===== DEFAULT SETTINGS =====
+    const DEFAULT_SETTINGS = {
+      apiKeys: {
+        openai:  { key: '', enabled: false },
+        gemini:  { key: '', enabled: false },
+        claude:  { key: '', enabled: false }
+      },
+      agentMappings: {},
+      tokenUsage: {
+        globalLimit: 500000,
+        perAgentOverride: false,
+        rateLimit: 60,
+        currentUsage: 312400
+      },
+      git: {
+        provider: 'github',
+        username: '',
+        repoUrl: '',
+        defaultBranch: 'main',
+        pat: '',
+        autoPush: false,
+        prCreation: false
+      },
+      codeReview: {
+        autoReview: true,
+        reviewApi: 'openai',
+        styleCheck: true,
+        securityScan: true,
+        performanceCheck: false,
+        minScore: 80
+      },
+      environment: {
+        region: 'AP-SOUTH-1',
+        envType: 'dev',
+        debugMode: false
+      },
+      security: {
+        apiKeyEncryption: true,
+        roleAccess: 'Admin',
+        auditLogs: true
+      }
+    };
+
+    // ===== LOAD / SAVE =====
+    function loadSettings() {
+      const stored = NexusStore.getSettings();
+      if (!stored) return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      // Merge defaults for any missing keys
+      const merged = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      Object.keys(stored).forEach(k => {
+        if (typeof stored[k] === 'object' && !Array.isArray(stored[k]) && stored[k] !== null) {
+          merged[k] = { ...merged[k], ...stored[k] };
+        } else {
+          merged[k] = stored[k];
+        }
+      });
+      return merged;
+    }
+
+    let CFG = loadSettings();
+
+    function saveAllSettings() {
+      collectFormState();
+      NexusStore.setSettings(CFG);
+      NexusStore.addLog({ type: 'SYSTEM', message: 'Workspace settings saved', agent: 'system' });
+      showToast('All settings saved successfully', 'success');
+    }
+
+    function resetDefaults() {
+      if (!confirm('Reset all settings to defaults? This cannot be undone.')) return;
+      NexusStore.clearSettings();
+      CFG = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+      renderAll();
+      showToast('Settings reset to defaults', 'info');
+    }
+
+    // ===== COLLECT FORM STATE =====
+    function collectFormState() {
+      // API Keys
+      ['openai','gemini','claude'].forEach(p => {
+        const inp = document.getElementById('apikey_' + p);
+        const tog = document.getElementById('toggle_' + p);
+        if (inp) CFG.apiKeys[p].key = inp.value;
+        if (tog) CFG.apiKeys[p].enabled = tog.checked;
+      });
+      // Agent mappings
+      const agents = NexusStore.getAgents();
+      agents.forEach(a => {
+        const prov = document.getElementById('amap_prov_' + a.agent_id);
+        const tokLim = document.getElementById('amap_tok_' + a.agent_id);
+        const temp = document.getElementById('amap_temp_' + a.agent_id);
+        const maxTok = document.getElementById('amap_max_' + a.agent_id);
+        if (prov) {
+          CFG.agentMappings[a.agent_id] = {
+            agent_name: a.agent_name,
+            api_provider: prov.value,
+            token_limit: parseInt(tokLim?.value) || 4096,
+            temperature: parseFloat(temp?.value) || 0.7,
+            max_tokens: parseInt(maxTok?.value) || 2048
+          };
+        }
+      });
+      // Token usage
+      const gl = document.getElementById('globalTokenLimit');
+      const rl = document.getElementById('rateLimit');
+      const pao = document.getElementById('toggle_perAgentOverride');
+      if (gl) CFG.tokenUsage.globalLimit = parseInt(gl.value) || 500000;
+      if (rl) CFG.tokenUsage.rateLimit = parseInt(rl.value) || 60;
+      if (pao) CFG.tokenUsage.perAgentOverride = pao.checked;
+      // Git
+      CFG.git.provider = document.getElementById('gitProvider')?.value || 'github';
+      CFG.git.username = document.getElementById('gitUsername')?.value || '';
+      CFG.git.repoUrl = document.getElementById('gitRepoUrl')?.value || '';
+      CFG.git.defaultBranch = document.getElementById('gitBranch')?.value || 'main';
+      CFG.git.pat = document.getElementById('gitPat')?.value || '';
+      CFG.git.autoPush = document.getElementById('toggle_autoPush')?.checked || false;
+      CFG.git.prCreation = document.getElementById('toggle_prCreation')?.checked || false;
+      // Code Review
+      CFG.codeReview.autoReview = document.getElementById('toggle_autoReview')?.checked || false;
+      CFG.codeReview.reviewApi = document.getElementById('reviewApi')?.value || 'openai';
+      CFG.codeReview.styleCheck = document.getElementById('chk_style')?.checked || false;
+      CFG.codeReview.securityScan = document.getElementById('chk_security')?.checked || false;
+      CFG.codeReview.performanceCheck = document.getElementById('chk_performance')?.checked || false;
+      CFG.codeReview.minScore = parseInt(document.getElementById('minScore')?.value) || 80;
+      // Environment
+      CFG.environment.region = document.getElementById('envRegion')?.value || 'AP-SOUTH-1';
+      CFG.environment.envType = document.getElementById('envType')?.value || 'dev';
+      CFG.environment.debugMode = document.getElementById('toggle_debugMode')?.checked || false;
+      // Security
+      CFG.security.apiKeyEncryption = document.getElementById('toggle_apiEncrypt')?.checked || false;
+      CFG.security.roleAccess = document.getElementById('secRoleAccess')?.value || 'Admin';
+      CFG.security.auditLogs = document.getElementById('toggle_auditLogs')?.checked || false;
+    }
+
+    // ===== ESCAPING =====
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // ===== TOGGLE HELPER =====
+    function tog(id, checked, onchange) {
+      return `<label class="toggle-switch"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} ${onchange ? `onchange="${onchange}"` : ''}><span class="toggle-slider"></span></label>`;
+    }
+
+    // ===== STATUS INDICATOR =====
+    function apiStatus(key, enabled) {
+      if (enabled && key) return `<span class="status-badge" style="background:#10b98120;color:#10b981;border:1px solid #10b98140">Active</span>`;
+      if (!key) return `<span class="status-badge" style="background:#6b728020;color:#6b7280;border:1px solid #6b728040">Not Set</span>`;
+      return `<span class="status-badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">Disabled</span>`;
+    }
+
+    // ===== SECTION 1: AI API KEYS =====
+    function renderApiKeys() {
+      const providers = [
+        { id: 'openai', label: 'OpenAI', icon: '🟢' },
+        { id: 'gemini', label: 'Google Gemini', icon: '🔵' },
+        { id: 'claude', label: 'Anthropic Claude', icon: '🟣' }
+      ];
+      document.getElementById('apiKeysContainer').innerHTML = providers.map(p => {
+        const cfg = CFG.apiKeys[p.id];
+        return `
+          <div class="api-key-row">
+            <span style="font-size:16px">${p.icon}</span>
+            <span style="min-width:130px;font-size:13px;font-weight:600;color:var(--text-primary)">${p.label} API Key</span>
+            <input type="password" class="form-input" id="apikey_${p.id}" value="${esc(cfg.key)}" placeholder="sk-..." style="flex:1">
+            ${tog('toggle_' + p.id, cfg.enabled, 'updateApiStatus()')}
+            <span id="status_${p.id}">${apiStatus(cfg.key, cfg.enabled)}</span>
+            <button class="btn btn-outline btn-sm" onclick="testApiKey('${p.id}')">Test</button>
+          </div>`;
+      }).join('');
+    }
+
+    function updateApiStatus() {
+      ['openai','gemini','claude'].forEach(p => {
+        const key = document.getElementById('apikey_' + p)?.value;
+        const enabled = document.getElementById('toggle_' + p)?.checked;
+        document.getElementById('status_' + p).innerHTML = apiStatus(key, enabled);
+      });
+    }
+
+    function testApiKey(provider) {
+      const key = document.getElementById('apikey_' + provider)?.value;
+      if (!key) { showToast('API key not configured for ' + provider, 'error'); return; }
+      const btn = event.target;
+      btn.disabled = true; btn.textContent = 'Testing...';
+      setTimeout(() => {
+        const success = key.length >= 8;
+        if (success) {
+          showToast(provider.charAt(0).toUpperCase() + provider.slice(1) + ' API key verified successfully', 'success');
+        } else {
+          showToast(provider.charAt(0).toUpperCase() + provider.slice(1) + ' API key validation failed — key too short', 'error');
+        }
+        btn.disabled = false; btn.textContent = 'Test';
+      }, 1200);
+    }
+
+    // ===== SECTION 2: AGENT API MAPPING =====
+    function renderAgentMappings() {
+      const agents = NexusStore.getAgents();
+      document.getElementById('agentCount').textContent = agents.length + ' agents';
+      document.getElementById('agentMappingContainer').innerHTML = agents.map(a => {
+        const m = CFG.agentMappings[a.agent_id] || { api_provider: 'openai', token_limit: 4096, temperature: 0.7, max_tokens: 2048 };
+        return `
+          <div class="agent-map-row">
+            <span style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(a.agent_name)}">${esc(a.agent_name)}</span>
+            <select class="form-select" id="amap_prov_${a.agent_id}" style="padding:7px 10px;font-size:12px">
+              <option value="openai" ${m.api_provider==='openai'?'selected':''}>🟢 OpenAI</option>
+              <option value="gemini" ${m.api_provider==='gemini'?'selected':''}>🔵 Gemini</option>
+              <option value="claude" ${m.api_provider==='claude'?'selected':''}>🟣 Claude</option>
+            </select>
+            <input type="number" class="form-input" id="amap_tok_${a.agent_id}" value="${m.token_limit}" min="256" max="128000" style="padding:7px 10px;font-size:12px" title="Token Limit">
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="range" id="amap_temp_${a.agent_id}" min="0" max="1" step="0.1" value="${m.temperature}" oninput="document.getElementById('tv_${a.agent_id}').textContent=this.value" style="flex:1">
+              <span id="tv_${a.agent_id}" style="font-size:11px;color:var(--text-muted);min-width:24px;text-align:right">${m.temperature}</span>
+            </div>
+            <input type="number" class="form-input" id="amap_max_${a.agent_id}" value="${m.max_tokens}" min="256" max="32000" style="padding:7px 10px;font-size:12px" title="Max Tokens">
+          </div>`;
+      }).join('');
+    }
+
+    // ===== SECTION 3: TOKEN USAGE =====
+    function renderTokenUsage() {
+      const tu = CFG.tokenUsage;
+      const usagePct = Math.round((tu.currentUsage / tu.globalLimit) * 100);
+      const level = usagePct >= 90 ? 'critical' : usagePct >= 80 ? 'high' : usagePct >= 50 ? 'medium' : 'low';
+      const warn = usagePct >= 80;
+      document.getElementById('tokenUsageContainer').innerHTML = `
+        <div class="grid grid-3" style="margin-bottom:20px">
+          <div class="stat-card">
+            <span class="stat-label">Current Usage</span>
+            <span class="stat-value" style="color:${warn?'var(--warning)':'var(--text-primary)'}">${tu.currentUsage.toLocaleString()}</span>
+            <span class="stat-change ${warn?'down':'up'}">${usagePct}% of limit</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Global Limit</span>
+            <span class="stat-value">${tu.globalLimit.toLocaleString()}</span>
+            <span class="stat-change">tokens per project</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Rate Limit</span>
+            <span class="stat-value">${tu.rateLimit}</span>
+            <span class="stat-change">requests / minute</span>
+          </div>
+        </div>
+        ${warn ? `<div style="padding:12px 16px;background:var(--warning)10;border:1px solid var(--warning)40;border-radius:var(--radius);margin-bottom:16px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:16px">⚠️</span>
+          <span style="font-size:13px;color:var(--warning);font-weight:500">Token usage is at ${usagePct}% — approaching the global limit. Consider increasing the limit or optimizing agent token consumption.</span>
+        </div>` : ''}
+        <div class="resource-gauge" style="margin-bottom:20px">
+          <div class="resource-gauge-header">
+            <span class="resource-gauge-label">📊 Token Consumption</span>
+            <span class="resource-gauge-value">${tu.currentUsage.toLocaleString()} / ${tu.globalLimit.toLocaleString()}</span>
+          </div>
+          <div class="resource-gauge-bar"><div class="resource-gauge-fill ${level}" style="width:${usagePct}%"></div></div>
+        </div>
+        <div class="settings-field">
+          <span class="settings-field-label">Global Token Limit</span>
+          <div class="settings-field-input"><input type="number" class="form-input" id="globalTokenLimit" value="${tu.globalLimit}" min="10000" step="10000"></div>
+        </div>
+        <div class="settings-field">
+          <span class="settings-field-label">Per-Agent Override</span>
+          <div class="settings-field-input" style="display:flex;align-items:center;gap:10px">
+            ${tog('toggle_perAgentOverride', tu.perAgentOverride)}
+            <span style="font-size:12px;color:var(--text-muted)">Allow individual agents to exceed global limit</span>
+          </div>
+        </div>
+        <div class="settings-field">
+          <span class="settings-field-label">Rate Limit (req/min)</span>
+          <div class="settings-field-input"><input type="number" class="form-input" id="rateLimit" value="${tu.rateLimit}" min="1" max="600"></div>
+        </div>`;
+    }
+
+    // ===== SECTION 4: GIT INTEGRATION =====
+    function renderGit() {
+      const g = CFG.git;
+      document.getElementById('gitContainer').innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Git Provider</label>
+          <select class="form-select" id="gitProvider">
+            <option value="github" ${g.provider==='github'?'selected':''}>GitHub</option>
+            <option value="gitlab" ${g.provider==='gitlab'?'selected':''}>GitLab</option>
+            <option value="bitbucket" ${g.provider==='bitbucket'?'selected':''}>Bitbucket</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Git Username / ID</label>
+          <input type="text" class="form-input" id="gitUsername" value="${esc(g.username)}" placeholder="your-username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repository URL</label>
+          <input type="text" class="form-input" id="gitRepoUrl" value="${esc(g.repoUrl)}" placeholder="https://github.com/org/repo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Default Branch</label>
+          <select class="form-select" id="gitBranch">
+            <option value="main" ${g.defaultBranch==='main'?'selected':''}>main</option>
+            <option value="dev" ${g.defaultBranch==='dev'?'selected':''}>dev</option>
+            <option value="develop" ${g.defaultBranch==='develop'?'selected':''}>develop</option>
+            <option value="master" ${g.defaultBranch==='master'?'selected':''}>master</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Personal Access Token</label>
+          <input type="password" class="form-input" id="gitPat" value="${esc(g.pat)}" placeholder="ghp_...">
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">Auto Push after Code Review</div>
+            <div class="toggle-row-sub">Automatically push approved code to repository</div>
+          </div>
+          ${tog('toggle_autoPush', g.autoPush)}
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">Enable PR Creation</div>
+            <div class="toggle-row-sub">Create pull requests for reviewed changes</div>
+          </div>
+          ${tog('toggle_prCreation', g.prCreation)}
+        </div>`;
+    }
+
+    // ===== SECTION 5: CODE REVIEW =====
+    function renderCodeReview() {
+      const cr = CFG.codeReview;
+      document.getElementById('codeReviewContainer').innerHTML = `
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">Auto Review</div>
+            <div class="toggle-row-sub">Automatically review code when tasks complete</div>
+          </div>
+          ${tog('toggle_autoReview', cr.autoReview)}
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label class="form-label">Review API Provider</label>
+          <select class="form-select" id="reviewApi">
+            <option value="openai" ${cr.reviewApi==='openai'?'selected':''}>🟢 OpenAI</option>
+            <option value="gemini" ${cr.reviewApi==='gemini'?'selected':''}>🔵 Gemini</option>
+            <option value="claude" ${cr.reviewApi==='claude'?'selected':''}>🟣 Claude</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Review Rules</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label"><input type="checkbox" id="chk_style" ${cr.styleCheck?'checked':''}> Style Check</label>
+            <label class="checkbox-label"><input type="checkbox" id="chk_security" ${cr.securityScan?'checked':''}> Security Scan</label>
+            <label class="checkbox-label"><input type="checkbox" id="chk_performance" ${cr.performanceCheck?'checked':''}> Performance Check</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Minimum Score Threshold</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="number" class="form-input" id="minScore" value="${cr.minScore}" min="0" max="100" style="max-width:100px">
+            <span style="font-size:12px;color:var(--text-muted)">% (code must score above this to pass)</span>
+          </div>
+        </div>`;
+    }
+
+    // ===== SECTION 6: ENVIRONMENT =====
+    function renderEnvironment() {
+      const env = CFG.environment;
+      document.getElementById('envContainer').innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Deployment Region</label>
+          <select class="form-select" id="envRegion">
+            <option value="AP-SOUTH-1" ${env.region==='AP-SOUTH-1'?'selected':''}>🌍 AP-SOUTH-1 (Mumbai)</option>
+            <option value="US-EAST-1" ${env.region==='US-EAST-1'?'selected':''}>🌍 US-EAST-1 (Virginia)</option>
+            <option value="EU-WEST-1" ${env.region==='EU-WEST-1'?'selected':''}>🌍 EU-WEST-1 (Ireland)</option>
+            <option value="AP-SOUTHEAST-1" ${env.region==='AP-SOUTHEAST-1'?'selected':''}>🌍 AP-SOUTHEAST-1 (Singapore)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Environment Type</label>
+          <select class="form-select" id="envType">
+            <option value="dev" ${env.envType==='dev'?'selected':''}>Development</option>
+            <option value="staging" ${env.envType==='staging'?'selected':''}>Staging</option>
+            <option value="prod" ${env.envType==='prod'?'selected':''}>Production</option>
+          </select>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">Debug Mode</div>
+            <div class="toggle-row-sub">Enable verbose logging and debug output</div>
+          </div>
+          ${tog('toggle_debugMode', env.debugMode)}
+        </div>`;
+    }
+
+    // ===== SECTION 7: SECURITY =====
+    function renderSecurity() {
+      const sec = CFG.security;
+      document.getElementById('securityContainer').innerHTML = `
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">API Key Encryption</div>
+            <div class="toggle-row-sub">Encrypt stored API keys at rest</div>
+          </div>
+          ${tog('toggle_apiEncrypt', sec.apiKeyEncryption)}
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label class="form-label">Role-Based Access</label>
+          <select class="form-select" id="secRoleAccess">
+            <option value="Admin" ${sec.roleAccess==='Admin'?'selected':''}>Admin — Full access</option>
+            <option value="Developer" ${sec.roleAccess==='Developer'?'selected':''}>Developer — Read + Execute</option>
+            <option value="Operator" ${sec.roleAccess==='Operator'?'selected':''}>Operator — Execute only</option>
+            <option value="Viewer" ${sec.roleAccess==='Viewer'?'selected':''}>Viewer — Read only</option>
+          </select>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">Audit Logs</div>
+            <div class="toggle-row-sub">Log all configuration changes and API usage</div>
+          </div>
+          ${tog('toggle_auditLogs', sec.auditLogs)}
+        </div>`;
+    }
+
+    // ===== RENDER ALL =====
+    function renderAll() {
+      renderApiKeys();
+      renderAgentMappings();
+      renderTokenUsage();
+      renderGit();
+      renderCodeReview();
+      renderEnvironment();
+      renderSecurity();
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>

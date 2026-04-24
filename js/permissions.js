@@ -16,10 +16,10 @@ const NexusPermissions = {
 
   // Page-level access matrix: role → allowed pages
   roleAccess: {
-    Admin: ['dashboard','requirements','pipeline','system-flow','llm_bridge','backlog','test-cases','agents','tasks','escalations','decisions','gates','monitoring','tenants','subscription','resources','tenant-users','code-review','incidents','command-center','ai-safety','devops','integrations','notifications','compliance','observability'],
-    Developer: ['dashboard','requirements','pipeline','system-flow','llm_bridge','backlog','test-cases','agents','tasks','escalations','decisions','gates','monitoring','code-review','command-center','devops','notifications','observability'],
-    Operator: ['dashboard','pipeline','system-flow','monitoring','tasks','escalations','tenants','subscription','resources','tenant-users','incidents','devops','notifications','compliance','observability'],
-    Viewer: ['dashboard','monitoring','decisions','notifications','observability']
+    Admin: ['dashboard','requirements','pipeline','system-flow','llm_bridge','backlog','test-cases','agents','tasks','escalations','decisions','gates','monitoring','tenants','subscription','resources','tenant-users','code-review','incidents','command-center','ai-safety','devops','integrations','notifications','compliance','observability','settings'],
+    Developer: ['dashboard','requirements','pipeline','system-flow','llm_bridge','backlog','test-cases','agents','tasks','escalations','decisions','gates','monitoring','code-review','command-center','devops','notifications','observability','settings'],
+    Operator: ['dashboard','pipeline','system-flow','monitoring','tasks','escalations','tenants','subscription','resources','tenant-users','incidents','devops','notifications','compliance','observability','settings'],
+    Viewer: ['dashboard','monitoring','decisions','notifications','observability','settings']
   },
 
   // Feature-level permissions

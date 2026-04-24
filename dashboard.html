@@ -87,21 +87,40 @@
     seedNexusData();
     createNavigation('dashboard');
     
-    injectTenantInfoCard();
+    // Only show tenant info card for tenant users
+    if (TenantState.isTenantUser()) {
+      injectTenantInfoCard();
+    }
 
     function render() {
       const projects = NexusStore.getProjects();
       const agents = NexusStore.getAgents();
       const escalations = NexusStore.getEscalations();
       const decisions = NexusStore.getDecisions();
+      const role = TenantState.getRole();
+      const isAdmin = TenantState.isSystemAdmin();
 
-      // Tenant-aware stats
-      const tenant = TenantState.getCurrentTenant();
-      const tProjects = tenant ? tenant.projects : projects.length;
-      const tAgents = tenant ? tenant.agents : agents.filter(a=>a.status==='ACTIVE').length;
-      const tApiUsage = tenant ? tenant.api_usage : 0;
-      const tEscalations = tenant ? (tenant.escalations || 0) : escalations.filter(e=>e.status==='PENDING').length;
-      const limits = tenant ? TenantState.getSubscriptionLimits(tenant.subscription) : null;
+      let tProjects, tAgents, tApiUsage, tEscalations, limits, contextLabel;
+
+      if (isAdmin) {
+        // SYSTEM ADMIN — aggregate all tenants
+        const allTenants = TenantState.getTenants();
+        tProjects = allTenants.reduce((sum, t) => sum + (t.projects || 0), 0);
+        tAgents = allTenants.reduce((sum, t) => sum + (t.agents || 0), 0);
+        tApiUsage = allTenants.reduce((sum, t) => sum + (t.api_usage || 0), 0);
+        tEscalations = allTenants.reduce((sum, t) => sum + (t.escalations || 0), 0);
+        limits = null;
+        contextLabel = 'All Tenants';
+      } else {
+        // TENANT USER — scoped to their tenant
+        const tenant = TenantState.getCurrentTenant();
+        tProjects = tenant ? tenant.projects : projects.length;
+        tAgents = tenant ? tenant.agents : agents.filter(a=>a.status==='ACTIVE').length;
+        tApiUsage = tenant ? tenant.api_usage : 0;
+        tEscalations = tenant ? (tenant.escalations || 0) : escalations.filter(e=>e.status==='PENDING').length;
+        limits = tenant ? TenantState.getSubscriptionLimits(tenant.subscription) : null;
+        contextLabel = tenant ? tenant.name : 'System';
+      }
 
       document.getElementById('statsGrid').innerHTML = `
         <div class="stat-card">
@@ -122,9 +141,48 @@
         <div class="stat-card">
           <span class="stat-label">Escalations</span>
           <span class="stat-value" style="color: ${tEscalations > 0 ? 'var(--warning)' : 'var(--text-primary)'}">${tEscalations}</span>
-          <span class="stat-change">${tenant ? tenant.name : 'System'}</span>
+          <span class="stat-change">${tEscalations > 0 ? 'Needs attention' : 'All clear'}</span>
         </div>
       `;
+
+      // Admin: show tenant overview table
+      if (isAdmin) {
+        const allTenants = TenantState.getTenants();
+        let adminSection = document.getElementById('adminTenantSection');
+        if (!adminSection) {
+          adminSection = document.createElement('div');
+          adminSection.id = 'adminTenantSection';
+          adminSection.className = 'card';
+          adminSection.style.marginBottom = '24px';
+          document.getElementById('statsGrid').parentNode.insertBefore(adminSection, document.getElementById('projectsList'));
+        }
+        adminSection.innerHTML = `
+          <div class="card-header">
+            <h3 class="card-title">Tenant Overview</h3>
+            <span class="status-badge" style="background:#a855f720;color:#a855f7;border:1px solid #a855f740">System Admin View</span>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Tenant</th><th>Domain</th><th>Plan</th><th>Status</th><th>Users</th><th>Agents</th><th>API Usage</th></tr></thead>
+              <tbody>
+                ${allTenants.map(t => {
+                  const pl = TenantState.getSubscriptionLimits(t.subscription);
+                  const sc = t.status === 'ACTIVE' ? '#10b981' : t.status === 'SUSPENDED' ? '#ef4444' : '#f59e0b';
+                  return `<tr>
+                    <td style="font-weight:600;color:var(--text-primary)">${t.name}</td>
+                    <td style="font-size:12px">${t.domain}</td>
+                    <td><span class="status-badge" style="background:${pl.color}20;color:${pl.color};border:1px solid ${pl.color}40">${pl.icon} ${pl.label}</span></td>
+                    <td><span class="status-badge" style="background:${sc}20;color:${sc};border:1px solid ${sc}40">${t.status}</span></td>
+                    <td>${t.users}</td>
+                    <td>${t.agents}</td>
+                    <td>${(t.api_usage || 0).toLocaleString()}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
 
       // Projects
       if (projects.length === 0) {

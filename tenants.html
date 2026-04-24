@@ -56,7 +56,19 @@
   <script src="js/app.js"></script>
   <script src="js/nav.js"></script>
   <script>
-    seedNexusData(); createNavigation('tenants'); 
+    seedNexusData(); createNavigation('tenants');
+
+    // SYSTEM_ADMIN only page
+    if (!TenantState.isSystemAdmin()) {
+      document.getElementById('app').innerHTML = `
+        <div class="empty-state" style="margin-top:80px">
+          <div class="empty-state-icon">🔒</div>
+          <h3 class="empty-state-title">Access Denied</h3>
+          <p class="empty-state-text">Tenant administration is only available to System Admins.</p>
+          <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+        </div>`;
+      return;
+    }
 
     function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 

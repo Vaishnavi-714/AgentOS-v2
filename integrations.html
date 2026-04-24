@@ -45,8 +45,11 @@
   <script>
     seedNexusData();
     createNavigation('integrations');
-    NexusPermissions.enforcePageAccess('integrations');
-    injectTenantInfoCard();
+    // Admin-only page guard
+    if (!TenantState.isSystemAdmin()) {
+      NexusPermissions.enforcePageAccess('integrations');
+    }
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
 
     function seedIntegrations() {
       if (NexusStore.getIntegrations().length > 0) return;

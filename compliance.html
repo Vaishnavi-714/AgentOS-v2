@@ -54,8 +54,11 @@
   <script>
     seedNexusData();
     createNavigation('compliance');
-    NexusPermissions.enforcePageAccess('compliance');
-    injectTenantInfoCard();
+    // Admin-only page guard
+    if (!TenantState.isSystemAdmin()) {
+      NexusPermissions.enforcePageAccess('compliance');
+    }
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
 
     let currentTab = 'controls';
 

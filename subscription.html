@@ -41,13 +41,51 @@
   <script src="js/app.js"></script>
   <script src="js/nav.js"></script>
   <script>
-    seedNexusData(); createNavigation('subscription'); 
+    seedNexusData(); createNavigation('subscription');
+
+    // SYSTEM_ADMIN only page
+    if (!TenantState.isSystemAdmin()) {
+      document.getElementById('app').innerHTML = `
+        <div class="empty-state" style="margin-top:80px">
+          <div class="empty-state-icon">🔒</div>
+          <h3 class="empty-state-title">Access Denied</h3>
+          <p class="empty-state-text">Subscription management is only available to System Admins.</p>
+          <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+        </div>`;
+    } else {
+
     let pendingPlan = null;
     const planOrder = ['BASIC','STANDARD','PREMIUM'];
     const prices = {BASIC:'$29/mo',STANDARD:'$99/mo',PREMIUM:'$299/mo'};
 
+    // Admin picks which tenant to manage
+    function getActiveTenant() {
+      const sel = document.getElementById('adminSubTenantSelect')?.value;
+      if (sel) return TenantState.getTenants().find(t => t.tenant_id === sel) || TenantState.getTenants()[0];
+      return TenantState.getTenants()[0];
+    }
+
     function render() {
-      const t = TenantState.getCurrentTenant(); if(!t) return;
+      // Inject tenant picker for admin
+      let picker = document.getElementById('adminSubPicker');
+      if (!picker) {
+        picker = document.createElement('div');
+        picker.id = 'adminSubPicker';
+        picker.style.cssText = 'margin-bottom:16px;display:flex;align-items:center;gap:12px';
+        const appEl = document.getElementById('app');
+        appEl.insertBefore(picker, appEl.querySelector('.card, #currentPlanCard')?.parentNode || appEl.children[1]);
+      }
+      const allTenants = TenantState.getTenants();
+      const curT = getActiveTenant();
+      picker.innerHTML = `
+        <label style="font-size:13px;font-weight:600;color:var(--text-secondary)">Manage tenant:</label>
+        <select id="adminSubTenantSelect" class="form-select" style="max-width:220px;padding:6px 10px;font-size:13px" onchange="render()">
+          ${allTenants.map(at => `<option value="${at.tenant_id}" ${at.tenant_id === curT.tenant_id ? 'selected' : ''}>${at.name}</option>`).join('')}
+        </select>
+        <span class="status-badge" style="background:#a855f720;color:#a855f7;border:1px solid #a855f740">Admin View</span>
+      `;
+
+      const t = curT; if(!t) return;
       const cl = TenantState.getSubscriptionLimits(t.subscription);
       document.getElementById('currentPlanCard').innerHTML = `
         <div class="card-header"><h3 class="card-title">${cl.icon} Current: ${cl.label}</h3>
@@ -91,7 +129,7 @@
     }
 
     function requestChange(plan) {
-      const t = TenantState.getCurrentTenant(); pendingPlan = plan;
+      const t = getActiveTenant(); pendingPlan = plan;
       const nl = TenantState.getSubscriptionLimits(plan);
       const isUp = planOrder.indexOf(plan) > planOrder.indexOf(t.subscription);
       document.getElementById('confirmTitle').textContent = isUp ? '⬆ Upgrade' : '⬇ Downgrade';
@@ -104,12 +142,13 @@
 
     function confirmPlanChange() {
       if(!pendingPlan) return;
-      TenantState.updateTenant(TenantState.getCurrentTenant().tenant_id, {subscription:pendingPlan});
+      TenantState.updateTenant(getActiveTenant().tenant_id, {subscription:pendingPlan});
       document.getElementById('confirmModal').classList.remove('show');
       showToast('Plan updated to '+TenantState.getSubscriptionLimits(pendingPlan).label,'success');
       pendingPlan=null; render();
     }
     render();
+    } // end admin else
   </script>
 </body>
 </html>

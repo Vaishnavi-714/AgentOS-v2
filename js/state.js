@@ -105,32 +105,56 @@ const TenantState = {
     localStorage.setItem(this._storageKey, JSON.stringify(tenants));
   },
 
+  // --- Role / Auth helpers ---
+  getRole() {
+    return localStorage.getItem('nexus_role') || null;
+  },
+  isSystemAdmin() {
+    return this.getRole() === 'SYSTEM_ADMIN';
+  },
+  isTenantUser() {
+    return this.getRole() === 'TENANT_USER';
+  },
+  isLoggedIn() {
+    return localStorage.getItem('nexus_isLoggedIn') === 'true';
+  },
+  loginAsSystemAdmin(email) {
+    localStorage.setItem('nexus_role', 'SYSTEM_ADMIN');
+    localStorage.setItem('nexus_isLoggedIn', 'true');
+    localStorage.setItem('nexus_login_email', email);
+    localStorage.removeItem(this._currentKey);
+  },
+  loginAsTenantUser(email, tenant) {
+    localStorage.setItem('nexus_role', 'TENANT_USER');
+    localStorage.setItem('nexus_isLoggedIn', 'true');
+    localStorage.setItem('nexus_login_email', email);
+    this.setCurrentTenant(tenant);
+  },
+  logoutSession() {
+    localStorage.removeItem('nexus_role');
+    localStorage.removeItem('nexus_isLoggedIn');
+    localStorage.removeItem('nexus_login_email');
+    localStorage.removeItem(this._currentKey);
+    localStorage.removeItem('selectedTenantId');
+  },
+  getLoginEmail() {
+    return localStorage.getItem('nexus_login_email') || '';
+  },
+
   getCurrentTenant() {
+    // System admins have no single tenant
+    if (this.isSystemAdmin()) return null;
     try {
       const stored = localStorage.getItem(this._currentKey);
       if (stored) return JSON.parse(stored);
-      // fallback so UI never breaks
-      const tenants = this.getTenants();
-      const fallback = tenants[0];
-      if (fallback) {
-        localStorage.setItem(this._currentKey, JSON.stringify(fallback));
-      }
-      return fallback;
+      return null;
     } catch {
-      return this.getTenants()[0] || null;
+      return null;
     }
   },
 
   setCurrentTenant(tenant) {
     localStorage.setItem(this._currentKey, JSON.stringify(tenant));
-  },
-
-  switchTenant(tenantId) {
-    const tenant = this.getTenants().find(t => t.tenant_id === tenantId);
-    if (tenant) {
-      this.setCurrentTenant(tenant);
-      window.location.reload();
-    }
   },
 
   addTenant(tenant) {
@@ -228,6 +252,11 @@ const TenantState = {
     localStorage.removeItem(this._currentKey);
     localStorage.removeItem('nexus_tenant_users');
     this.init();
+  },
+
+  // Find tenant by email domain
+  findTenantByDomain(domain) {
+    return this.getTenants().find(t => t.domain === domain) || null;
   }
 };
 

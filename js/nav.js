@@ -1,19 +1,17 @@
 // NEXUS Navigation Component — shared across all pages
 function createNavigation(activePage) {
-  // Session protection: must be logged in AND have a tenant
+  // Session protection: must be logged in
   if (activePage !== 'login' && activePage !== 'landing') {
-    if (!NexusStore.isLoggedIn()) {
+    if (!TenantState.isLoggedIn()) {
       window.location.href = 'index.html';
-      return;
-    }
-    if (typeof TenantState !== 'undefined' && !TenantState.getCurrentTenant()) {
-      window.location.href = 'tenant-select.html';
       return;
     }
   }
 
   const user = NexusStore.getUser();
   const systemState = NexusStore.getSystemState();
+  const role = TenantState.getRole();
+  const isAdmin = TenantState.isSystemAdmin();
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', href: 'dashboard.html' },
@@ -37,14 +35,21 @@ function createNavigation(activePage) {
     { id: 'ai-safety', label: 'AI Safety', icon: '🛡️', href: 'ai-safety.html' }
   ];
 
-  const tenantNavItems = [
+  // Multi-Tenant admin items — only visible to SYSTEM_ADMIN
+  const tenantNavItems = isAdmin ? [
+    { id: 'admin-console', label: 'Admin Console', icon: '🛡️', href: 'admin-console.html' },
     { id: 'tenants', label: 'Tenants', icon: '🏢', href: 'tenants.html' },
     { id: 'subscription', label: 'Subscription', icon: '💎', href: 'subscription.html' },
     { id: 'resources', label: 'Resources', icon: '📦', href: 'resources.html' },
     { id: 'tenant-users', label: 'Users', icon: '👥', href: 'tenant-users.html' },
     { id: 'integrations', label: 'Integrations', icon: '🔗', href: 'integrations.html' },
     { id: 'compliance', label: 'Compliance', icon: '📑', href: 'compliance.html' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔', href: 'notifications.html' }
+    { id: 'notifications', label: 'Notifications', icon: '🔔', href: 'notifications.html' },
+    { id: 'settings', label: 'Settings', icon: '⚙️', href: 'settings.html' }
+  ] : [
+    { id: 'tenant-users', label: 'Users', icon: '👥', href: 'tenant-users.html' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔', href: 'notifications.html' },
+    { id: 'settings', label: 'Settings', icon: '⚙️', href: 'settings.html' }
   ];
 
   const pendingEscalations = NexusStore.getEscalations().filter(e => e.status === 'PENDING').length;
@@ -72,7 +77,7 @@ function createNavigation(activePage) {
           ${item.id === 'escalations' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
         </a>
       `).join('')}
-      <div class="nav-section-divider">Multi-Tenant</div>
+      <div class="nav-section-divider">${isAdmin ? 'Administration' : 'My Workspace'}</div>
       ${tenantNavItems.map(item => `
         <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}">
           <span class="nav-icon">${item.icon}</span>
@@ -94,22 +99,29 @@ function createNavigation(activePage) {
 
   document.body.prepend(nav);
 
-  // Show locked tenant label (NO dropdown — tenant is locked to session)
+  // Show tenant/role label (NO dropdown — tenant is locked to session)
   if (typeof TenantState !== 'undefined') {
     const navHeader = document.querySelector('.nav-header');
     if (navHeader) {
       const current = TenantState.getCurrentTenant();
-      if (current) {
-        const tenantLabel = document.createElement('div');
-        tenantLabel.className = 'tenant-switcher';
+      const tenantLabel = document.createElement('div');
+      tenantLabel.className = 'tenant-switcher';
+      if (isAdmin) {
+        tenantLabel.innerHTML = `
+          <label class="tenant-switcher-label">ROLE</label>
+          <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; padding: 6px 0;">
+            <span>🛡️</span> System Admin <span style="font-size: 11px; color: var(--text-muted);">🔒</span>
+          </div>
+        `;
+      } else if (current) {
         tenantLabel.innerHTML = `
           <label class="tenant-switcher-label">TENANT</label>
           <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; padding: 6px 0;">
             <span>🏢</span> ${current.name} <span style="font-size: 11px; color: var(--text-muted);">🔒</span>
           </div>
         `;
-        navHeader.appendChild(tenantLabel);
       }
+      navHeader.appendChild(tenantLabel);
     }
   }
 }
@@ -118,9 +130,8 @@ function handleLogout() {
   NexusStore.addLog({ type: 'AUTH', message: `${NexusStore.getUser()?.name} logged out`, agent: 'system' });
   NexusStore.logout();
   // Clear tenant session data
-  localStorage.removeItem('nexus_currentTenant');
-  localStorage.removeItem('selectedTenantId');
-  window.location.href = 'landing.html';
+  TenantState.logoutSession();
+  window.location.href = 'index.html';
 }
 
 // Project selector component for pages that need it

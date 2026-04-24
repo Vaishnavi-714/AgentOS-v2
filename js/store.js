@@ -204,5 +204,10 @@ const NexusStore = {
 
   // Check if seeded
   isSeeded() { return this.get('seeded') === true; },
-  markSeeded() { this.set('seeded', true); }
+  markSeeded() { this.set('seeded', true); },
+
+  // Settings & Configuration
+  getSettings() { return this.get('workspace_settings') || null; },
+  setSettings(s) { this.set('workspace_settings', s); },
+  clearSettings() { this.remove('workspace_settings'); }
 };

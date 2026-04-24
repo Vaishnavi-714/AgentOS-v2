@@ -23,12 +23,42 @@
   <script src="js/app.js"></script>
   <script src="js/nav.js"></script>
   <script>
-    seedNexusData(); createNavigation('resources'); injectTenantInfoCard();
+    seedNexusData(); createNavigation('resources');
+
+    // SYSTEM_ADMIN only page
+    if (!TenantState.isSystemAdmin()) {
+      document.getElementById('app').innerHTML = `
+        <div class="empty-state" style="margin-top:80px">
+          <div class="empty-state-icon">🔒</div>
+          <h3 class="empty-state-title">Access Denied</h3>
+          <p class="empty-state-text">Resource management is only available to System Admins.</p>
+          <a href="dashboard.html" class="btn btn-primary">Back to Dashboard</a>
+        </div>`;
+    } else {
 
     function getLevel(pct) { return pct>=90?'critical':pct>=70?'high':pct>=50?'medium':'low'; }
 
     function render() {
-      const t = TenantState.getCurrentTenant(); if(!t) return;
+      // Admin: pick which tenant to view
+      let picker = document.getElementById('adminResPicker');
+      if (!picker) {
+        picker = document.createElement('div');
+        picker.id = 'adminResPicker';
+        picker.style.cssText = 'margin-bottom:16px;display:flex;align-items:center;gap:12px';
+        const appEl = document.getElementById('app');
+        appEl.insertBefore(picker, document.getElementById('resourceContent') || appEl.children[1]);
+      }
+      const allTenants = TenantState.getTenants();
+      const sel = document.getElementById('adminResTenantSelect')?.value;
+      const t = sel ? allTenants.find(x => x.tenant_id === sel) || allTenants[0] : allTenants[0];
+      picker.innerHTML = `
+        <label style="font-size:13px;font-weight:600;color:var(--text-secondary)">View tenant:</label>
+        <select id="adminResTenantSelect" class="form-select" style="max-width:220px;padding:6px 10px;font-size:13px" onchange="render()">
+          ${allTenants.map(at => `<option value="${at.tenant_id}" ${at.tenant_id === t.tenant_id ? 'selected' : ''}>${at.name}</option>`).join('')}
+        </select>
+        <span class="status-badge" style="background:#a855f720;color:#a855f7;border:1px solid #a855f740">Admin View</span>
+      `;
+      if(!t) return;
       const limits = TenantState.getSubscriptionLimits(t.subscription);
       const computePct = 35 + Math.floor(Math.random()*25);
       const memoryPct = 40 + Math.floor(Math.random()*20);
@@ -113,6 +143,7 @@
       }).join('');
     }
     render();
+    } // end admin else
   </script>
 </body>
 </html>
