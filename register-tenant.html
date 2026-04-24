@@ -6,155 +6,1240 @@
   <title>NEXUS — Register Tenant</title>
   <meta name="description" content="Register a new tenant on the NEXUS Agent-OS multi-tenant platform.">
   <link rel="stylesheet" href="css/common.css">
+  <style>
+    /* ===== REGISTER TENANT — ADMIN CONSOLE LAYOUT ===== */
+    body { display: block; background: var(--bg-primary); }
+    .rt-wrap { display: flex; min-height: 100vh; }
+
+    /* --- Sidebar (matches admin-console.html) --- */
+    .rt-sidebar {
+      width: 260px; min-height: 100vh; background: var(--bg-secondary);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 200; overflow-y: auto;
+      transition: transform 0.3s;
+    }
+    .rt-sidebar-brand {
+      padding: 24px 20px 20px; border-bottom: 1px solid var(--border);
+    }
+    .rt-sidebar-brand-row { display: flex; align-items: center; gap: 10px; }
+    .rt-sidebar-brand-icon { font-size: 28px; }
+    .rt-sidebar-brand-text { font-size: 18px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
+    .rt-sidebar-brand-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+    .rt-sidebar-section {
+      padding: 18px 14px 6px; font-size: 10px; font-weight: 700;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px;
+    }
+    .rt-sidebar-nav { flex: 1; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+    .rt-nav-item {
+      display: flex; align-items: center; gap: 11px; padding: 10px 14px;
+      border-radius: var(--radius); cursor: pointer; font-size: 13px;
+      font-weight: 500; color: var(--text-secondary); transition: all 0.2s;
+      text-decoration: none; user-select: none;
+    }
+    .rt-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .rt-nav-item.active { background: var(--accent-bg); color: var(--accent); border-left: 3px solid var(--accent); }
+    .rt-nav-item .ni { font-size: 16px; width: 22px; text-align: center; }
+    .rt-sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+    .rt-sidebar-user { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .rt-sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .rt-sidebar-user-role { font-size: 11px; color: var(--text-muted); }
+    .rt-sidebar-logout {
+      width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all 0.2s;
+    }
+    .rt-sidebar-logout:hover { background: var(--danger); color: white; border-color: var(--danger); }
+
+    /* --- Main area --- */
+    .rt-main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* --- Topbar --- */
+    .rt-topbar {
+      height: 60px; background: var(--bg-secondary); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 28px; gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .rt-breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .rt-breadcrumb a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
+    .rt-breadcrumb a:hover { color: var(--accent); }
+    .rt-breadcrumb-sep { color: var(--text-muted); font-size: 11px; }
+    .rt-breadcrumb-current { color: var(--text-primary); font-weight: 600; }
+    .rt-topbar-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .rt-topbar-btn {
+      width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+      background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px; transition: all 0.2s; position: relative;
+    }
+    .rt-topbar-btn:hover { background: var(--bg-hover); border-color: var(--accent); }
+    .rt-topbar-btn .nd {
+      position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
+      background: var(--danger); border-radius: 50%; border: 2px solid var(--bg-secondary);
+    }
+    .rt-topbar-profile {
+      display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 6px;
+      border-radius: 20px; border: 1px solid var(--border); background: var(--bg-tertiary);
+      cursor: pointer; transition: all 0.2s; font-size: 12px; font-weight: 600; color: var(--text-primary);
+    }
+    .rt-topbar-profile:hover { border-color: var(--accent); }
+
+    /* --- Content --- */
+    .rt-content { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+    /* --- Progress Steps --- */
+    .rt-steps {
+      display: flex; align-items: center; justify-content: center; gap: 0;
+      margin-bottom: 28px; padding: 20px 24px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+    }
+    .rt-step {
+      display: flex; align-items: center; gap: 10px; padding: 8px 18px;
+      font-size: 13px; font-weight: 600; color: var(--text-muted); position: relative;
+      transition: color 0.3s;
+    }
+    .rt-step.active { color: var(--accent); }
+    .rt-step.done { color: var(--success); }
+    .rt-step-num {
+      width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; border: 2px solid var(--border); background: var(--bg-tertiary);
+      transition: all 0.3s; flex-shrink: 0;
+    }
+    .rt-step.active .rt-step-num { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .rt-step.done .rt-step-num { border-color: var(--success); background: var(--success); color: #fff; }
+    .rt-step-line {
+      width: 48px; height: 2px; background: var(--border); flex-shrink: 0;
+    }
+    .rt-step-line.done { background: var(--success); }
+    .rt-step-line.active { background: linear-gradient(90deg, var(--success), var(--accent)); }
+
+    /* --- 2-Column Layout --- */
+    .rt-layout { display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start; }
+
+    /* --- Form Cards --- */
+    .rt-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 0; margin-bottom: 20px; overflow: hidden; transition: border-color 0.2s;
+    }
+    .rt-card:hover { border-color: var(--border-light); }
+    .rt-card-header {
+      display: flex; align-items: center; gap: 12px; padding: 18px 22px;
+      border-bottom: 1px solid var(--border); background: var(--bg-tertiary);
+    }
+    .rt-card-icon { font-size: 20px; flex-shrink: 0; }
+    .rt-card-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+    .rt-card-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .rt-card-body { padding: 20px 22px; }
+    .rt-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* --- Form Enhancements --- */
+    .rt-fg { margin-bottom: 16px; position: relative; }
+    .rt-fg:last-child { margin-bottom: 0; }
+    .rt-label {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+      color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .rt-required { color: var(--danger); font-weight: 700; }
+    .rt-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .rt-input, .rt-select, .rt-textarea {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--bg-tertiary);
+      color: var(--text-primary); font-size: 13px; font-family: var(--font);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .rt-input:focus, .rt-select:focus, .rt-textarea:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .rt-input.valid { border-color: var(--success); }
+    .rt-input.invalid { border-color: var(--danger); }
+    .rt-input::placeholder { color: var(--text-muted); }
+    .rt-textarea { min-height: 70px; resize: vertical; }
+    .rt-validation {
+      display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; margin-top: 4px;
+    }
+    .rt-validation.ok { color: var(--success); }
+    .rt-validation.err { color: var(--danger); }
+    .rt-validation.checking { color: var(--text-muted); }
+
+    /* Feature toggles row */
+    .rt-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .rt-feature-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+    }
+    .rt-feature-item:nth-child(odd) { padding-right: 20px; border-right: 1px solid var(--border); }
+    .rt-feature-item:nth-child(even) { padding-left: 20px; }
+    .rt-feature-item:nth-last-child(-n+2) { border-bottom: none; }
+    .rt-feature-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+    .rt-feature-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* --- Summary Panel --- */
+    .rt-summary {
+      position: sticky; top: 88px;
+    }
+    .rt-summary-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      overflow: hidden; margin-bottom: 16px;
+    }
+    .rt-summary-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--bg-tertiary);
+    }
+    .rt-summary-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+    .rt-summary-body { padding: 16px 20px; }
+    .rt-summary-section { margin-bottom: 16px; }
+    .rt-summary-section:last-child { margin-bottom: 0; }
+    .rt-summary-section-label {
+      font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 1.2px; margin-bottom: 8px;
+    }
+    .rt-summary-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 0; font-size: 13px;
+    }
+    .rt-summary-key { color: var(--text-muted); }
+    .rt-summary-val { color: var(--text-primary); font-weight: 600; text-align: right; max-width: 55%; word-break: break-word; }
+    .rt-summary-features { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .rt-summary-badge {
+      padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+      background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(99,102,241,0.2);
+    }
+    .rt-summary-badge.off {
+      background: var(--bg-tertiary); color: var(--text-muted); border-color: var(--border);
+      text-decoration: line-through; opacity: 0.6;
+    }
+    .rt-summary-actions { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+
+    /* Progress ring */
+    .rt-progress-ring { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
+    .rt-progress-ring svg { transform: rotate(-90deg); }
+    .rt-progress-ring-bg { stroke: var(--border); }
+    .rt-progress-ring-fill { stroke: var(--accent); transition: stroke-dashoffset 0.6s ease; }
+    .rt-progress-ring-text {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; color: var(--text-primary);
+    }
+
+    /* Status badge */
+    .rt-status-badge {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px;
+      border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .rt-status-draft { background: #f59e0b18; color: var(--warning); border: 1px solid #f59e0b30; }
+    .rt-status-ready { background: #10b98118; color: var(--success); border: 1px solid #10b98130; }
+
+    /* JSON preview modal */
+    .rt-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden; transition: all 0.2s;
+    }
+    .rt-modal-overlay.show { opacity: 1; visibility: visible; }
+    .rt-modal {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+      width: 620px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4); transform: translateY(10px); transition: transform 0.2s;
+    }
+    .rt-modal-overlay.show .rt-modal { transform: translateY(0); }
+    .rt-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .rt-modal-title { font-size: 15px; font-weight: 700; }
+    .rt-modal-close {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .rt-modal-close:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+    .rt-modal-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .rt-modal-body pre {
+      background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; font-family: var(--mono); font-size: 12px; color: var(--text-secondary);
+      white-space: pre-wrap; word-break: break-all; line-height: 1.7;
+    }
+    .rt-modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* Submission overlay */
+    .rt-submit-overlay {
+      position: fixed; inset: 0; background: rgba(15,17,23,0.9); z-index: 600;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .rt-submit-overlay.show { opacity: 1; visibility: visible; }
+    .rt-spinner {
+      width: 48px; height: 48px; border: 4px solid var(--border);
+      border-top: 4px solid var(--accent); border-radius: 50%;
+      animation: rtSpin 0.9s linear infinite;
+    }
+    @keyframes rtSpin { to { transform: rotate(360deg); } }
+    .rt-submit-status { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+    .rt-submit-sub { font-size: 12px; color: var(--text-muted); }
+    .rt-submit-check {
+      font-size: 48px; animation: rtPop 0.4s ease;
+    }
+    @keyframes rtPop { 0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+    /* --- Responsive --- */
+    @media (max-width: 1200px) {
+      .rt-layout { grid-template-columns: 1fr; }
+      .rt-summary { position: static; }
+      .rt-card-grid { grid-template-columns: 1fr; }
+      .rt-feature-grid { grid-template-columns: 1fr; }
+      .rt-feature-item:nth-child(odd) { padding-right: 0; border-right: none; }
+      .rt-feature-item:nth-child(even) { padding-left: 0; }
+    }
+    @media (max-width: 768px) {
+      .rt-sidebar { transform: translateX(-100%); }
+      .rt-sidebar.open { transform: translateX(0); }
+      .rt-main { margin-left: 0; }
+      .rt-steps { flex-wrap: wrap; gap: 4px; }
+      .rt-step { padding: 6px 8px; font-size: 11px; }
+      .rt-step-line { width: 20px; }
+    }
+  </style>
 </head>
 <body>
-  <div class="register-page">
-    <div class="register-container fade-in">
-      <div class="register-header">
-        <div style="margin-bottom: 12px;">
-          <a href="landing.html" style="color: var(--text-muted); text-decoration: none; font-size: 12px;">← Back to Home</a>
+  <div class="rt-wrap">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="rt-sidebar" id="rtSidebar">
+      <div class="rt-sidebar-brand">
+        <div class="rt-sidebar-brand-row">
+          <span class="rt-sidebar-brand-icon">🧠</span>
+          <span class="rt-sidebar-brand-text">NEXUS</span>
         </div>
-        <span style="font-size: 36px; display: block; margin-bottom: 10px;">🏢</span>
-        <h1>Register New Tenant</h1>
-        <p>Set up your organization on NEXUS Agent-OS</p>
+        <div class="rt-sidebar-brand-sub">Admin Console</div>
       </div>
-
-      <form id="registerForm" onsubmit="handleRegister(event)">
-        <div class="register-body">
-          <div class="form-group">
-            <label class="form-label">Tenant Name *</label>
-            <input type="text" id="tenantName" class="form-input" placeholder="e.g., Acme Corporation" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Domain *</label>
-            <input type="text" id="tenantDomain" class="form-input" placeholder="e.g., acme.com" required>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <div class="form-group">
-              <label class="form-label">Tenant Type</label>
-              <select id="tenantType" class="form-select">
-                <option value="Enterprise">Enterprise</option>
-                <option value="SMB">SMB</option>
-                <option value="Startup">Startup</option>
-                <option value="Education">Education</option>
-                <option value="Government">Government</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Region</label>
-              <select id="tenantRegion" class="form-select">
-                <option value="AP-SOUTH-1">Asia Pacific (Mumbai)</option>
-                <option value="US-EAST-1">US East (Virginia)</option>
-                <option value="US-WEST-2">US West (Oregon)</option>
-                <option value="EU-WEST-1">Europe (Ireland)</option>
-                <option value="EU-CENTRAL-1">Europe (Frankfurt)</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px;">
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Admin Account</p>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Admin Name *</label>
-            <input type="text" id="adminName" class="form-input" placeholder="e.g., John Doe" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Admin Email *</label>
-            <input type="email" id="adminEmail" class="form-input" placeholder="e.g., john@acme.com" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Subscription Plan</label>
-            <select id="tenantPlan" class="form-select">
-              <option value="BASIC">Basic — Up to 50 users</option>
-              <option value="STANDARD" selected>Standard — Up to 200 users</option>
-              <option value="PREMIUM">Premium — Up to 1000 users</option>
-            </select>
+      <nav class="rt-sidebar-nav">
+        <div class="rt-sidebar-section">Overview</div>
+        <a class="rt-nav-item" href="admin-console.html#dashboard"><span class="ni">📊</span> Dashboard</a>
+        <div class="rt-sidebar-section">Management</div>
+        <a class="rt-nav-item" href="admin-console.html#tenants"><span class="ni">🏢</span> Tenants</a>
+        <a class="rt-nav-item active"><span class="ni">📝</span> Register Tenant</a>
+        <a class="rt-nav-item" href="admin-console.html#users"><span class="ni">👥</span> Users</a>
+        <a class="rt-nav-item" href="admin-console.html#roles"><span class="ni">🔐</span> Roles & Permissions</a>
+        <a class="rt-nav-item" href="admin-console.html#billing"><span class="ni">💳</span> Billing & Plans</a>
+        <div class="rt-sidebar-section">Operations</div>
+        <a class="rt-nav-item" href="admin-console.html#audit"><span class="ni">📋</span> Audit Logs</a>
+        <a class="rt-nav-item" href="admin-console.html#settings"><span class="ni">⚙️</span> Settings</a>
+      </nav>
+      <div class="rt-sidebar-footer">
+        <div class="rt-sidebar-user">
+          <span style="font-size:28px">🛡️</span>
+          <div>
+            <div class="rt-sidebar-user-name" id="rtUserName">System Admin</div>
+            <div class="rt-sidebar-user-role">SYSTEM_ADMIN</div>
           </div>
         </div>
+        <button class="rt-sidebar-logout" onclick="rtLogout()">Sign Out</button>
+      </div>
+    </aside>
 
-        <div class="register-footer">
-          <a href="landing.html" class="btn btn-outline">Cancel</a>
-          <button type="submit" class="btn btn-primary" id="registerBtn">Register Tenant</button>
+    <!-- ===== MAIN ===== -->
+    <div class="rt-main">
+      <!-- Topbar -->
+      <header class="rt-topbar">
+        <div class="rt-breadcrumb">
+          <a href="admin-console.html#dashboard">Admin Console</a>
+          <span class="rt-breadcrumb-sep">›</span>
+          <a href="admin-console.html#tenants">Tenants</a>
+          <span class="rt-breadcrumb-sep">›</span>
+          <span class="rt-breadcrumb-current">Register New Tenant</span>
         </div>
-      </form>
+        <div class="rt-topbar-right">
+          <div class="rt-topbar-btn" title="Notifications">🔔<span class="nd"></span></div>
+          <div class="rt-topbar-btn" title="Back to Workspace" onclick="window.location.href='dashboard.html'">🖥️</div>
+          <div class="rt-topbar-profile" onclick="window.location.href='admin-console.html#settings'">
+            <span style="font-size:18px">🛡️</span> <span id="rtTopbarUser">Admin</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="rt-content">
+        <!-- Step Progress -->
+        <div class="rt-steps">
+          <div class="rt-step active" id="rtStep1"><span class="rt-step-num">1</span> Registration</div>
+          <div class="rt-step-line" id="rtLine1"></div>
+          <div class="rt-step" id="rtStep2"><span class="rt-step-num">2</span> Provisioning</div>
+          <div class="rt-step-line" id="rtLine2"></div>
+          <div class="rt-step" id="rtStep3"><span class="rt-step-num">3</span> User Setup</div>
+          <div class="rt-step-line" id="rtLine3"></div>
+          <div class="rt-step" id="rtStep4"><span class="rt-step-num">4</span> Go Live</div>
+        </div>
+
+        <!-- 2-Column Layout -->
+        <div class="rt-layout">
+          <!-- === LEFT: Form Sections === -->
+          <div class="rt-form-col">
+
+            <!-- 1. Basic Tenant Info -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">🏢</span>
+                <div>
+                  <div class="rt-card-title">Basic Tenant Information</div>
+                  <div class="rt-card-desc">Core identity of the tenant organization</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Tenant Name <span class="rt-required">*</span></label>
+                    <input type="text" class="rt-input" id="fTenantName" placeholder="e.g., Acme Corporation" oninput="rtUpdate()" onblur="rtValidateName()">
+                    <div class="rt-hint">This will be used as the display name across the platform</div>
+                    <div id="fTenantNameVal"></div>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Tenant Slug</label>
+                    <input type="text" class="rt-input" id="fTenantSlug" placeholder="auto-generated" readonly style="opacity:0.7">
+                    <div class="rt-hint">URL-safe identifier, auto-generated from name</div>
+                  </div>
+                </div>
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Domain <span class="rt-required">*</span></label>
+                    <input type="text" class="rt-input" id="fDomain" placeholder="e.g., acme.com" oninput="rtUpdate()" onblur="rtValidateDomain()">
+                    <div class="rt-hint">Email domain for user authentication</div>
+                    <div id="fDomainVal"></div>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Initial Status</label>
+                    <select class="rt-select" id="fStatus" onchange="rtUpdate()">
+                      <option value="REGISTERED">🟡 Registered (Pending Setup)</option>
+                      <option value="ACTIVE">🟢 Active (Immediate Access)</option>
+                    </select>
+                    <div class="rt-hint">Set tenant to active for instant access</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Organization Details -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">🏛️</span>
+                <div>
+                  <div class="rt-card-title">Organization Details</div>
+                  <div class="rt-card-desc">Company profile and classification</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Organization Type</label>
+                    <select class="rt-select" id="fOrgType" onchange="rtUpdate()">
+                      <option value="Enterprise">🏢 Enterprise</option>
+                      <option value="SMB">🏬 SMB</option>
+                      <option value="Startup">🚀 Startup</option>
+                      <option value="Education">🎓 Education</option>
+                      <option value="Government">🏛️ Government</option>
+                      <option value="Non-Profit">❤️ Non-Profit</option>
+                    </select>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Industry</label>
+                    <select class="rt-select" id="fIndustry" onchange="rtUpdate()">
+                      <option value="Technology">Technology</option>
+                      <option value="Financial Services">Financial Services</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Telecommunications">Telecommunications</option>
+                      <option value="Education">Education</option>
+                      <option value="Government">Government</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Company Size</label>
+                    <select class="rt-select" id="fCompanySize" onchange="rtUpdate()">
+                      <option value="1-50">1–50 employees</option>
+                      <option value="51-200">51–200 employees</option>
+                      <option value="201-1000" selected>201–1,000 employees</option>
+                      <option value="1001-5000">1,001–5,000 employees</option>
+                      <option value="5001+">5,001+ employees</option>
+                    </select>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Website</label>
+                    <input type="url" class="rt-input" id="fWebsite" placeholder="https://www.acme.com" oninput="rtUpdate()">
+                  </div>
+                </div>
+                <div class="rt-fg">
+                  <label class="rt-label">Description</label>
+                  <textarea class="rt-textarea" id="fDescription" placeholder="Brief description of the organization..." oninput="rtUpdate()"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Primary Contact -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">👤</span>
+                <div>
+                  <div class="rt-card-title">Primary Contact / Admin Account</div>
+                  <div class="rt-card-desc">This person will be the tenant administrator</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Full Name <span class="rt-required">*</span></label>
+                    <input type="text" class="rt-input" id="fAdminName" placeholder="e.g., Sarah Johnson" oninput="rtUpdate()">
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Email Address <span class="rt-required">*</span></label>
+                    <input type="email" class="rt-input" id="fAdminEmail" placeholder="e.g., sarah@acme.com" oninput="rtUpdate()" onblur="rtValidateEmail()">
+                    <div class="rt-hint">Must match the tenant domain</div>
+                    <div id="fEmailVal"></div>
+                  </div>
+                </div>
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Job Title</label>
+                    <input type="text" class="rt-input" id="fJobTitle" placeholder="e.g., VP of Engineering" oninput="rtUpdate()">
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Phone</label>
+                    <input type="tel" class="rt-input" id="fPhone" placeholder="+1 (555) 123-4567" oninput="rtUpdate()">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Identity & SSO Setup -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">🔐</span>
+                <div>
+                  <div class="rt-card-title">Identity & SSO Setup</div>
+                  <div class="rt-card-desc">Authentication and single sign-on configuration</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Auth Provider</label>
+                    <select class="rt-select" id="fAuthProvider" onchange="rtUpdate()">
+                      <option value="nexus">NEXUS Built-in</option>
+                      <option value="okta">Okta</option>
+                      <option value="azure-ad">Azure AD</option>
+                      <option value="google">Google Workspace</option>
+                      <option value="auth0">Auth0</option>
+                    </select>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">SSO Protocol</label>
+                    <select class="rt-select" id="fSSOProtocol" onchange="rtUpdate()">
+                      <option value="none">None</option>
+                      <option value="SAML">SAML 2.0</option>
+                      <option value="OIDC">OpenID Connect</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="rt-fg">
+                  <label class="rt-label">SSO Metadata URL</label>
+                  <input type="url" class="rt-input" id="fSSOMetadata" placeholder="https://idp.example.com/.well-known/openid-configuration" oninput="rtUpdate()">
+                  <div class="rt-hint">Required only if SSO is configured above</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Subscription Details -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">💎</span>
+                <div>
+                  <div class="rt-card-title">Subscription Details</div>
+                  <div class="rt-card-desc">Plan selection and billing configuration</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Subscription Plan <span class="rt-required">*</span></label>
+                    <select class="rt-select" id="fPlan" onchange="rtUpdate()">
+                      <option value="BASIC">🔹 Basic — $29/mo (50 users, 5 agents)</option>
+                      <option value="STANDARD" selected>⭐ Standard — $99/mo (200 users, 15 agents)</option>
+                      <option value="PREMIUM">💎 Premium — $299/mo (1000 users, 50 agents)</option>
+                    </select>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Billing Cycle</label>
+                    <select class="rt-select" id="fBilling" onchange="rtUpdate()">
+                      <option value="monthly">Monthly</option>
+                      <option value="annual" selected>Annual (save 15%)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="rt-fg" id="fPlanSummaryWrap" style="margin-top:4px"></div>
+              </div>
+            </div>
+
+            <!-- 6. Localization -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">🌍</span>
+                <div>
+                  <div class="rt-card-title">Localization & Region</div>
+                  <div class="rt-card-desc">Data residency and timezone settings</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Primary Region <span class="rt-required">*</span></label>
+                    <select class="rt-select" id="fRegion" onchange="rtUpdate()">
+                      <option value="AP-SOUTH-1">🇮🇳 Asia Pacific — Mumbai (ap-south-1)</option>
+                      <option value="US-EAST-1">🇺🇸 US East — Virginia (us-east-1)</option>
+                      <option value="US-WEST-2">🇺🇸 US West — Oregon (us-west-2)</option>
+                      <option value="EU-WEST-1">🇮🇪 Europe — Ireland (eu-west-1)</option>
+                      <option value="EU-CENTRAL-1">🇩🇪 Europe — Frankfurt (eu-central-1)</option>
+                      <option value="AP-SOUTHEAST-1">🇸🇬 Asia Pacific — Singapore (ap-southeast-1)</option>
+                    </select>
+                    <div class="rt-hint">Determines where tenant data is stored</div>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Timezone</label>
+                    <select class="rt-select" id="fTimezone" onchange="rtUpdate()">
+                      <option value="Asia/Kolkata">Asia/Kolkata (IST, UTC+5:30)</option>
+                      <option value="America/New_York">America/New_York (EST, UTC-5)</option>
+                      <option value="America/Los_Angeles">America/Los_Angeles (PST, UTC-8)</option>
+                      <option value="Europe/London">Europe/London (GMT, UTC+0)</option>
+                      <option value="Europe/Berlin">Europe/Berlin (CET, UTC+1)</option>
+                      <option value="Asia/Singapore">Asia/Singapore (SGT, UTC+8)</option>
+                      <option value="Asia/Tokyo">Asia/Tokyo (JST, UTC+9)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Language</label>
+                    <select class="rt-select" id="fLanguage" onchange="rtUpdate()">
+                      <option value="en">English</option>
+                      <option value="es">Español</option>
+                      <option value="de">Deutsch</option>
+                      <option value="fr">Français</option>
+                      <option value="ja">日本語</option>
+                      <option value="hi">हिन्दी</option>
+                    </select>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Currency</label>
+                    <select class="rt-select" id="fCurrency" onchange="rtUpdate()">
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                      <option value="INR">INR (₹)</option>
+                      <option value="JPY">JPY (¥)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7. System Metadata -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">🗄️</span>
+                <div>
+                  <div class="rt-card-title">System Metadata</div>
+                  <div class="rt-card-desc">Internal tags, notes, and tracking info</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-card-grid">
+                  <div class="rt-fg">
+                    <label class="rt-label">Tenant ID</label>
+                    <input type="text" class="rt-input" id="fTenantId" readonly style="opacity:0.7">
+                    <div class="rt-hint">Auto-generated unique identifier</div>
+                  </div>
+                  <div class="rt-fg">
+                    <label class="rt-label">Source / Channel</label>
+                    <select class="rt-select" id="fSource" onchange="rtUpdate()">
+                      <option value="admin-console">Admin Console</option>
+                      <option value="sales">Sales Team</option>
+                      <option value="self-signup">Self-Signup</option>
+                      <option value="partner">Partner Referral</option>
+                      <option value="api">API</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="rt-fg">
+                  <label class="rt-label">Internal Notes</label>
+                  <textarea class="rt-textarea" id="fNotes" placeholder="Add any internal notes about this tenant registration..." oninput="rtUpdate()"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 8. Initial Configuration -->
+            <div class="rt-card">
+              <div class="rt-card-header">
+                <span class="rt-card-icon">🎛️</span>
+                <div>
+                  <div class="rt-card-title">Initial Configuration</div>
+                  <div class="rt-card-desc">Feature toggles and platform capabilities</div>
+                </div>
+              </div>
+              <div class="rt-card-body">
+                <div class="rt-feature-grid">
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">SSO Enabled</div>
+                      <div class="rt-feature-sub">Single sign-on integration</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogSSO" onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">MFA Required</div>
+                      <div class="rt-feature-sub">Multi-factor authentication</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogMFA" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">Audit Logging</div>
+                      <div class="rt-feature-sub">Track all user actions</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogAudit" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">API Access</div>
+                      <div class="rt-feature-sub">REST API & webhook access</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogAPI" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">Custom Branding</div>
+                      <div class="rt-feature-sub">White-label UI options</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogBrand" onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">Data Export</div>
+                      <div class="rt-feature-sub">CSV & JSON data exports</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogExport" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">AI Agent Pipeline</div>
+                      <div class="rt-feature-sub">Autonomous agent workflows</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogPipeline" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                  <div class="rt-feature-item">
+                    <div>
+                      <div class="rt-feature-label">Sandbox Environment</div>
+                      <div class="rt-feature-sub">Isolated test workspace</div>
+                    </div>
+                    <label class="toggle-switch"><input type="checkbox" id="fTogSandbox" onchange="rtUpdate()"><span class="toggle-slider"></span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /form-col -->
+
+          <!-- === RIGHT: Summary Panel === -->
+          <div class="rt-summary">
+            <!-- Progress -->
+            <div class="rt-summary-card">
+              <div class="rt-summary-header">
+                <span class="rt-summary-title">Completion</span>
+                <div class="rt-progress-ring" id="rtProgressRing">
+                  <svg width="54" height="54"><circle class="rt-progress-ring-bg" cx="27" cy="27" r="22" fill="none" stroke-width="5"/><circle class="rt-progress-ring-fill" cx="27" cy="27" r="22" fill="none" stroke-width="5" stroke-linecap="round" stroke-dasharray="138.23" stroke-dashoffset="138.23" id="rtRingFill"/></svg>
+                  <span class="rt-progress-ring-text" id="rtRingPct">0%</span>
+                </div>
+              </div>
+              <div class="rt-summary-body" style="padding:12px 20px">
+                <div style="display:flex;gap:6px;flex-wrap:wrap" id="rtFieldChecks"></div>
+              </div>
+            </div>
+
+            <!-- Live Summary -->
+            <div class="rt-summary-card">
+              <div class="rt-summary-header">
+                <span class="rt-summary-title">📄 Registration Summary</span>
+                <span id="rtStatusBadge" class="rt-status-badge rt-status-draft">● Draft</span>
+              </div>
+              <div class="rt-summary-body" id="rtSummaryBody">
+                <!-- filled by JS -->
+              </div>
+              <div class="rt-summary-actions">
+                <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="rtSubmit()" id="rtSubmitBtn" disabled>
+                  🏢 Create Tenant
+                </button>
+                <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="rtPreviewJSON()">
+                  { } Preview JSON
+                </button>
+              </div>
+            </div>
+          </div><!-- /summary -->
+        </div><!-- /layout -->
+      </div><!-- /content -->
+    </div><!-- /main -->
+  </div><!-- /wrap -->
+
+  <!-- JSON Preview Modal -->
+  <div class="rt-modal-overlay" id="rtModal">
+    <div class="rt-modal">
+      <div class="rt-modal-header">
+        <span class="rt-modal-title">📋 Tenant Registration Payload</span>
+        <button class="rt-modal-close" onclick="rtCloseModal()">✕</button>
+      </div>
+      <div class="rt-modal-body"><pre id="rtJSONPre"></pre></div>
+      <div class="rt-modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="rtCopyJSON()">📋 Copy</button>
+        <button class="btn btn-outline btn-sm" onclick="rtCloseModal()">Close</button>
+      </div>
     </div>
   </div>
 
+  <!-- Submission overlay -->
+  <div class="rt-submit-overlay" id="rtSubmitOverlay">
+    <div class="rt-spinner" id="rtSpinner"></div>
+    <div class="rt-submit-status" id="rtSubmitStatus">Creating tenant...</div>
+    <div class="rt-submit-sub" id="rtSubmitSub">Setting up infrastructure and provisioning resources</div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
   <script src="js/state.js"></script>
   <script>
-    function handleRegister(e) {
-      e.preventDefault();
+    // ======== AUTH & MODE ========
+    const _isAdmin = TenantState.isLoggedIn() && TenantState.isSystemAdmin();
 
-      const name = document.getElementById('tenantName').value.trim();
-      const domain = document.getElementById('tenantDomain').value.trim();
-      const tenantType = document.getElementById('tenantType').value;
-      const region = document.getElementById('tenantRegion').value;
-      const adminName = document.getElementById('adminName').value.trim();
-      const adminEmail = document.getElementById('adminEmail').value.trim();
-      const subscription = document.getElementById('tenantPlan').value;
+    // Hide sidebar + topbar admin elements for unauthenticated visitors
+    if (!_isAdmin) {
+      document.getElementById('rtSidebar').style.display = 'none';
+      document.querySelector('.rt-main').style.marginLeft = '0';
+      document.querySelector('.rt-topbar').style.display = 'none';
+    }
 
-      if (!name || !domain || !adminName || !adminEmail) {
-        alert('Please fill in all required fields.');
-        return;
-      }
+    seedNexusData();
 
-      // Check if domain already exists
-      const existing = TenantState.getTenants().find(t => t.domain === domain);
-      if (existing) {
-        alert('A tenant with this domain already exists.');
-        return;
-      }
+    const _user = _isAdmin ? NexusStore.getUser() : null;
+    if (_user) {
+      document.getElementById('rtUserName').textContent = _user.name || 'System Admin';
+      document.getElementById('rtTopbarUser').textContent = _user.name || 'Admin';
+    }
 
-      const btn = document.getElementById('registerBtn');
-      btn.disabled = true;
-      btn.textContent = 'Creating...';
+    // Pre-fill tenant ID
+    document.getElementById('fTenantId').value = TenantState.generateTenantId();
 
-      const newTenant = {
-        tenant_id: TenantState.generateTenantId(),
-        name: name,
-        domain: domain,
-        status: "REGISTERED",
-        subscription: subscription,
-        users: 1,
-        projects: 0,
-        agents: 0,
-        storage_used: 0,
-        api_usage: 0,
-        region: region,
-        created_at: new Date().toISOString(),
-        admin_name: adminName,
-        admin_email: adminEmail,
-        tenant_type: tenantType
+    // ======== HELPERS ========
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function showToast(msg, type) {
+      const t = document.createElement('div'); t.className = 'toast toast-' + (type||'info');
+      t.textContent = msg; document.body.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+    }
+
+    // ======== PLAN INFO ========
+    const PLANS = {
+      BASIC:    { icon: '🔹', label: 'Basic',    price: 29,  users: 50,   agents: 5,   storage: 10,  api: 10000, projects: 5 },
+      STANDARD: { icon: '⭐', label: 'Standard', price: 99,  users: 200,  agents: 15,  storage: 50,  api: 100000, projects: 20 },
+      PREMIUM:  { icon: '💎', label: 'Premium',  price: 299, users: 1000, agents: 50,  storage: 500, api: 1000000, projects: 100 },
+    };
+
+    // ======== GATHER FORM DATA ========
+    function gatherForm() {
+      const plan = document.getElementById('fPlan').value;
+      const billing = document.getElementById('fBilling').value;
+      const p = PLANS[plan];
+      const monthlyPrice = billing === 'annual' ? Math.round(p.price * 0.85) : p.price;
+      const features = [];
+      const toggles = {
+        sso: document.getElementById('fTogSSO').checked,
+        mfa: document.getElementById('fTogMFA').checked,
+        audit: document.getElementById('fTogAudit').checked,
+        api: document.getElementById('fTogAPI').checked,
+        branding: document.getElementById('fTogBrand').checked,
+        export: document.getElementById('fTogExport').checked,
+        pipeline: document.getElementById('fTogPipeline').checked,
+        sandbox: document.getElementById('fTogSandbox').checked,
       };
+      if (toggles.sso) features.push('SSO');
+      if (toggles.mfa) features.push('MFA');
+      if (toggles.audit) features.push('Audit');
+      if (toggles.api) features.push('API');
+      if (toggles.branding) features.push('Branding');
+      if (toggles.export) features.push('Export');
+      if (toggles.pipeline) features.push('Pipeline');
+      if (toggles.sandbox) features.push('Sandbox');
 
-      // Add the tenant
+      return {
+        tenant_name: document.getElementById('fTenantName').value.trim(),
+        slug: document.getElementById('fTenantSlug').value.trim(),
+        domain: document.getElementById('fDomain').value.trim(),
+        status: document.getElementById('fStatus').value,
+        org_type: document.getElementById('fOrgType').value,
+        industry: document.getElementById('fIndustry').value,
+        company_size: document.getElementById('fCompanySize').value,
+        website: document.getElementById('fWebsite').value.trim(),
+        description: document.getElementById('fDescription').value.trim(),
+        admin_name: document.getElementById('fAdminName').value.trim(),
+        admin_email: document.getElementById('fAdminEmail').value.trim(),
+        job_title: document.getElementById('fJobTitle').value.trim(),
+        phone: document.getElementById('fPhone').value.trim(),
+        auth_provider: document.getElementById('fAuthProvider').value,
+        sso_protocol: document.getElementById('fSSOProtocol').value,
+        sso_metadata: document.getElementById('fSSOMetadata').value.trim(),
+        plan, billing, monthlyPrice,
+        planInfo: p,
+        region: document.getElementById('fRegion').value,
+        timezone: document.getElementById('fTimezone').value,
+        language: document.getElementById('fLanguage').value,
+        currency: document.getElementById('fCurrency').value,
+        tenant_id: document.getElementById('fTenantId').value,
+        source: document.getElementById('fSource').value,
+        notes: document.getElementById('fNotes').value.trim(),
+        features, toggles,
+      };
+    }
+
+    // ======== SLUGIFY ========
+    function slugify(s) {
+      return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').substring(0, 40);
+    }
+
+    // ======== VALIDATION ========
+    function rtValidateName() {
+      const el = document.getElementById('fTenantName');
+      const val = document.getElementById('fTenantNameVal');
+      const name = el.value.trim();
+      if (!name) { val.innerHTML = ''; el.classList.remove('valid','invalid'); return false; }
+      if (name.length < 2) {
+        val.innerHTML = '<div class="rt-validation err">✕ Name must be at least 2 characters</div>';
+        el.classList.remove('valid'); el.classList.add('invalid'); return false;
+      }
+      const exists = TenantState.getTenants().some(t => t.name.toLowerCase() === name.toLowerCase());
+      if (exists) {
+        val.innerHTML = '<div class="rt-validation err">✕ Tenant name already in use</div>';
+        el.classList.remove('valid'); el.classList.add('invalid'); return false;
+      }
+      val.innerHTML = '<div class="rt-validation ok">✓ Tenant name available</div>';
+      el.classList.remove('invalid'); el.classList.add('valid');
+      return true;
+    }
+    function rtValidateDomain() {
+      const el = document.getElementById('fDomain');
+      const val = document.getElementById('fDomainVal');
+      const domain = el.value.trim();
+      if (!domain) { val.innerHTML = ''; el.classList.remove('valid','invalid'); return false; }
+      const domainRe = /^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!domainRe.test(domain)) {
+        val.innerHTML = '<div class="rt-validation err">✕ Invalid domain format</div>';
+        el.classList.remove('valid'); el.classList.add('invalid'); return false;
+      }
+      const exists = TenantState.getTenants().some(t => t.domain.toLowerCase() === domain.toLowerCase());
+      if (exists) {
+        val.innerHTML = '<div class="rt-validation err">✕ Domain already registered</div>';
+        el.classList.remove('valid'); el.classList.add('invalid'); return false;
+      }
+      val.innerHTML = '<div class="rt-validation ok">✓ Domain available</div>';
+      el.classList.remove('invalid'); el.classList.add('valid');
+      return true;
+    }
+    function rtValidateEmail() {
+      const el = document.getElementById('fAdminEmail');
+      const val = document.getElementById('fEmailVal');
+      const email = el.value.trim();
+      if (!email) { val.innerHTML = ''; el.classList.remove('valid','invalid'); return false; }
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRe.test(email)) {
+        val.innerHTML = '<div class="rt-validation err">✕ Invalid email format</div>';
+        el.classList.remove('valid'); el.classList.add('invalid'); return false;
+      }
+      const domain = document.getElementById('fDomain').value.trim();
+      if (domain && !email.toLowerCase().endsWith('@' + domain.toLowerCase())) {
+        val.innerHTML = '<div class="rt-validation err">✕ Email must match tenant domain (@' + esc(domain) + ')</div>';
+        el.classList.remove('valid'); el.classList.add('invalid'); return false;
+      }
+      val.innerHTML = '<div class="rt-validation ok">✓ Valid admin email</div>';
+      el.classList.remove('invalid'); el.classList.add('valid');
+      return true;
+    }
+
+    // ======== COMPLETION PROGRESS ========
+    const REQ_FIELDS = [
+      { id: 'fTenantName', label: 'Tenant Name' },
+      { id: 'fDomain',     label: 'Domain' },
+      { id: 'fAdminName',  label: 'Admin Name' },
+      { id: 'fAdminEmail', label: 'Admin Email' },
+    ];
+    const OPT_FIELDS = [
+      { id: 'fWebsite',     label: 'Website' },
+      { id: 'fDescription', label: 'Description' },
+      { id: 'fJobTitle',    label: 'Job Title' },
+      { id: 'fPhone',       label: 'Phone' },
+      { id: 'fSSOMetadata', label: 'SSO URL' },
+      { id: 'fNotes',       label: 'Notes' },
+    ];
+    function calcProgress() {
+      let filled = 0; let total = REQ_FIELDS.length + OPT_FIELDS.length;
+      REQ_FIELDS.forEach(f => { if (document.getElementById(f.id).value.trim()) filled++; });
+      OPT_FIELDS.forEach(f => { if (document.getElementById(f.id).value.trim()) filled++; });
+      return Math.round((filled / total) * 100);
+    }
+    function renderProgress() {
+      const pct = calcProgress();
+      const circ = 2 * Math.PI * 22; // ~138.23
+      const offset = circ - (pct / 100) * circ;
+      document.getElementById('rtRingFill').setAttribute('stroke-dashoffset', offset);
+      document.getElementById('rtRingPct').textContent = pct + '%';
+
+      // Field checks
+      const checks = [...REQ_FIELDS, ...OPT_FIELDS].map(f => {
+        const filled = !!document.getElementById(f.id).value.trim();
+        return `<span style="font-size:11px;padding:3px 8px;border-radius:10px;background:${filled?'#10b98118':'var(--bg-tertiary)'};color:${filled?'var(--success)':'var(--text-muted)'};border:1px solid ${filled?'#10b98130':'var(--border)'}">${filled?'✓':'○'} ${f.label}</span>`;
+      });
+      document.getElementById('rtFieldChecks').innerHTML = checks.join('');
+
+      // Enable/disable submit
+      const reqOk = REQ_FIELDS.every(f => document.getElementById(f.id).value.trim());
+      document.getElementById('rtSubmitBtn').disabled = !reqOk;
+
+      // Status badge
+      const badge = document.getElementById('rtStatusBadge');
+      if (reqOk) { badge.className = 'rt-status-badge rt-status-ready'; badge.innerHTML = '● Ready'; }
+      else { badge.className = 'rt-status-badge rt-status-draft'; badge.innerHTML = '● Draft'; }
+    }
+
+    // ======== LIVE SUMMARY ========
+    function renderSummary() {
+      const d = gatherForm();
+      const p = d.planInfo;
+      const regionLabels = {
+        'AP-SOUTH-1': '🇮🇳 Mumbai', 'US-EAST-1': '🇺🇸 Virginia', 'US-WEST-2': '🇺🇸 Oregon',
+        'EU-WEST-1': '🇮🇪 Ireland', 'EU-CENTRAL-1': '🇩🇪 Frankfurt', 'AP-SOUTHEAST-1': '🇸🇬 Singapore'
+      };
+      document.getElementById('rtSummaryBody').innerHTML = `
+        <div class="rt-summary-section">
+          <div class="rt-summary-section-label">Tenant Info</div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Name</span><span class="rt-summary-val">${esc(d.tenant_name) || '—'}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Domain</span><span class="rt-summary-val">${esc(d.domain) || '—'}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Type</span><span class="rt-summary-val">${esc(d.org_type)}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Industry</span><span class="rt-summary-val">${esc(d.industry)}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">ID</span><span class="rt-summary-val" style="font-family:var(--mono);font-size:12px">${d.tenant_id}</span></div>
+        </div>
+        <div class="rt-summary-section">
+          <div class="rt-summary-section-label">Admin Contact</div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Name</span><span class="rt-summary-val">${esc(d.admin_name) || '—'}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Email</span><span class="rt-summary-val">${esc(d.admin_email) || '—'}</span></div>
+          ${d.job_title ? `<div class="rt-summary-row"><span class="rt-summary-key">Title</span><span class="rt-summary-val">${esc(d.job_title)}</span></div>` : ''}
+        </div>
+        <div class="rt-summary-section">
+          <div class="rt-summary-section-label">Plan & Region</div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Plan</span><span class="rt-summary-val">${p.icon} ${p.label}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Cost</span><span class="rt-summary-val">$${d.monthlyPrice}/mo${d.billing==='annual'?' (annual)':''}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Limits</span><span class="rt-summary-val" style="font-size:11px">👥${p.users} · 🤖${p.agents} · 🔌${p.api.toLocaleString()}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Region</span><span class="rt-summary-val">${regionLabels[d.region] || d.region}</span></div>
+        </div>
+        <div class="rt-summary-section">
+          <div class="rt-summary-section-label">Enabled Features</div>
+          <div class="rt-summary-features">
+            ${['SSO','MFA','Audit','API','Branding','Export','Pipeline','Sandbox'].map(f => {
+              const on = d.features.includes(f);
+              return `<span class="rt-summary-badge ${on?'':'off'}">${on?'✓':'✕'} ${f}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // ======== PLAN SUMMARY LINE ========
+    function renderPlanSummary() {
+      const plan = document.getElementById('fPlan').value;
+      const billing = document.getElementById('fBilling').value;
+      const p = PLANS[plan];
+      const monthly = billing === 'annual' ? Math.round(p.price * 0.85) : p.price;
+      const annual = monthly * 12;
+      document.getElementById('fPlanSummaryWrap').innerHTML = `
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius)">
+          <span style="font-size:28px">${p.icon}</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary)">${p.label} Plan</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">👥 ${p.users} users · 🤖 ${p.agents} agents · 💾 ${p.storage}GB · 🔌 ${p.api.toLocaleString()} API/mo</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:20px;font-weight:800;color:var(--accent)">$${monthly}<span style="font-size:11px;color:var(--text-muted)">/mo</span></div>
+            ${billing==='annual'?`<div style="font-size:11px;color:var(--success)">Save $${(p.price-monthly)*12}/yr</div>`:''}
+          </div>
+        </div>
+      `;
+    }
+
+    // ======== MASTER UPDATE ========
+    function rtUpdate() {
+      // Auto slug
+      const name = document.getElementById('fTenantName').value.trim();
+      document.getElementById('fTenantSlug').value = name ? slugify(name) : '';
+
+      renderProgress();
+      renderSummary();
+      renderPlanSummary();
+    }
+
+    // ======== JSON PREVIEW ========
+    function rtBuildPayload() {
+      const d = gatherForm();
+      return {
+        tenant_id: d.tenant_id,
+        name: d.tenant_name,
+        slug: d.slug,
+        domain: d.domain,
+        status: d.status,
+        subscription: d.plan,
+        billing_cycle: d.billing,
+        organization: {
+          type: d.org_type,
+          industry: d.industry,
+          size: d.company_size,
+          website: d.website || undefined,
+          description: d.description || undefined,
+        },
+        admin: {
+          name: d.admin_name,
+          email: d.admin_email,
+          job_title: d.job_title || undefined,
+          phone: d.phone || undefined,
+        },
+        identity: {
+          auth_provider: d.auth_provider,
+          sso_protocol: d.sso_protocol,
+          sso_metadata_url: d.sso_metadata || undefined,
+        },
+        localization: {
+          region: d.region,
+          timezone: d.timezone,
+          language: d.language,
+          currency: d.currency,
+        },
+        features: d.toggles,
+        metadata: {
+          source: d.source,
+          notes: d.notes || undefined,
+          created_at: new Date().toISOString(),
+          created_by: (_user && _user.name) || 'System Admin',
+        },
+        resource_limits: {
+          users: d.planInfo.users,
+          agents: d.planInfo.agents,
+          projects: d.planInfo.projects,
+          storage_gb: d.planInfo.storage,
+          api_calls_monthly: d.planInfo.api,
+        },
+      };
+    }
+
+    function rtPreviewJSON() {
+      const payload = rtBuildPayload();
+      document.getElementById('rtJSONPre').textContent = JSON.stringify(payload, null, 2);
+      document.getElementById('rtModal').classList.add('show');
+    }
+    function rtCloseModal() { document.getElementById('rtModal').classList.remove('show'); }
+    function rtCopyJSON() {
+      const text = document.getElementById('rtJSONPre').textContent;
+      navigator.clipboard.writeText(text).then(() => showToast('JSON copied to clipboard', 'success'));
+    }
+    // Close modal on backdrop click
+    document.getElementById('rtModal').addEventListener('click', function(e) { if (e.target === this) rtCloseModal(); });
+
+    // ======== SUBMIT ========
+    async function rtSubmit() {
+      const d = gatherForm();
+      // Final validation
+      if (!d.tenant_name || !d.domain || !d.admin_name || !d.admin_email) {
+        showToast('Please fill all required fields', 'error'); return;
+      }
+      if (!rtValidateName() || !rtValidateDomain() || !rtValidateEmail()) {
+        showToast('Please fix validation errors', 'error'); return;
+      }
+
+      const overlay = document.getElementById('rtSubmitOverlay');
+      const status = document.getElementById('rtSubmitStatus');
+      const sub = document.getElementById('rtSubmitSub');
+      const spinner = document.getElementById('rtSpinner');
+      overlay.classList.add('show');
+
+      const steps = [
+        { msg: 'Validating tenant information...', sub: 'Checking domain availability and uniqueness', t: 700 },
+        { msg: 'Creating tenant record...', sub: 'Generating tenant ID and configuration', t: 800 },
+        { msg: 'Provisioning infrastructure...', sub: 'Setting up isolated data store and compute', t: 1000 },
+        { msg: 'Creating admin account...', sub: 'Configuring admin user with full permissions', t: 600 },
+        { msg: 'Applying feature toggles...', sub: 'Enabling SSO, MFA, and platform features', t: 500 },
+        { msg: 'Finalizing setup...', sub: 'Running post-provisioning checks', t: 400 },
+      ];
+
+      for (const step of steps) {
+        status.textContent = step.msg;
+        sub.textContent = step.sub;
+        await new Promise(r => setTimeout(r, step.t));
+      }
+
+      // Actually create the tenant
+      const newTenant = {
+        tenant_id: d.tenant_id,
+        name: d.tenant_name,
+        domain: d.domain,
+        status: d.status,
+        subscription: d.plan,
+        users: 1, projects: 0, agents: 0, storage_used: 0, api_usage: 0, escalations: 0,
+        region: d.region,
+        created_at: new Date().toISOString(),
+        admin_name: d.admin_name,
+        admin_email: d.admin_email,
+        tenant_type: d.org_type,
+      };
       TenantState.addTenant(newTenant);
-
-      // Add admin user
       TenantState.addTenantUser(newTenant.tenant_id, {
         id: TenantState.generateUserId(),
-        name: adminName,
-        email: adminEmail,
+        name: d.admin_name,
+        email: d.admin_email,
         role: 'Admin',
         status: 'ACTIVE',
-        last_login: new Date().toISOString()
+        last_login: new Date().toISOString(),
       });
+      NexusStore.addLog({ type: 'SYSTEM', message: 'Tenant ' + d.tenant_name + ' (' + d.tenant_id + ') created via Admin Console', agent: 'system' });
 
-      // Set as current and store provisioning target
-      TenantState.setCurrentTenant(newTenant);
-      sessionStorage.setItem('nexus_provisioning_tenant', newTenant.tenant_id);
+      // Success state
+      spinner.style.display = 'none';
+      status.textContent = 'Tenant Created Successfully!';
+      sub.textContent = d.tenant_name + ' (' + d.tenant_id + ') is now live';
+      const check = document.createElement('div');
+      check.className = 'rt-submit-check';
+      check.textContent = '✅';
+      spinner.parentNode.insertBefore(check, spinner);
 
-      // Redirect to provisioning
-      setTimeout(() => {
-        window.location.href = 'tenant-provisioning.html';
-      }, 500);
+      // Update steps
+      document.getElementById('rtStep1').className = 'rt-step done';
+      document.getElementById('rtLine1').className = 'rt-step-line done';
+      document.getElementById('rtStep2').className = 'rt-step active';
+
+      await new Promise(r => setTimeout(r, 2000));
+      window.location.href = _isAdmin ? 'admin-console.html#tenants' : 'index.html';
     }
+
+    // ======== LOGOUT ========
+    function rtLogout() {
+      NexusStore.addLog({ type: 'AUTH', message: 'System Admin logged out', agent: 'system' });
+      NexusStore.logout();
+      TenantState.logoutSession();
+      window.location.href = 'index.html';
+    }
+
+    // ======== INIT ========
+    rtUpdate();
   </script>
 </body>
 </html>
