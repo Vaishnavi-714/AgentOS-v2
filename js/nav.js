@@ -23,19 +23,28 @@ function createNavigation(activePage) {
     { id: 'llm_bridge', label: 'LLM Execution', icon: '🖥️', href: 'llm_bridge.html' },
     { id: 'backlog', label: 'Backlog', icon: '📝', href: 'backlog.html' },
     { id: 'test-cases', label: 'Test Cases', icon: '🧪', href: 'test-cases.html' },
+    { id: 'code-review', label: 'Code Review', icon: '🔍', href: 'code-review.html' },
     { id: 'agents', label: 'Agents', icon: '🤖', href: 'agents.html' },
     { id: 'tasks', label: 'Tasks', icon: '✅', href: 'tasks.html' },
     { id: 'escalations', label: 'Escalations', icon: '⚠️', href: 'escalations.html' },
     { id: 'decisions', label: 'Decisions', icon: '📜', href: 'decisions.html' },
     { id: 'gates', label: 'Quality Gates', icon: '🛡️', href: 'quality-gates.html' },
-    { id: 'monitoring', label: 'Monitoring', icon: '📈', href: 'monitoring.html' }
+    { id: 'devops', label: 'DevOps & CI/CD', icon: '🚀', href: 'devops.html' },
+    { id: 'monitoring', label: 'Monitoring', icon: '📈', href: 'monitoring.html' },
+    { id: 'observability', label: 'Observability', icon: '🔭', href: 'observability.html' },
+    { id: 'incidents', label: 'Incidents', icon: '🚨', href: 'incidents.html' },
+    { id: 'command-center', label: 'Command Center', icon: '💬', href: 'command-center.html' },
+    { id: 'ai-safety', label: 'AI Safety', icon: '🛡️', href: 'ai-safety.html' }
   ];
 
   const tenantNavItems = [
     { id: 'tenants', label: 'Tenants', icon: '🏢', href: 'tenants.html' },
     { id: 'subscription', label: 'Subscription', icon: '💎', href: 'subscription.html' },
     { id: 'resources', label: 'Resources', icon: '📦', href: 'resources.html' },
-    { id: 'tenant-users', label: 'Users', icon: '👥', href: 'tenant-users.html' }
+    { id: 'tenant-users', label: 'Users', icon: '👥', href: 'tenant-users.html' },
+    { id: 'integrations', label: 'Integrations', icon: '🔗', href: 'integrations.html' },
+    { id: 'compliance', label: 'Compliance', icon: '📑', href: 'compliance.html' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔', href: 'notifications.html' }
   ];
 
   const pendingEscalations = NexusStore.getEscalations().filter(e => e.status === 'PENDING').length;

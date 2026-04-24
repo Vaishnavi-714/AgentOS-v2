@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — DevOps &amp; CI/CD</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">DevOps &amp; CI/CD</h1>
+        <p class="page-subtitle">Pipeline management, deployments, environments, rollbacks &amp; IaC generation</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+        <button class="btn btn-primary" onclick="triggerDeployment()">🚀 Deploy</button>
+      </div>
+    </div>
+
+    <!-- Environment Status -->
+    <div class="grid grid-3" id="envCards" style="margin-bottom:24px"></div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-bottom:20px;">
+      <button class="tab active" onclick="switchTab('pipelines')">⚙️ CI/CD Pipelines</button>
+      <button class="tab" onclick="switchTab('deployments')">🚀 Deployments</button>
+      <button class="tab" onclick="switchTab('iac')">📦 IaC Templates</button>
+      <button class="tab" onclick="switchTab('releases')">📝 Releases</button>
+    </div>
+
+    <div id="tabContent"></div>
+
+    <!-- Deploy Modal -->
+    <div class="modal-overlay" id="deployModal" style="display:none">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">🚀 Deploy to Environment</h3>
+          <button class="modal-close" onclick="closeModal('deployModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Target Environment</label>
+            <select id="deployEnv" class="form-select">
+              <option value="development">Development</option>
+              <option value="staging">Staging</option>
+              <option value="production">Production (requires approval)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Version</label>
+            <input type="text" id="deployVersion" class="form-input" placeholder="v2.5.0" value="v2.5.0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deployment Strategy</label>
+            <select id="deployStrategy" class="form-select">
+              <option value="rolling">Rolling Update</option>
+              <option value="blue-green">Blue/Green</option>
+              <option value="canary">Canary (10% → 50% → 100%)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Release Notes</label>
+            <textarea id="deployNotes" class="form-textarea" rows="3" placeholder="What's in this release..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('deployModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="executeDeploy()">Deploy Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/event-bus.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('devops');
+    NexusPermissions.enforcePageAccess('devops');
+    injectTenantInfoCard();
+
+    let currentTab = 'pipelines';
+    const projectId = createProjectSelector('projectSelector', () => { seedDevOpsData(); render(); });
+
+    // Environments
+    const environments = [
+      { name: 'Development', id: 'development', status: 'DEPLOYED', version: 'v2.5.0-dev.42', last_deploy: new Date(Date.now() - 3600000*2).toISOString(), health: 'HEALTHY', pods: { running: 3, total: 3 }, cpu: 34, memory: 52, uptime: '14d 6h' },
+      { name: 'Staging', id: 'staging', status: 'DEPLOYED', version: 'v2.5.0-rc.3', last_deploy: new Date(Date.now() - 86400000*1).toISOString(), health: 'HEALTHY', pods: { running: 5, total: 5 }, cpu: 28, memory: 45, uptime: '7d 12h' },
+      { name: 'Production', id: 'production', status: 'STABLE', version: 'v2.4.2', last_deploy: new Date(Date.now() - 86400000*3).toISOString(), health: 'HEALTHY', pods: { running: 8, total: 8 }, cpu: 62, memory: 71, uptime: '30d 4h' }
+    ];
+
+    // CI/CD Pipeline definitions
+    const cicdPipelines = [
+      {
+        id: 'PL-001', name: 'Build & Test Pipeline', trigger: 'on push to main',
+        status: 'SUCCESS', duration: '4m 32s', last_run: new Date(Date.now() - 3600000).toISOString(),
+        stages: [
+          { name: 'Checkout', status: 'SUCCESS', duration: '3s', logs: ['Cloning repository...', 'Checked out main @ abc1234'] },
+          { name: 'Install Dependencies', status: 'SUCCESS', duration: '45s', logs: ['npm ci', 'Installed 1,247 packages'] },
+          { name: 'Lint', status: 'SUCCESS', duration: '12s', logs: ['eslint: 0 errors, 2 warnings', 'prettier: all files formatted'] },
+          { name: 'Unit Tests', status: 'SUCCESS', duration: '1m 8s', logs: ['Jest: 342 tests passed, 0 failed', 'Coverage: 87.4%'] },
+          { name: 'Integration Tests', status: 'SUCCESS', duration: '2m 15s', logs: ['API tests: 89/89 passed', 'DB tests: 34/34 passed'] },
+          { name: 'Build', status: 'SUCCESS', duration: '52s', logs: ['tsc: compiled successfully', 'Docker image built: nexus/app:v2.5.0-dev.42'] },
+          { name: 'Security Scan', status: 'SUCCESS', duration: '28s', logs: ['Snyk: 0 high vulnerabilities', 'Container scan: clean'] },
+          { name: 'Push Artifacts', status: 'SUCCESS', duration: '9s', logs: ['Pushed to ECR: nexus/app:v2.5.0-dev.42', 'Helm chart published'] }
+        ]
+      },
+      {
+        id: 'PL-002', name: 'Deploy to Staging', trigger: 'manual / after PL-001 success',
+        status: 'SUCCESS', duration: '3m 12s', last_run: new Date(Date.now() - 86400000).toISOString(),
+        stages: [
+          { name: 'Approve', status: 'SUCCESS', duration: '2s', logs: ['Auto-approved for staging'] },
+          { name: 'Pre-Deploy Checks', status: 'SUCCESS', duration: '15s', logs: ['Health check: staging cluster healthy', 'DB migrations: 2 pending'] },
+          { name: 'Run Migrations', status: 'SUCCESS', duration: '34s', logs: ['Migration 024_add_order_index: applied', 'Migration 025_add_audit_log: applied'] },
+          { name: 'Deploy', status: 'SUCCESS', duration: '1m 45s', logs: ['Rolling update: 5/5 pods replaced', 'All health checks passing'] },
+          { name: 'Smoke Tests', status: 'SUCCESS', duration: '42s', logs: ['API /health: 200 OK', 'Auth flow: passed', 'Payment flow: passed'] },
+          { name: 'Notify', status: 'SUCCESS', duration: '2s', logs: ['Slack notification sent', 'Deployment record created'] }
+        ]
+      },
+      {
+        id: 'PL-003', name: 'Production Release', trigger: 'manual with approval',
+        status: 'PENDING_APPROVAL', duration: '—', last_run: new Date(Date.now() - 86400000*3).toISOString(),
+        stages: [
+          { name: 'Request Approval', status: 'PENDING', duration: '—', logs: ['Waiting for Admin approval...'] },
+          { name: 'Pre-Deploy Checks', status: 'NOT_STARTED', duration: '—', logs: [] },
+          { name: 'Blue/Green Switch', status: 'NOT_STARTED', duration: '—', logs: [] },
+          { name: 'Canary (10%)', status: 'NOT_STARTED', duration: '—', logs: [] },
+          { name: 'Canary (50%)', status: 'NOT_STARTED', duration: '—', logs: [] },
+          { name: 'Full Rollout', status: 'NOT_STARTED', duration: '—', logs: [] },
+          { name: 'Post-Deploy Validation', status: 'NOT_STARTED', duration: '—', logs: [] },
+          { name: 'Release Notes', status: 'NOT_STARTED', duration: '—', logs: [] }
+        ]
+      }
+    ];
+
+    // IaC Templates
+    const iacTemplates = [
+      { name: 'Kubernetes Deployment', type: 'k8s', language: 'YAML', icon: '☸️',
+        code: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus-app
+  namespace: production
+  labels:
+    app: nexus
+    version: v2.5.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+      containers:
+      - name: nexus-app
+        image: nexus/app:v2.5.0
+        ports:
+        - containerPort: 3000
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: url` },
+      { name: 'Terraform AWS ECS', type: 'terraform', language: 'HCL', icon: '🏗️',
+        code: `resource "aws_ecs_service" "nexus" {
+  name            = "nexus-app"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.nexus.arn
+  desired_count   = 3
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = var.private_subnets
+    security_groups = [aws_security_group.ecs.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.nexus.arn
+    container_name   = "nexus-app"
+    container_port   = 3000
+  }
+
+  deployment_configuration {
+    maximum_percent         = 200
+    minimum_healthy_percent = 100
+  }
+}
+
+resource "aws_ecs_task_definition" "nexus" {
+  family                   = "nexus-app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+
+  container_definitions = jsonencode([{
+    name  = "nexus-app"
+    image = "nexus/app:v2.5.0"
+    portMappings = [{ containerPort = 3000 }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"  = "/ecs/nexus"
+        "awslogs-region" = var.region
+      }
+    }
+  }])
+}` },
+      { name: 'Docker Compose', type: 'docker', language: 'YAML', icon: '🐳',
+        code: `version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://nexus:pass@db:5432/nexus
+      - REDIS_URL=redis://cache:6379
+    depends_on:
+      - db
+      - cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: nexus
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    ports:
+      - "5432:5432"
+
+  cache:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:` },
+      { name: 'GitHub Actions CI', type: 'github', language: 'YAML', icon: '🔧',
+        code: `name: CI/CD Pipeline
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test -- --coverage
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist/
+
+  security-scan:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx snyk test
+      - run: docker scout cves --only-severity critical,high
+
+  deploy-staging:
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: \${{ secrets.AWS_ROLE }}
+          aws-region: us-east-1
+      - run: |
+          aws ecs update-service \\
+            --cluster nexus-staging \\
+            --service nexus-app \\
+            --force-new-deployment` }
+    ];
+
+    function seedDevOpsData() {
+      if (NexusStore.getDeployments(projectId).length > 0) return;
+      const now = Date.now();
+      NexusStore.setDeployments(projectId, [
+        { id: 'DEP-001', version: 'v2.4.2', environment: 'production', strategy: 'blue-green', status: 'SUCCESS', deployed_by: 'DevOps Agent', started_at: new Date(now - 86400000*3).toISOString(), completed_at: new Date(now - 86400000*3 + 180000).toISOString(), notes: 'Hotfix: SQL injection patch', rollback_version: 'v2.4.1' },
+        { id: 'DEP-002', version: 'v2.5.0-rc.3', environment: 'staging', strategy: 'rolling', status: 'SUCCESS', deployed_by: 'DevOps Agent', started_at: new Date(now - 86400000*1).toISOString(), completed_at: new Date(now - 86400000*1 + 192000).toISOString(), notes: 'Feature: Payment + Order modules', rollback_version: 'v2.5.0-rc.2' },
+        { id: 'DEP-003', version: 'v2.5.0-dev.42', environment: 'development', strategy: 'rolling', status: 'SUCCESS', deployed_by: 'CI/CD Pipeline', started_at: new Date(now - 3600000*2).toISOString(), completed_at: new Date(now - 3600000*2 + 120000).toISOString(), notes: 'Latest dev build', rollback_version: 'v2.5.0-dev.41' }
+      ]);
+    }
+
+    seedDevOpsData();
+
+    function render() {
+      // Environment cards
+      document.getElementById('envCards').innerHTML = environments.map(env => {
+        const statusColors = { DEPLOYED: '#3b82f6', STABLE: '#10b981', DEPLOYING: '#f59e0b', FAILED: '#ef4444' };
+        const healthColors = { HEALTHY: '#10b981', DEGRADED: '#f59e0b', DOWN: '#ef4444' };
+        return `
+        <div class="card" style="border-top:3px solid ${statusColors[env.status]}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <div style="font-weight:700;font-size:16px;">${env.name}</div>
+              <div style="font-family:var(--font-mono);font-size:12px;color:var(--accent);">${env.version}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${healthColors[env.health]};${env.health==='HEALTHY'?'':'animation:pulse 1.5s infinite'}"></span>
+              <span style="font-size:12px;color:${healthColors[env.health]}">${env.health}</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div style="font-size:12px;color:var(--text-muted);">Pods: <strong style="color:var(--text-primary)">${env.pods.running}/${env.pods.total}</strong></div>
+            <div style="font-size:12px;color:var(--text-muted);">Uptime: <strong style="color:var(--text-primary)">${env.uptime}</strong></div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:2px;"><span>CPU</span><span>${env.cpu}%</span></div>
+            <div style="height:4px;background:var(--bg-tertiary);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${env.cpu}%;background:${env.cpu > 80 ? '#ef4444' : env.cpu > 60 ? '#f59e0b' : '#10b981'};border-radius:2px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:2px;"><span>Memory</span><span>${env.memory}%</span></div>
+            <div style="height:4px;background:var(--bg-tertiary);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${env.memory}%;background:${env.memory > 80 ? '#ef4444' : env.memory > 60 ? '#f59e0b' : '#10b981'};border-radius:2px;"></div></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Deployed: ${formatTime(env.last_deploy)}</div>
+        </div>`;
+      }).join('');
+
+      renderTab();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      renderTab();
+    }
+
+    function renderTab() {
+      const c = document.getElementById('tabContent');
+      switch(currentTab) {
+        case 'pipelines': renderPipelines(c); break;
+        case 'deployments': renderDeployments(c); break;
+        case 'iac': renderIaC(c); break;
+        case 'releases': renderReleases(c); break;
+      }
+    }
+
+    function renderPipelines(container) {
+      container.innerHTML = cicdPipelines.map(pl => {
+        const statusColors = { SUCCESS: '#10b981', FAILED: '#ef4444', RUNNING: '#3b82f6', PENDING_APPROVAL: '#f59e0b', NOT_STARTED: '#6b7280' };
+        const stageStatusIcons = { SUCCESS: '✅', FAILED: '❌', RUNNING: '🔄', PENDING: '⏳', NOT_STARTED: '⬜' };
+        return `
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <div style="font-weight:700;font-size:15px;">${pl.name}</div>
+              <div style="font-size:12px;color:var(--text-muted);">Trigger: ${pl.trigger} • Duration: ${pl.duration} • Last: ${formatTime(pl.last_run)}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              ${statusBadge(pl.status)}
+              ${pl.status === 'PENDING_APPROVAL' ? `<button class="btn btn-sm btn-success" onclick="approvePipeline('${pl.id}')">Approve</button>` : ''}
+              ${pl.status === 'SUCCESS' ? `<button class="btn btn-sm btn-outline" onclick="rerunPipeline('${pl.id}')">Re-run</button>` : ''}
+            </div>
+          </div>
+          <!-- Stage Flow -->
+          <div style="display:flex;gap:0;overflow-x:auto;padding:8px 0;">
+            ${pl.stages.map((s, i) => `
+              <div style="flex-shrink:0;text-align:center;position:relative;">
+                ${i > 0 ? `<div style="position:absolute;top:12px;left:-16px;width:32px;height:2px;background:${s.status === 'SUCCESS' ? '#10b981' : 'var(--border-color)'}"></div>` : ''}
+                <div style="width:28px;height:28px;border-radius:50%;background:${(statusColors[s.status] || '#6b7280')}20;border:2px solid ${statusColors[s.status] || '#6b7280'};display:flex;align-items:center;justify-content:center;margin:0 auto 4px;font-size:12px;">${stageStatusIcons[s.status]}</div>
+                <div style="font-size:10px;color:var(--text-secondary);max-width:80px;word-wrap:break-word;">${s.name}</div>
+                <div style="font-size:9px;color:var(--text-muted);">${s.duration}</div>
+              </div>
+            `).join('<div style="flex-shrink:0;width:32px;"></div>')}
+          </div>
+          <!-- Expandable Logs -->
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer;font-size:12px;color:var(--accent);user-select:none;">View Stage Logs</summary>
+            <div style="margin-top:8px;background:var(--bg-primary);border-radius:6px;padding:12px;font-family:var(--font-mono);font-size:11px;max-height:200px;overflow-y:auto;">
+              ${pl.stages.map(s => s.logs.length > 0 ? `<div style="color:var(--accent);margin-bottom:2px;">── ${s.name} ──</div>${s.logs.map(l => `<div style="color:${s.status === 'FAILED' ? '#ef4444' : 'var(--text-secondary)'}">${l}</div>`).join('')}<div style="margin-bottom:8px;"></div>` : '').join('')}
+            </div>
+          </details>
+        </div>`;
+      }).join('');
+    }
+
+    function renderDeployments(container) {
+      const deployments = NexusStore.getDeployments(projectId);
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Deployment History</h3></div>
+          <div style="overflow-x:auto;">
+            <table class="table">
+              <thead><tr><th>ID</th><th>Version</th><th>Environment</th><th>Strategy</th><th>Status</th><th>Deployed By</th><th>Time</th><th>Actions</th></tr></thead>
+              <tbody>
+                ${deployments.map(d => `
+                  <tr>
+                    <td style="font-family:var(--font-mono);font-size:12px;">${d.id}</td>
+                    <td style="font-weight:600;">${d.version}</td>
+                    <td>${d.environment}</td>
+                    <td>${d.strategy}</td>
+                    <td>${statusBadge(d.status)}</td>
+                    <td>${d.deployed_by}</td>
+                    <td style="font-size:12px;">${formatTime(d.started_at)}</td>
+                    <td>
+                      ${d.rollback_version && d.status === 'SUCCESS' ? `<button class="btn btn-sm btn-outline" onclick="rollback('${d.id}','${d.rollback_version}','${d.environment}')">↩ Rollback</button>` : '—'}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderIaC(container) {
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          ${iacTemplates.map(t => `
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="font-size:24px;">${t.icon}</span>
+                <div>
+                  <div style="font-weight:700;font-size:14px;">${t.name}</div>
+                  <div style="font-size:11px;color:var(--text-muted);">${t.language} • Auto-generated by DevOps Agent</div>
+                </div>
+                <button class="btn btn-sm btn-outline" style="margin-left:auto;" onclick="copyIaC(this, \`${t.name}\`)">📋 Copy</button>
+              </div>
+              <pre style="background:var(--bg-primary);border-radius:8px;padding:12px;font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);overflow-x:auto;max-height:300px;margin:0;white-space:pre;line-height:1.5;">${escapeHtmlSafe(t.code)}</pre>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderReleases(container) {
+      const releases = [
+        { version: 'v2.5.0', status: 'IN_PROGRESS', date: new Date().toISOString(),
+          features: ['JWT authentication flow', 'Stripe payment processing', 'Order management with event sourcing', 'CI/CD pipeline automation'],
+          fixes: ['SQL injection vulnerability patched', 'Rate limiter counter reset fix', 'JWT clock skew validation'],
+          breaking: ['API v1 endpoints deprecated — migrate to v2'],
+          contributors: ['Developer Agent (Auth)', 'Developer Agent (Payments)', 'Developer Agent (Orders)', 'Security Agent', 'DevOps Agent'] },
+        { version: 'v2.4.2', status: 'RELEASED', date: new Date(Date.now() - 86400000*3).toISOString(),
+          features: [], fixes: ['Critical SQL injection fix in user search endpoint'], breaking: [],
+          contributors: ['Security Agent'] },
+        { version: 'v2.4.1', status: 'RELEASED', date: new Date(Date.now() - 86400000*10).toISOString(),
+          features: ['User profile management', 'Basic order listing'], fixes: ['Login redirect loop fix'], breaking: [],
+          contributors: ['Developer Agent (Auth)', 'Developer Agent (Orders)'] }
+      ];
+
+      container.innerHTML = releases.map(r => `
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:20px;">${r.status === 'IN_PROGRESS' ? '🔨' : '🏷️'}</span>
+              <div>
+                <span style="font-size:18px;font-weight:700;">${r.version}</span>
+                ${statusBadge(r.status)}
+              </div>
+            </div>
+            <span style="font-size:12px;color:var(--text-muted);">${formatTime(r.date)}</span>
+          </div>
+          ${r.features.length > 0 ? `<div style="margin-bottom:10px;"><div style="font-size:12px;font-weight:600;color:#10b981;margin-bottom:4px;">✨ Features</div>${r.features.map(f => `<div style="font-size:13px;padding:2px 0;">• ${f}</div>`).join('')}</div>` : ''}
+          ${r.fixes.length > 0 ? `<div style="margin-bottom:10px;"><div style="font-size:12px;font-weight:600;color:#f59e0b;margin-bottom:4px;">🐛 Bug Fixes</div>${r.fixes.map(f => `<div style="font-size:13px;padding:2px 0;">• ${f}</div>`).join('')}</div>` : ''}
+          ${r.breaking.length > 0 ? `<div style="margin-bottom:10px;"><div style="font-size:12px;font-weight:600;color:#ef4444;margin-bottom:4px;">⚠️ Breaking Changes</div>${r.breaking.map(f => `<div style="font-size:13px;padding:2px 0;">• ${f}</div>`).join('')}</div>` : ''}
+          <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Contributors: ${r.contributors.join(', ')}</div>
+        </div>
+      `).join('');
+    }
+
+    function triggerDeployment() { document.getElementById('deployModal').style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function executeDeploy() {
+      const env = document.getElementById('deployEnv').value;
+      const version = document.getElementById('deployVersion').value.trim();
+      const strategy = document.getElementById('deployStrategy').value;
+      const notes = document.getElementById('deployNotes').value.trim();
+
+      if (!version) { showToast('Version is required', 'error'); return; }
+      if (env === 'production' && !NexusPermissions.canPerform('deploy_production')) {
+        showToast('Production deployment requires Admin approval', 'error'); return;
+      }
+
+      closeModal('deployModal');
+      showLoading(`Deploying ${version} to ${env}...`);
+
+      // Simulate deployment stages
+      let stage = 0;
+      const stages = ['Pre-flight checks...', 'Running migrations...', 'Deploying containers...', 'Health checks...', 'Finalizing...'];
+      const stageInterval = setInterval(() => {
+        if (stage < stages.length) {
+          showLoading(stages[stage]);
+          stage++;
+        } else {
+          clearInterval(stageInterval);
+          const dep = {
+            id: 'DEP-' + String(NexusStore.getDeployments(projectId).length + 1).padStart(3,'0'),
+            version, environment: env, strategy, status: 'SUCCESS',
+            deployed_by: NexusStore.getUser()?.name || 'Human',
+            started_at: new Date(Date.now() - 15000).toISOString(),
+            completed_at: new Date().toISOString(),
+            notes, rollback_version: environments.find(e => e.id === env)?.version || null
+          };
+          NexusStore.addDeployment(projectId, dep);
+
+          // Update environment
+          const envObj = environments.find(e => e.id === env);
+          if (envObj) { envObj.version = version; envObj.last_deploy = new Date().toISOString(); envObj.status = 'DEPLOYED'; }
+
+          NexusEventBus.notify('deployment', '🚀 Deployment Complete', `${version} deployed to ${env}`, { deploymentId: dep.id });
+          hideLoading();
+          render();
+          showToast(`Successfully deployed ${version} to ${env}!`, 'success');
+        }
+      }, 800);
+    }
+
+    function rollback(depId, rollbackVersion, env) {
+      if (!confirm(`Rollback ${env} to ${rollbackVersion}?`)) return;
+      showLoading(`Rolling back to ${rollbackVersion}...`);
+      setTimeout(() => {
+        const dep = {
+          id: 'DEP-' + String(NexusStore.getDeployments(projectId).length + 1).padStart(3,'0'),
+          version: rollbackVersion, environment: env, strategy: 'rollback', status: 'SUCCESS',
+          deployed_by: NexusStore.getUser()?.name || 'Human',
+          started_at: new Date().toISOString(), completed_at: new Date().toISOString(),
+          notes: `Rollback from ${depId}`, rollback_version: null
+        };
+        NexusStore.addDeployment(projectId, dep);
+        const envObj = environments.find(e => e.id === env);
+        if (envObj) { envObj.version = rollbackVersion; envObj.last_deploy = new Date().toISOString(); }
+        NexusEventBus.notify('deployment', '↩ Rollback', `${env} rolled back to ${rollbackVersion}`, {});
+        hideLoading();
+        render();
+        showToast(`Rolled back to ${rollbackVersion}`, 'success');
+      }, 2000);
+    }
+
+    function approvePipeline(plId) {
+      const pl = cicdPipelines.find(p => p.id === plId);
+      if (pl) {
+        showLoading('Executing production pipeline...');
+        pl.status = 'RUNNING';
+        let stageIdx = 0;
+        const interval = setInterval(() => {
+          if (stageIdx < pl.stages.length) {
+            pl.stages[stageIdx].status = 'SUCCESS';
+            pl.stages[stageIdx].duration = Math.floor(Math.random() * 120 + 10) + 's';
+            pl.stages[stageIdx].logs = ['Completed successfully'];
+            stageIdx++;
+            render();
+          } else {
+            clearInterval(interval);
+            pl.status = 'SUCCESS';
+            pl.duration = '8m 45s';
+            pl.last_run = new Date().toISOString();
+            hideLoading();
+            render();
+            showToast('Production pipeline completed!', 'success');
+          }
+        }, 600);
+      }
+    }
+
+    function rerunPipeline(plId) {
+      showToast('Pipeline re-triggered', 'info');
+    }
+
+    function copyIaC(btn, name) {
+      showToast(`${name} copied to clipboard!`, 'success');
+      btn.textContent = '✅ Copied';
+      setTimeout(() => btn.textContent = '📋 Copy', 2000);
+    }
+
+    render();
+  </script>
+</body>
+</html>

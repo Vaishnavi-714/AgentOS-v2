@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Code Review</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Code Review</h1>
+        <p class="page-subtitle">AI-powered pull request analysis, security scanning &amp; quality scoring</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelector"></div>
+        <button class="btn btn-primary" onclick="openCreatePR()">+ Simulate PR</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="reviewStats" style="margin-bottom:24px"></div>
+
+    <!-- Filter Bar -->
+    <div class="card" style="margin-bottom:16px;padding:16px;">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <select id="filterStatus" class="form-select" style="width:auto" onchange="render()">
+          <option value="">All Status</option>
+          <option value="OPEN">Open</option>
+          <option value="APPROVED">Approved</option>
+          <option value="CHANGES_REQUESTED">Changes Requested</option>
+          <option value="MERGED">Merged</option>
+        </select>
+        <select id="filterSeverity" class="form-select" style="width:auto" onchange="render()">
+          <option value="">All Severity</option>
+          <option value="CRITICAL">Critical</option>
+          <option value="HIGH">High</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="LOW">Low</option>
+        </select>
+        <select id="filterAgent" class="form-select" style="width:auto" onchange="render()">
+          <option value="">All Reviewers</option>
+          <option value="Security Agent">Security Agent</option>
+          <option value="QA Agent">QA Agent</option>
+          <option value="Reviewer Agent">Reviewer Agent</option>
+        </select>
+        <div style="margin-left:auto;font-size:13px;color:var(--text-muted);" id="reviewCount"></div>
+      </div>
+    </div>
+
+    <!-- PR List -->
+    <div id="prList"></div>
+
+    <!-- PR Detail Drawer -->
+    <div class="modal-overlay" id="prDetailModal" style="display:none">
+      <div class="modal" style="max-width:900px;max-height:90vh;display:flex;flex-direction:column;">
+        <div class="modal-header">
+          <h3 class="modal-title" id="prDetailTitle">PR Detail</h3>
+          <button class="modal-close" onclick="closePRDetail()">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow-y:auto;flex:1;" id="prDetailBody"></div>
+        <div class="modal-footer" id="prDetailFooter"></div>
+      </div>
+    </div>
+
+    <!-- Create PR Modal -->
+    <div class="modal-overlay" id="createPRModal" style="display:none">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Simulate Pull Request</h3>
+          <button class="modal-close" onclick="closeModal('createPRModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">PR Title</label>
+            <input type="text" id="prTitle" class="form-input" placeholder="feat: Add payment gateway integration">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Branch</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="prBranch" class="form-input" placeholder="feature/payments" style="flex:1">
+              <span style="color:var(--text-muted)">→</span>
+              <span style="color:var(--accent);font-family:var(--font-mono);font-size:13px;">main</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea id="prDescription" class="form-textarea" rows="3" placeholder="What changed and why..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Module</label>
+            <select id="prModule" class="form-select">
+              <option value="auth">Authentication</option>
+              <option value="payments">Payments</option>
+              <option value="orders">Orders</option>
+              <option value="core">Core</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Files Changed (simulated)</label>
+            <select id="prSize" class="form-select">
+              <option value="small">Small (3-5 files, ~120 lines)</option>
+              <option value="medium">Medium (8-15 files, ~450 lines)</option>
+              <option value="large">Large (20+ files, ~1200 lines)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('createPRModal')">Cancel</button>
+          <button class="btn btn-primary" onclick="createPR()">Create &amp; Run Review</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/event-bus.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('code-review');
+    NexusPermissions.enforcePageAccess('code-review');
+    injectTenantInfoCard();
+
+    // Seed code review data if not present
+    function seedCodeReviews(projectId) {
+      if (NexusStore.getCodeReviews(projectId).length > 0) return;
+      const now = Date.now();
+      const reviews = [
+        {
+          pr_id: 'PR-001', title: 'feat: Implement JWT authentication flow',
+          branch: 'feature/jwt-auth', target: 'main', author: 'Developer Agent (Auth)',
+          module: 'auth', status: 'APPROVED', created_at: new Date(now - 86400000*3).toISOString(),
+          updated_at: new Date(now - 86400000*1).toISOString(),
+          description: 'Implements JWT-based authentication with refresh token rotation, bcrypt password hashing, and rate limiting on login endpoints.',
+          files_changed: 12, lines_added: 487, lines_removed: 23,
+          maintainability_score: 92, security_score: 88, performance_score: 95, style_score: 97,
+          findings: [
+            { id: 'F-001', severity: 'HIGH', category: 'security', file: 'src/auth/jwt.service.ts', line: 45, message: 'JWT secret should be loaded from environment variable, not hardcoded', suggestion: "Replace hardcoded secret with `process.env.JWT_SECRET`", status: 'RESOLVED', agent: 'Security Agent' },
+            { id: 'F-002', severity: 'MEDIUM', category: 'performance', file: 'src/auth/auth.controller.ts', line: 78, message: 'Missing rate limiter on /auth/refresh endpoint', suggestion: 'Apply @RateLimit(10, 60) decorator', status: 'RESOLVED', agent: 'Reviewer Agent' },
+            { id: 'F-003', severity: 'LOW', category: 'style', file: 'src/auth/auth.module.ts', line: 12, message: 'Unused import: HttpModule', suggestion: 'Remove unused import', status: 'RESOLVED', agent: 'Reviewer Agent' },
+            { id: 'F-004', severity: 'LOW', category: 'maintainability', file: 'src/auth/guards/jwt.guard.ts', line: 30, message: 'Consider extracting token validation into a separate utility', suggestion: 'Create TokenValidator utility class', status: 'ACKNOWLEDGED', agent: 'QA Agent' }
+          ],
+          reviewers: ['Security Agent', 'Reviewer Agent', 'QA Agent'],
+          review_timeline: [
+            { agent: 'Security Agent', action: 'started_review', timestamp: new Date(now - 86400000*2.5).toISOString() },
+            { agent: 'Security Agent', action: 'found_issue', detail: 'Hardcoded JWT secret (HIGH)', timestamp: new Date(now - 86400000*2.4).toISOString() },
+            { agent: 'Reviewer Agent', action: 'started_review', timestamp: new Date(now - 86400000*2.3).toISOString() },
+            { agent: 'Reviewer Agent', action: 'found_issue', detail: 'Missing rate limiter (MEDIUM)', timestamp: new Date(now - 86400000*2.2).toISOString() },
+            { agent: 'Developer Agent (Auth)', action: 'pushed_fix', detail: 'Fixed JWT secret + rate limiter', timestamp: new Date(now - 86400000*1.5).toISOString() },
+            { agent: 'Security Agent', action: 'approved', timestamp: new Date(now - 86400000*1.2).toISOString() },
+            { agent: 'Reviewer Agent', action: 'approved', timestamp: new Date(now - 86400000*1).toISOString() }
+          ],
+          diff_preview: [
+            { file: 'src/auth/jwt.service.ts', hunks: [
+              { old_start: 43, new_start: 43, lines: [
+                { type: 'context', content: 'export class JwtService {' },
+                { type: 'context', content: '  private readonly logger = new Logger(JwtService.name);' },
+                { type: 'removed', content: "  private readonly secret = 'my-super-secret-key-2024';" },
+                { type: 'added', content: "  private readonly secret = this.configService.get<string>('JWT_SECRET');" },
+                { type: 'context', content: '' },
+                { type: 'context', content: '  constructor(' },
+                { type: 'added', content: '    private readonly configService: ConfigService,' },
+                { type: 'context', content: '    private readonly userService: UserService,' },
+              ]}
+            ]},
+            { file: 'src/auth/auth.controller.ts', hunks: [
+              { old_start: 75, new_start: 75, lines: [
+                { type: 'context', content: '  @Post("refresh")' },
+                { type: 'added', content: '  @RateLimit(10, 60)' },
+                { type: 'context', content: '  async refreshToken(@Body() dto: RefreshTokenDto) {' },
+                { type: 'context', content: '    return this.authService.refreshToken(dto.refreshToken);' },
+              ]}
+            ]}
+          ]
+        },
+        {
+          pr_id: 'PR-002', title: 'feat: Add Stripe payment processing',
+          branch: 'feature/stripe-payments', target: 'main', author: 'Developer Agent (Payments)',
+          module: 'payments', status: 'CHANGES_REQUESTED', created_at: new Date(now - 86400000*1).toISOString(),
+          updated_at: new Date(now - 3600000*4).toISOString(),
+          description: 'Integrates Stripe SDK for payment processing with webhook handling, idempotency keys, and PCI-compliant card tokenization.',
+          files_changed: 18, lines_added: 892, lines_removed: 45,
+          maintainability_score: 76, security_score: 62, performance_score: 84, style_score: 89,
+          findings: [
+            { id: 'F-010', severity: 'CRITICAL', category: 'security', file: 'src/payments/stripe.service.ts', line: 23, message: 'Stripe API key exposed in source code — must use vault/env', suggestion: "Use `this.vault.getSecret('STRIPE_SK')`", status: 'OPEN', agent: 'Security Agent' },
+            { id: 'F-011', severity: 'HIGH', category: 'security', file: 'src/payments/webhook.controller.ts', line: 56, message: 'Webhook signature verification missing — vulnerable to replay attacks', suggestion: 'Add stripe.webhooks.constructEvent() verification', status: 'OPEN', agent: 'Security Agent' },
+            { id: 'F-012', severity: 'HIGH', category: 'performance', file: 'src/payments/payment.service.ts', line: 112, message: 'N+1 query in batch payment processing loop', suggestion: 'Use Promise.allSettled() for parallel processing', status: 'OPEN', agent: 'Reviewer Agent' },
+            { id: 'F-013', severity: 'MEDIUM', category: 'maintainability', file: 'src/payments/payment.service.ts', line: 34, message: 'PaymentService exceeds 400 lines — consider splitting', suggestion: 'Extract WebhookHandler and RefundService', status: 'OPEN', agent: 'Reviewer Agent' },
+            { id: 'F-014', severity: 'LOW', category: 'style', file: 'src/payments/dto/create-payment.dto.ts', line: 8, message: 'Missing validation decorators on amount field', suggestion: 'Add @IsNumber() @Min(0.50) decorators', status: 'OPEN', agent: 'QA Agent' },
+            { id: 'F-015', severity: 'MEDIUM', category: 'security', file: 'src/payments/payment.service.ts', line: 89, message: 'Logging full card details in debug mode', suggestion: 'Mask card number: ****{last4}', status: 'OPEN', agent: 'Security Agent' }
+          ],
+          reviewers: ['Security Agent', 'Reviewer Agent', 'QA Agent'],
+          review_timeline: [
+            { agent: 'Security Agent', action: 'started_review', timestamp: new Date(now - 86400000*0.8).toISOString() },
+            { agent: 'Security Agent', action: 'found_issue', detail: 'CRITICAL: Stripe API key in source (CRITICAL)', timestamp: new Date(now - 86400000*0.7).toISOString() },
+            { agent: 'Security Agent', action: 'found_issue', detail: 'Webhook signature bypass (HIGH)', timestamp: new Date(now - 86400000*0.65).toISOString() },
+            { agent: 'Reviewer Agent', action: 'started_review', timestamp: new Date(now - 86400000*0.6).toISOString() },
+            { agent: 'Reviewer Agent', action: 'changes_requested', detail: 'N+1 query + service too large', timestamp: new Date(now - 86400000*0.5).toISOString() },
+            { agent: 'Security Agent', action: 'changes_requested', detail: 'Must fix CRITICAL + HIGH before merge', timestamp: new Date(now - 3600000*4).toISOString() }
+          ],
+          diff_preview: [
+            { file: 'src/payments/stripe.service.ts', hunks: [
+              { old_start: 20, new_start: 20, lines: [
+                { type: 'context', content: 'export class StripeService {' },
+                { type: 'added', content: "  private stripe = new Stripe('sk_live_51ABC...xyz', {" },
+                { type: 'added', content: "    apiVersion: '2024-04-10'," },
+                { type: 'added', content: '  });' },
+                { type: 'context', content: '' },
+              ]}
+            ]},
+            { file: 'src/payments/webhook.controller.ts', hunks: [
+              { old_start: 50, new_start: 50, lines: [
+                { type: 'context', content: '  @Post("webhook")' },
+                { type: 'context', content: '  async handleWebhook(@Req() req: RawBodyRequest<Request>) {' },
+                { type: 'added', content: '    // TODO: Add signature verification' },
+                { type: 'added', content: '    const event = JSON.parse(req.body.toString());' },
+                { type: 'context', content: '    switch (event.type) {' },
+              ]}
+            ]}
+          ]
+        },
+        {
+          pr_id: 'PR-003', title: 'feat: Order management CRUD + event sourcing',
+          branch: 'feature/order-mgmt', target: 'main', author: 'Developer Agent (Orders)',
+          module: 'orders', status: 'OPEN', created_at: new Date(now - 3600000*6).toISOString(),
+          updated_at: new Date(now - 3600000*2).toISOString(),
+          description: 'Complete order lifecycle with event sourcing, saga pattern for distributed transactions, and real-time status tracking.',
+          files_changed: 24, lines_added: 1245, lines_removed: 89,
+          maintainability_score: 85, security_score: 91, performance_score: 78, style_score: 93,
+          findings: [
+            { id: 'F-020', severity: 'MEDIUM', category: 'performance', file: 'src/orders/saga/order.saga.ts', line: 67, message: 'Saga compensation timeout set to 30s — may cause cascading failures', suggestion: 'Reduce to 10s with exponential backoff retry', status: 'OPEN', agent: 'Reviewer Agent' },
+            { id: 'F-021', severity: 'LOW', category: 'maintainability', file: 'src/orders/events/order.events.ts', line: 15, message: 'Consider using discriminated union types for event variants', suggestion: 'Add type discriminator field', status: 'OPEN', agent: 'Reviewer Agent' }
+          ],
+          reviewers: ['Reviewer Agent'],
+          review_timeline: [
+            { agent: 'Reviewer Agent', action: 'started_review', timestamp: new Date(now - 3600000*4).toISOString() },
+            { agent: 'Reviewer Agent', action: 'found_issue', detail: 'Saga timeout concern (MEDIUM)', timestamp: new Date(now - 3600000*3).toISOString() },
+            { agent: 'Reviewer Agent', action: 'in_progress', detail: 'Awaiting Security Agent review', timestamp: new Date(now - 3600000*2).toISOString() }
+          ],
+          diff_preview: [
+            { file: 'src/orders/saga/order.saga.ts', hunks: [
+              { old_start: 60, new_start: 60, lines: [
+                { type: 'context', content: '  async executeOrderSaga(orderId: string) {' },
+                { type: 'context', content: '    const saga = new SagaBuilder()' },
+                { type: 'added', content: '      .step("reserve_inventory", () => this.inventory.reserve(orderId))' },
+                { type: 'added', content: '      .step("process_payment", () => this.payment.charge(orderId))' },
+                { type: 'added', content: '      .step("confirm_order", () => this.order.confirm(orderId))' },
+                { type: 'added', content: '      .compensate("release_inventory", () => this.inventory.release(orderId))' },
+                { type: 'added', content: '      .timeout(30000)  // 30s saga timeout' },
+                { type: 'context', content: '      .build();' },
+              ]}
+            ]}
+          ]
+        },
+        {
+          pr_id: 'PR-004', title: 'fix: Patch SQL injection in user search endpoint',
+          branch: 'hotfix/sql-injection', target: 'main', author: 'Security Agent',
+          module: 'auth', status: 'MERGED', created_at: new Date(now - 86400000*5).toISOString(),
+          updated_at: new Date(now - 86400000*4).toISOString(),
+          description: 'Critical security fix: Parameterized queries replace string concatenation in user search, preventing SQL injection attack vector.',
+          files_changed: 3, lines_added: 28, lines_removed: 15,
+          maintainability_score: 98, security_score: 100, performance_score: 97, style_score: 100,
+          findings: [],
+          reviewers: ['Security Agent', 'Reviewer Agent'],
+          review_timeline: [
+            { agent: 'Security Agent', action: 'auto_approved', detail: 'Emergency security fix — auto-approved', timestamp: new Date(now - 86400000*4.5).toISOString() },
+            { agent: 'Reviewer Agent', action: 'approved', timestamp: new Date(now - 86400000*4.2).toISOString() }
+          ],
+          diff_preview: [
+            { file: 'src/auth/user.repository.ts', hunks: [
+              { old_start: 34, new_start: 34, lines: [
+                { type: 'context', content: '  async searchUsers(query: string) {' },
+                { type: 'removed', content: "    const sql = `SELECT * FROM users WHERE name LIKE '%${query}%'`;" },
+                { type: 'removed', content: '    return this.db.query(sql);' },
+                { type: 'added', content: "    const sql = 'SELECT * FROM users WHERE name LIKE $1';" },
+                { type: 'added', content: "    return this.db.query(sql, [`%${query}%`]);" },
+                { type: 'context', content: '  }' },
+              ]}
+            ]}
+          ]
+        }
+      ];
+      NexusStore.setCodeReviews(projectId, reviews);
+    }
+
+    const projectId = createProjectSelector('projectSelector', (id) => { seedCodeReviews(id); render(); });
+    seedCodeReviews(projectId);
+
+    function render() {
+      const reviews = NexusStore.getCodeReviews(projectId);
+      const filterStatus = document.getElementById('filterStatus').value;
+      const filterSeverity = document.getElementById('filterSeverity').value;
+      const filterAgent = document.getElementById('filterAgent').value;
+
+      let filtered = reviews;
+      if (filterStatus) filtered = filtered.filter(r => r.status === filterStatus);
+      if (filterSeverity) filtered = filtered.filter(r => r.findings.some(f => f.severity === filterSeverity));
+      if (filterAgent) filtered = filtered.filter(r => r.reviewers.includes(filterAgent));
+
+      // Stats
+      const totalFindings = reviews.reduce((s, r) => s + r.findings.length, 0);
+      const criticalFindings = reviews.reduce((s, r) => s + r.findings.filter(f => f.severity === 'CRITICAL').length, 0);
+      const avgMaintainability = reviews.length ? Math.round(reviews.reduce((s, r) => s + r.maintainability_score, 0) / reviews.length) : 0;
+      const avgSecurity = reviews.length ? Math.round(reviews.reduce((s, r) => s + r.security_score, 0) / reviews.length) : 0;
+
+      document.getElementById('reviewStats').innerHTML = `
+        <div class="card stat-card"><div class="stat-value">${reviews.length}</div><div class="stat-label">Pull Requests</div></div>
+        <div class="card stat-card"><div class="stat-value" style="color:${criticalFindings > 0 ? '#ef4444' : '#10b981'}">${totalFindings}</div><div class="stat-label">Total Findings</div></div>
+        <div class="card stat-card"><div class="stat-value" style="color:${avgSecurity < 80 ? '#f59e0b' : '#10b981'}">${avgSecurity}%</div><div class="stat-label">Avg Security Score</div></div>
+        <div class="card stat-card"><div class="stat-value">${avgMaintainability}%</div><div class="stat-label">Avg Maintainability</div></div>
+      `;
+
+      document.getElementById('reviewCount').textContent = `Showing ${filtered.length} of ${reviews.length} PRs`;
+
+      document.getElementById('prList').innerHTML = filtered.map(pr => {
+        const statusColors = { OPEN: '#3b82f6', APPROVED: '#10b981', CHANGES_REQUESTED: '#f59e0b', MERGED: '#8b5cf6' };
+        const openFindings = pr.findings.filter(f => f.status === 'OPEN').length;
+        return `
+        <div class="card" style="margin-bottom:12px;cursor:pointer;transition:border-color 0.2s;border-left:3px solid ${statusColors[pr.status]}" onclick="openPRDetail('${pr.pr_id}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">${pr.pr_id}</span>
+                <span class="status-badge" style="background:${statusColors[pr.status]}20;color:${statusColors[pr.status]};border:1px solid ${statusColors[pr.status]}40">${pr.status.replace(/_/g,' ')}</span>
+                ${openFindings > 0 ? `<span style="background:#ef444420;color:#ef4444;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${openFindings} open</span>` : ''}
+              </div>
+              <div style="font-weight:600;font-size:15px;margin-bottom:4px;">${pr.title}</div>
+              <div style="font-size:12px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;">
+                <span>🔀 <span style="font-family:var(--font-mono)">${pr.branch}</span> → ${pr.target}</span>
+                <span>👤 ${pr.author}</span>
+                <span>📁 ${pr.files_changed} files</span>
+                <span style="color:#10b981">+${pr.lines_added}</span>
+                <span style="color:#ef4444">-${pr.lines_removed}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              ${renderScorePill('🔒', pr.security_score)}
+              ${renderScorePill('🧹', pr.maintainability_score)}
+              ${renderScorePill('⚡', pr.performance_score)}
+              ${renderScorePill('🎨', pr.style_score)}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderScorePill(icon, score) {
+      const color = score >= 90 ? '#10b981' : score >= 75 ? '#f59e0b' : '#ef4444';
+      return `<div style="text-align:center;min-width:44px;"><div style="font-size:11px;">${icon}</div><div style="font-size:13px;font-weight:700;color:${color}">${score}</div></div>`;
+    }
+
+    function openPRDetail(prId) {
+      const reviews = NexusStore.getCodeReviews(projectId);
+      const pr = reviews.find(r => r.pr_id === prId);
+      if (!pr) return;
+
+      document.getElementById('prDetailTitle').textContent = `${pr.pr_id}: ${pr.title}`;
+
+      const severityColors = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#f59e0b', LOW: '#6b7280' };
+      const categoryIcons = { security: '🔒', performance: '⚡', style: '🎨', maintainability: '🧹' };
+
+      document.getElementById('prDetailBody').innerHTML = `
+        <!-- Scores -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+          ${[['Security', pr.security_score, '🔒'], ['Maintainability', pr.maintainability_score, '🧹'], ['Performance', pr.performance_score, '⚡'], ['Style', pr.style_score, '🎨']].map(([label, score, icon]) => {
+            const color = score >= 90 ? '#10b981' : score >= 75 ? '#f59e0b' : '#ef4444';
+            return `<div style="background:var(--bg-secondary);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:20px;margin-bottom:4px;">${icon}</div>
+              <div style="font-size:24px;font-weight:700;color:${color}">${score}%</div>
+              <div style="font-size:11px;color:var(--text-muted);">${label}</div>
+              <div style="height:4px;background:var(--bg-tertiary);border-radius:2px;margin-top:6px;overflow:hidden;"><div style="height:100%;width:${score}%;background:${color};border-radius:2px;transition:width 1s ease;"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <!-- Findings -->
+        <h4 style="margin-bottom:12px;color:var(--text-primary);">Findings (${pr.findings.length})</h4>
+        ${pr.findings.length === 0 ? '<div style="padding:20px;text-align:center;color:var(--text-muted);">✅ No issues found — clean PR!</div>' : ''}
+        ${pr.findings.map(f => `
+          <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid ${severityColors[f.severity]};">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:14px;">${categoryIcons[f.category] || '📌'}</span>
+                <span style="font-weight:600;font-size:13px;">${f.message}</span>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <span style="background:${severityColors[f.severity]}20;color:${severityColors[f.severity]};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${f.severity}</span>
+                <span class="status-badge" style="font-size:11px;">${f.status}</span>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:4px;">📄 ${f.file}:${f.line} — reviewed by ${f.agent}</div>
+            ${f.suggestion ? `<div style="font-size:12px;color:var(--accent);margin-top:4px;">💡 ${f.suggestion}</div>` : ''}
+            ${f.status === 'OPEN' ? `<div style="margin-top:8px;"><button class="btn btn-sm btn-outline" onclick="resolveFinding('${pr.pr_id}','${f.id}')">Mark Resolved</button> <button class="btn btn-sm" style="background:var(--bg-tertiary)" onclick="acknowledgeFinding('${pr.pr_id}','${f.id}')">Acknowledge</button></div>` : ''}
+          </div>
+        `).join('')}
+
+        <!-- Diff Preview -->
+        <h4 style="margin:20px 0 12px;color:var(--text-primary);">Code Changes</h4>
+        ${(pr.diff_preview || []).map(file => `
+          <div style="background:var(--bg-secondary);border-radius:8px;overflow:hidden;margin-bottom:12px;">
+            <div style="padding:8px 12px;background:var(--bg-tertiary);font-family:var(--font-mono);font-size:12px;font-weight:600;">📄 ${file.file}</div>
+            ${file.hunks.map(hunk => `
+              <div style="font-family:var(--font-mono);font-size:12px;line-height:1.7;">
+                <div style="padding:2px 12px;background:#6366f110;color:var(--accent);font-size:11px;">@@ -${hunk.old_start} +${hunk.new_start} @@</div>
+                ${hunk.lines.map(l => {
+                  const bg = l.type === 'added' ? '#10b98110' : l.type === 'removed' ? '#ef444410' : 'transparent';
+                  const prefix = l.type === 'added' ? '+' : l.type === 'removed' ? '-' : ' ';
+                  const color = l.type === 'added' ? '#10b981' : l.type === 'removed' ? '#ef4444' : 'var(--text-secondary)';
+                  return `<div style="padding:1px 12px;background:${bg};color:${color};white-space:pre;overflow-x:auto;">${prefix} ${escapeHtmlSafe(l.content)}</div>`;
+                }).join('')}
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+
+        <!-- Timeline -->
+        <h4 style="margin:20px 0 12px;color:var(--text-primary);">Review Timeline</h4>
+        <div class="timeline">
+          ${pr.review_timeline.map(e => {
+            const actionIcons = { started_review: '🔍', found_issue: '🐛', changes_requested: '🔄', approved: '✅', auto_approved: '⚡', pushed_fix: '🔧', in_progress: '⏳' };
+            return `<div class="timeline-item">
+              <div class="timeline-dot" style="background:var(--accent)"></div>
+              <div class="timeline-content">
+                <div style="font-weight:600;font-size:13px;">${e.agent} — ${e.action.replace(/_/g,' ')}</div>
+                ${e.detail ? `<div style="font-size:12px;color:var(--text-muted);">${e.detail}</div>` : ''}
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${formatTime(e.timestamp)}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `;
+
+      const statusColors = { OPEN: '#3b82f6', APPROVED: '#10b981', CHANGES_REQUESTED: '#f59e0b', MERGED: '#8b5cf6' };
+      const openFindings = pr.findings.filter(f => f.status === 'OPEN').length;
+
+      document.getElementById('prDetailFooter').innerHTML = `
+        <div style="display:flex;gap:8px;width:100%;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:var(--text-muted);">${openFindings} open findings remaining</span>
+          <div style="display:flex;gap:8px;">
+            ${pr.status === 'OPEN' || pr.status === 'CHANGES_REQUESTED' ? `
+              <button class="btn btn-outline" onclick="updatePRStatus('${pr.pr_id}','CHANGES_REQUESTED')">Request Changes</button>
+              <button class="btn btn-success" onclick="updatePRStatus('${pr.pr_id}','APPROVED')" ${openFindings > 0 ? 'disabled title="Resolve all findings first"' : ''}>Approve</button>
+            ` : ''}
+            ${pr.status === 'APPROVED' ? `<button class="btn btn-primary" onclick="mergePR('${pr.pr_id}')">Merge PR</button>` : ''}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('prDetailModal').style.display = 'flex';
+    }
+
+    function closePRDetail() { document.getElementById('prDetailModal').style.display = 'none'; }
+
+    function resolveFinding(prId, findingId) {
+      const reviews = NexusStore.getCodeReviews(projectId);
+      const pr = reviews.find(r => r.pr_id === prId);
+      const finding = pr?.findings.find(f => f.id === findingId);
+      if (finding) { finding.status = 'RESOLVED'; NexusStore.setCodeReviews(projectId, reviews); openPRDetail(prId); render(); showToast('Finding resolved', 'success'); }
+    }
+
+    function acknowledgeFinding(prId, findingId) {
+      const reviews = NexusStore.getCodeReviews(projectId);
+      const pr = reviews.find(r => r.pr_id === prId);
+      const finding = pr?.findings.find(f => f.id === findingId);
+      if (finding) { finding.status = 'ACKNOWLEDGED'; NexusStore.setCodeReviews(projectId, reviews); openPRDetail(prId); render(); showToast('Finding acknowledged', 'info'); }
+    }
+
+    function updatePRStatus(prId, newStatus) {
+      const reviews = NexusStore.getCodeReviews(projectId);
+      const pr = reviews.find(r => r.pr_id === prId);
+      if (pr) {
+        pr.status = newStatus;
+        pr.updated_at = new Date().toISOString();
+        pr.review_timeline.push({ agent: NexusStore.getUser()?.name || 'Human', action: newStatus === 'APPROVED' ? 'approved' : 'changes_requested', timestamp: new Date().toISOString() });
+        NexusStore.setCodeReviews(projectId, reviews);
+        NexusEventBus.notify('review', 'Code Review', `PR ${prId} status changed to ${newStatus}`, { prId });
+        openPRDetail(prId); render();
+        showToast(`PR ${newStatus.replace(/_/g,' ').toLowerCase()}`, newStatus === 'APPROVED' ? 'success' : 'warning');
+      }
+    }
+
+    function mergePR(prId) {
+      const reviews = NexusStore.getCodeReviews(projectId);
+      const pr = reviews.find(r => r.pr_id === prId);
+      if (pr) {
+        pr.status = 'MERGED';
+        pr.updated_at = new Date().toISOString();
+        pr.review_timeline.push({ agent: NexusStore.getUser()?.name || 'Human', action: 'merged', detail: 'PR merged to main', timestamp: new Date().toISOString() });
+        NexusStore.setCodeReviews(projectId, reviews);
+        NexusEventBus.notify('deployment', 'Code Merged', `PR ${prId} merged to main`, { prId });
+        closePRDetail(); render();
+        showToast('PR merged successfully!', 'success');
+      }
+    }
+
+    function openCreatePR() { document.getElementById('createPRModal').style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function createPR() {
+      const title = document.getElementById('prTitle').value.trim();
+      const branch = document.getElementById('prBranch').value.trim();
+      const description = document.getElementById('prDescription').value.trim();
+      const module = document.getElementById('prModule').value;
+      const size = document.getElementById('prSize').value;
+
+      if (!title || !branch) { showToast('Title and branch are required', 'error'); return; }
+
+      showLoading('Running AI code review...');
+
+      const sizeMap = { small: { files: 4, added: 120, removed: 15 }, medium: { files: 12, added: 450, removed: 65 }, large: { files: 24, added: 1200, removed: 180 } };
+      const s = sizeMap[size];
+
+      // Simulate AI review with realistic delay
+      setTimeout(() => {
+        const findings = [];
+        const severities = ['CRITICAL','HIGH','MEDIUM','LOW'];
+        const categories = ['security','performance','maintainability','style'];
+        const messages = {
+          security: ['Potential SQL injection vector','Unvalidated user input','Missing CSRF token','Insecure random number generator','Hardcoded credentials detected'],
+          performance: ['N+1 query detected','Missing database index','Unbounded result set','Synchronous blocking call','Memory leak in event handler'],
+          maintainability: ['Function exceeds cyclomatic complexity threshold','Duplicated code block','Missing error boundary','Tight coupling between modules','Magic number without constant'],
+          style: ['Inconsistent naming convention','Missing JSDoc annotation','Unused variable','Import order violation','Line exceeds max length']
+        };
+        const agents = ['Security Agent','Reviewer Agent','QA Agent'];
+        const numFindings = Math.floor(Math.random() * 5) + 1;
+        for (let i = 0; i < numFindings; i++) {
+          const cat = categories[Math.floor(Math.random() * categories.length)];
+          findings.push({
+            id: 'F-' + Date.now().toString(36) + i,
+            severity: severities[Math.floor(Math.random() * severities.length)],
+            category: cat,
+            file: `src/${module}/${['service','controller','repository','middleware','guard'][Math.floor(Math.random()*5)]}.ts`,
+            line: Math.floor(Math.random() * 200) + 10,
+            message: messages[cat][Math.floor(Math.random() * messages[cat].length)],
+            suggestion: 'AI-generated fix suggestion pending...',
+            status: 'OPEN',
+            agent: agents[Math.floor(Math.random() * agents.length)]
+          });
+        }
+
+        const pr = {
+          pr_id: 'PR-' + String(NexusStore.getCodeReviews(projectId).length + 1).padStart(3,'0'),
+          title, branch, target: 'main', author: NexusStore.getUser()?.name || 'Developer',
+          module, status: findings.some(f => f.severity === 'CRITICAL') ? 'CHANGES_REQUESTED' : 'OPEN',
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          description, files_changed: s.files, lines_added: s.added, lines_removed: s.removed,
+          maintainability_score: 70 + Math.floor(Math.random() * 25),
+          security_score: 60 + Math.floor(Math.random() * 35),
+          performance_score: 75 + Math.floor(Math.random() * 20),
+          style_score: 80 + Math.floor(Math.random() * 18),
+          findings, reviewers: [...new Set(findings.map(f => f.agent))],
+          review_timeline: [
+            { agent: 'System', action: 'pr_created', detail: `${s.files} files, +${s.added}/-${s.removed} lines`, timestamp: new Date().toISOString() },
+            ...findings.map(f => ({ agent: f.agent, action: 'found_issue', detail: `${f.severity}: ${f.message}`, timestamp: new Date().toISOString() }))
+          ],
+          diff_preview: []
+        };
+
+        NexusStore.addCodeReview(projectId, pr);
+        NexusEventBus.notify('review', 'New PR', `${pr.pr_id}: ${title} — ${findings.length} findings`, { prId: pr.pr_id });
+        hideLoading();
+        closeModal('createPRModal');
+        render();
+        showToast(`PR created with ${findings.length} findings`, findings.some(f => f.severity === 'CRITICAL') ? 'warning' : 'success');
+      }, 2500);
+    }
+
+    render();
+  </script>
+</body>
+</html>

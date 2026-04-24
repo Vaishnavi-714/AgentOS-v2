@@ -160,6 +160,48 @@ const NexusStore = {
       .forEach(k => localStorage.removeItem(k));
   },
 
+  // Code Reviews
+  getCodeReviews(projectId) { return this.get('code_reviews_' + projectId) || []; },
+  setCodeReviews(projectId, reviews) { this.set('code_reviews_' + projectId, reviews); },
+  addCodeReview(projectId, review) { const r = this.getCodeReviews(projectId); r.push(review); this.setCodeReviews(projectId, r); },
+
+  // Incidents
+  getIncidents() { return this.get('incidents') || []; },
+  setIncidents(i) { this.set('incidents', i); },
+  addIncident(inc) { const i = this.getIncidents(); i.push(inc); this.setIncidents(i); },
+
+  // Notifications
+  getNotifications() { return this.get('notifications') || []; },
+  setNotifications(n) { this.set('notifications', n); },
+  markNotificationRead(id) { const n = this.getNotifications(); const f = n.find(x => x.id === id); if (f) f.read = true; this.setNotifications(n); },
+  markAllNotificationsRead() { const n = this.getNotifications(); n.forEach(x => x.read = true); this.setNotifications(n); },
+
+  // AI Safety
+  getSafetyAlerts() { return this.get('safety_alerts') || []; },
+  setSafetyAlerts(a) { this.set('safety_alerts', a); },
+  addSafetyAlert(alert) { const a = this.getSafetyAlerts(); a.push(alert); this.setSafetyAlerts(a); },
+
+  // Deployments
+  getDeployments(projectId) { return this.get('deployments_' + projectId) || []; },
+  setDeployments(projectId, d) { this.set('deployments_' + projectId, d); },
+  addDeployment(projectId, dep) { const d = this.getDeployments(projectId); d.push(dep); this.setDeployments(projectId, d); },
+
+  // Integrations
+  getIntegrations() { return this.get('integrations') || []; },
+  setIntegrations(i) { this.set('integrations', i); },
+
+  // Compliance
+  getComplianceControls() { return this.get('compliance_controls') || []; },
+  setComplianceControls(c) { this.set('compliance_controls', c); },
+
+  // Command Center History
+  getCommandHistory() { return this.get('command_history') || []; },
+  addCommandEntry(entry) { const h = this.getCommandHistory(); h.push(entry); if (h.length > 200) h.shift(); this.set('command_history', h); },
+
+  // Observability
+  getObservabilityMetrics() { return this.get('observability_metrics') || {}; },
+  setObservabilityMetrics(m) { this.set('observability_metrics', m); },
+
   // Check if seeded
   isSeeded() { return this.get('seeded') === true; },
   markSeeded() { this.set('seeded', true); }

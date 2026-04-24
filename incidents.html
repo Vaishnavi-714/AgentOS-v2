@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Production Support &amp; Incidents</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Production Support</h1>
+        <p class="page-subtitle">Incident triage, root cause analysis, log summarization &amp; auto-remediation</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-danger" onclick="openCreateIncident()">🚨 Report Incident</button>
+      </div>
+    </div>
+
+    <!-- Live Status Bar -->
+    <div class="card" style="margin-bottom:16px;padding:12px 20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="systemHealthDot" style="width:12px;height:12px;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span>
+        <span style="font-weight:600;" id="systemHealthLabel">System Healthy</span>
+      </div>
+      <div style="font-size:12px;color:var(--text-muted);display:flex;gap:16px;" id="liveMetrics"></div>
+      <div style="margin-left:auto;font-size:12px;color:var(--text-muted);" id="lastUpdate"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-4" id="incidentStats" style="margin-bottom:24px"></div>
+
+    <!-- Filters -->
+    <div class="card" style="margin-bottom:16px;padding:16px;">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <select id="filterSeverity" class="form-select" style="width:auto" onchange="render()">
+          <option value="">All Severity</option>
+          <option value="P1">P1 — Critical</option>
+          <option value="P2">P2 — High</option>
+          <option value="P3">P3 — Medium</option>
+          <option value="P4">P4 — Low</option>
+        </select>
+        <select id="filterStatus" class="form-select" style="width:auto" onchange="render()">
+          <option value="">All Status</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INVESTIGATING">Investigating</option>
+          <option value="MITIGATED">Mitigated</option>
+          <option value="RESOLVED">Resolved</option>
+          <option value="POSTMORTEM">Post-Mortem</option>
+        </select>
+        <select id="filterService" class="form-select" style="width:auto" onchange="render()">
+          <option value="">All Services</option>
+          <option value="auth-service">Auth Service</option>
+          <option value="payment-service">Payment Service</option>
+          <option value="order-service">Order Service</option>
+          <option value="api-gateway">API Gateway</option>
+          <option value="database">Database</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Incident List -->
+    <div id="incidentList"></div>
+
+    <!-- Incident Detail Modal -->
+    <div class="modal-overlay" id="incidentDetailModal" style="display:none">
+      <div class="modal" style="max-width:950px;max-height:90vh;display:flex;flex-direction:column;">
+        <div class="modal-header">
+          <h3 class="modal-title" id="incidentDetailTitle">Incident Detail</h3>
+          <button class="modal-close" onclick="closeIncidentDetail()">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow-y:auto;flex:1;" id="incidentDetailBody"></div>
+        <div class="modal-footer" id="incidentDetailFooter"></div>
+      </div>
+    </div>
+
+    <!-- Create Incident Modal -->
+    <div class="modal-overlay" id="createIncidentModal" style="display:none">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Report Incident</h3>
+          <button class="modal-close" onclick="closeModal('createIncidentModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input type="text" id="incTitle" class="form-input" placeholder="Brief description of the incident">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Severity</label>
+            <select id="incSeverity" class="form-select">
+              <option value="P1">P1 — Critical (service down)</option>
+              <option value="P2">P2 — High (degraded performance)</option>
+              <option value="P3" selected>P3 — Medium (partial impact)</option>
+              <option value="P4">P4 — Low (cosmetic / minor)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Affected Service</label>
+            <select id="incService" class="form-select">
+              <option value="auth-service">Auth Service</option>
+              <option value="payment-service">Payment Service</option>
+              <option value="order-service">Order Service</option>
+              <option value="api-gateway">API Gateway</option>
+              <option value="database">Database</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea id="incDescription" class="form-textarea" rows="4" placeholder="What happened? Impact? Symptoms?"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('createIncidentModal')">Cancel</button>
+          <button class="btn btn-danger" onclick="createIncident()">Report Incident</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/event-bus.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('incidents');
+    NexusPermissions.enforcePageAccess('incidents');
+    injectTenantInfoCard();
+
+    function seedIncidents() {
+      if (NexusStore.getIncidents().length > 0) return;
+      const now = Date.now();
+      NexusStore.setIncidents([
+        {
+          incident_id: 'INC-2026-001', title: 'Payment Service — 502 errors spike',
+          severity: 'P1', status: 'INVESTIGATING', service: 'payment-service',
+          description: 'Payment processing failing with 502 Bad Gateway errors. Stripe webhook endpoint unreachable. Customer payments being rejected.',
+          reported_by: 'Monitoring Agent', assigned_to: 'Support Agent',
+          created_at: new Date(now - 3600000*2).toISOString(),
+          updated_at: new Date(now - 600000).toISOString(),
+          impact: { users_affected: 1250, revenue_impact: '$45,000/hr', sla_status: 'BREACHED' },
+          metrics: { error_rate: 34.5, latency_p99: 8200, requests_failed: 3456, uptime: 99.2 },
+          timeline: [
+            { timestamp: new Date(now - 3600000*2).toISOString(), agent: 'Monitoring Agent', action: 'Alert triggered', detail: 'Error rate exceeded 5% threshold on payment-service', type: 'alert' },
+            { timestamp: new Date(now - 3600000*1.8).toISOString(), agent: 'Support Agent', action: 'Incident created', detail: 'Auto-triaged as P1 based on service criticality and error rate', type: 'triage' },
+            { timestamp: new Date(now - 3600000*1.5).toISOString(), agent: 'Support Agent', action: 'Log analysis started', detail: 'Analyzing last 10,000 log entries for root cause patterns', type: 'investigation' },
+            { timestamp: new Date(now - 3600000*1.2).toISOString(), agent: 'Support Agent', action: 'RCA identified', detail: 'Connection pool exhaustion — max connections (50) reached due to leaked connections in webhook handler', type: 'rca' },
+            { timestamp: new Date(now - 3600000*0.8).toISOString(), agent: 'Support Agent', action: 'Remediation proposed', detail: 'Restart payment pods + increase connection pool to 100 + deploy connection leak fix', type: 'remediation' },
+            { timestamp: new Date(now - 600000).toISOString(), agent: 'DevOps Agent', action: 'Pods restarted', detail: '3/3 payment-service pods restarted. Error rate dropping.', type: 'action' }
+          ],
+          rca: {
+            root_cause: 'Connection pool exhaustion in payment-service webhook handler',
+            contributing_factors: ['Leaked database connections in error path', 'No connection timeout configured', 'Missing health check for DB pool'],
+            log_summary: [
+              { level: 'ERROR', count: 3456, pattern: 'ConnectionPool: Cannot acquire connection — pool exhausted (50/50)' },
+              { level: 'WARN', count: 892, pattern: 'WebhookHandler: Stripe event processing timeout after 30s' },
+              { level: 'ERROR', count: 234, pattern: 'PaymentService: Transaction rollback failed — connection already closed' }
+            ],
+            recommended_fixes: [
+              { action: 'Increase connection pool size to 100', risk: 'LOW', effort: '5min', status: 'IN_PROGRESS' },
+              { action: 'Add connection release in finally block of webhook handler', risk: 'LOW', effort: '30min', status: 'PENDING' },
+              { action: 'Implement connection pool health monitoring', risk: 'LOW', effort: '2hr', status: 'PENDING' },
+              { action: 'Add circuit breaker for Stripe API calls', risk: 'MEDIUM', effort: '4hr', status: 'PENDING' }
+            ]
+          },
+          auto_remediation: [
+            { action: 'Restart payment-service pods', status: 'COMPLETED', executed_at: new Date(now - 600000).toISOString(), result: 'Success — 3/3 pods healthy' },
+            { action: 'Scale up replicas (3 → 5)', status: 'IN_PROGRESS', executed_at: new Date(now - 300000).toISOString(), result: 'Scaling in progress...' },
+            { action: 'Enable connection pool monitoring', status: 'PENDING', executed_at: null, result: null }
+          ]
+        },
+        {
+          incident_id: 'INC-2026-002', title: 'Auth Service — JWT token validation failures',
+          severity: 'P2', status: 'MITIGATED', service: 'auth-service',
+          description: 'Intermittent JWT validation failures causing 401 errors for authenticated users. Affecting approximately 15% of API requests.',
+          reported_by: 'QA Agent', assigned_to: 'Support Agent',
+          created_at: new Date(now - 86400000*1).toISOString(),
+          updated_at: new Date(now - 3600000*6).toISOString(),
+          impact: { users_affected: 380, revenue_impact: '$8,500/hr', sla_status: 'AT_RISK' },
+          metrics: { error_rate: 15.2, latency_p99: 2400, requests_failed: 1245, uptime: 99.85 },
+          timeline: [
+            { timestamp: new Date(now - 86400000*1).toISOString(), agent: 'QA Agent', action: 'Anomaly detected', detail: '401 error rate increased from 0.5% to 15%', type: 'alert' },
+            { timestamp: new Date(now - 86400000*0.9).toISOString(), agent: 'Support Agent', action: 'Investigation started', detail: 'Correlating with recent deployment (v2.4.1)', type: 'investigation' },
+            { timestamp: new Date(now - 86400000*0.7).toISOString(), agent: 'Support Agent', action: 'Root cause found', detail: 'Clock skew between auth pods causing JWT exp validation mismatch', type: 'rca' },
+            { timestamp: new Date(now - 3600000*6).toISOString(), agent: 'DevOps Agent', action: 'Mitigation applied', detail: 'NTP sync forced on all auth pods + 30s clock tolerance added', type: 'remediation' }
+          ],
+          rca: {
+            root_cause: 'Clock skew between auth-service pod replicas causing JWT expiration validation failures',
+            contributing_factors: ['NTP service not configured on new pod template', 'No clock tolerance in JWT validation', 'Rolling update caused mixed-version pods'],
+            log_summary: [
+              { level: 'ERROR', count: 1245, pattern: 'JwtGuard: Token expired — exp claim 1714034500, current time 1714034532 (skew: 32s)' },
+              { level: 'WARN', count: 456, pattern: 'AuthService: Token refresh rate abnormally high — possible clock issue' }
+            ],
+            recommended_fixes: [
+              { action: 'Add 30s clock tolerance to JWT validation', risk: 'LOW', effort: '15min', status: 'COMPLETED' },
+              { action: 'Configure NTP in pod template', risk: 'LOW', effort: '30min', status: 'COMPLETED' },
+              { action: 'Add clock skew monitoring alert', risk: 'LOW', effort: '1hr', status: 'PENDING' }
+            ]
+          },
+          auto_remediation: [
+            { action: 'Force NTP sync on auth pods', status: 'COMPLETED', executed_at: new Date(now - 3600000*6).toISOString(), result: 'Sync successful — max skew now < 1s' },
+            { action: 'Apply JWT clock tolerance hotfix', status: 'COMPLETED', executed_at: new Date(now - 3600000*5.5).toISOString(), result: 'Deployed to all 3 pods' }
+          ]
+        },
+        {
+          incident_id: 'INC-2026-003', title: 'API Gateway — Rate limiter misconfiguration',
+          severity: 'P3', status: 'RESOLVED', service: 'api-gateway',
+          description: 'Rate limiter was rejecting legitimate traffic due to per-IP counter not resetting after window expiry. Caused 429 errors for high-volume API consumers.',
+          reported_by: 'Developer Agent', assigned_to: 'Support Agent',
+          created_at: new Date(now - 86400000*3).toISOString(),
+          updated_at: new Date(now - 86400000*2).toISOString(),
+          impact: { users_affected: 45, revenue_impact: '$2,100', sla_status: 'OK' },
+          metrics: { error_rate: 3.1, latency_p99: 890, requests_failed: 567, uptime: 99.97 },
+          timeline: [
+            { timestamp: new Date(now - 86400000*3).toISOString(), agent: 'Developer Agent', action: 'Bug reported', detail: 'API consumers reporting 429 errors despite being under rate limit', type: 'alert' },
+            { timestamp: new Date(now - 86400000*2.5).toISOString(), agent: 'Support Agent', action: 'Root cause found', detail: 'Redis TTL not set on rate limit counters — counters never expire', type: 'rca' },
+            { timestamp: new Date(now - 86400000*2).toISOString(), agent: 'DevOps Agent', action: 'Fix deployed', detail: 'Added TTL to rate limit keys + flushed stale counters', type: 'remediation' }
+          ],
+          rca: {
+            root_cause: 'Redis TTL not configured on rate limit counter keys',
+            contributing_factors: ['Missing TTL in rate limiter middleware configuration', 'No integration test for rate limit window reset'],
+            log_summary: [
+              { level: 'WARN', count: 567, pattern: 'RateLimiter: Request rejected — counter 1523/100 for IP 10.0.x.x (window: never expires)' }
+            ],
+            recommended_fixes: [
+              { action: 'Set TTL on rate limit Redis keys', risk: 'LOW', effort: '15min', status: 'COMPLETED' },
+              { action: 'Add rate limit reset integration test', risk: 'LOW', effort: '1hr', status: 'COMPLETED' }
+            ]
+          },
+          auto_remediation: [
+            { action: 'Flush stale rate limit keys', status: 'COMPLETED', executed_at: new Date(now - 86400000*2).toISOString(), result: 'Flushed 2,345 stale keys' },
+            { action: 'Deploy TTL fix', status: 'COMPLETED', executed_at: new Date(now - 86400000*2).toISOString(), result: 'v2.4.2 deployed to all gateways' }
+          ]
+        },
+        {
+          incident_id: 'INC-2026-004', title: 'Database — Slow query degradation on orders table',
+          severity: 'P2', status: 'POSTMORTEM', service: 'database',
+          description: 'Orders table query performance degraded significantly after exceeding 10M rows. Full table scans occurring on status+date queries.',
+          reported_by: 'Monitoring Agent', assigned_to: 'Support Agent',
+          created_at: new Date(now - 86400000*7).toISOString(),
+          updated_at: new Date(now - 86400000*5).toISOString(),
+          impact: { users_affected: 890, revenue_impact: '$22,000', sla_status: 'BREACHED' },
+          metrics: { error_rate: 8.4, latency_p99: 12500, requests_failed: 2100, uptime: 99.5 },
+          timeline: [
+            { timestamp: new Date(now - 86400000*7).toISOString(), agent: 'Monitoring Agent', action: 'Latency alert', detail: 'P99 latency on /orders endpoint exceeded 10s threshold', type: 'alert' },
+            { timestamp: new Date(now - 86400000*6.5).toISOString(), agent: 'Support Agent', action: 'Query analysis', detail: 'EXPLAIN ANALYZE shows sequential scan on orders table (10.2M rows)', type: 'investigation' },
+            { timestamp: new Date(now - 86400000*6).toISOString(), agent: 'Support Agent', action: 'Fix identified', detail: 'Missing composite index on (status, created_at) columns', type: 'rca' },
+            { timestamp: new Date(now - 86400000*5.5).toISOString(), agent: 'DevOps Agent', action: 'Index created', detail: 'CREATE INDEX CONCURRENTLY — completed in 45 minutes', type: 'remediation' },
+            { timestamp: new Date(now - 86400000*5).toISOString(), agent: 'Support Agent', action: 'Post-mortem completed', detail: 'P99 latency back to 120ms. Added automated index recommendation alerts.', type: 'resolved' }
+          ],
+          rca: {
+            root_cause: 'Missing composite index on orders(status, created_at) causing full table scans at 10M+ rows',
+            contributing_factors: ['No automated slow query alerting', 'Index review not part of schema migration checklist', 'Load testing did not simulate production data volume'],
+            log_summary: [
+              { level: 'WARN', count: 2100, pattern: 'PostgreSQL: Seq Scan on orders (cost=0.00..485234.00 rows=10234567)' },
+              { level: 'ERROR', count: 890, pattern: 'QueryTimeout: Statement exceeded 10s timeout on orders endpoint' }
+            ],
+            recommended_fixes: [
+              { action: 'Create composite index on (status, created_at)', risk: 'LOW', effort: '1hr', status: 'COMPLETED' },
+              { action: 'Add automated slow query detection', risk: 'LOW', effort: '4hr', status: 'COMPLETED' },
+              { action: 'Implement query plan review in CI/CD', risk: 'MEDIUM', effort: '8hr', status: 'COMPLETED' }
+            ]
+          },
+          auto_remediation: []
+        }
+      ]);
+    }
+
+    seedIncidents();
+
+    // Live metrics simulation
+    let liveInterval;
+    function updateLiveMetrics() {
+      const incidents = NexusStore.getIncidents();
+      const active = incidents.filter(i => ['ACTIVE','INVESTIGATING'].includes(i.status));
+      const dot = document.getElementById('systemHealthDot');
+      const label = document.getElementById('systemHealthLabel');
+
+      if (active.some(i => i.severity === 'P1')) {
+        dot.style.background = '#ef4444'; label.textContent = 'Critical — Active P1 Incident';
+        label.style.color = '#ef4444';
+      } else if (active.length > 0) {
+        dot.style.background = '#f59e0b'; label.textContent = 'Degraded — Active Incidents';
+        label.style.color = '#f59e0b';
+      } else {
+        dot.style.background = '#10b981'; label.textContent = 'All Systems Operational';
+        label.style.color = '#10b981';
+      }
+
+      document.getElementById('liveMetrics').innerHTML = `
+        <span>Uptime: <strong>${(99 + Math.random() * 0.99).toFixed(2)}%</strong></span>
+        <span>Latency P99: <strong>${Math.floor(80 + Math.random() * 200)}ms</strong></span>
+        <span>Error Rate: <strong>${(Math.random() * 2).toFixed(2)}%</strong></span>
+        <span>RPS: <strong>${Math.floor(2000 + Math.random() * 500)}</strong></span>
+      `;
+      document.getElementById('lastUpdate').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+    }
+
+    function render() {
+      const incidents = NexusStore.getIncidents();
+      const fSev = document.getElementById('filterSeverity').value;
+      const fStatus = document.getElementById('filterStatus').value;
+      const fService = document.getElementById('filterService').value;
+
+      let filtered = incidents;
+      if (fSev) filtered = filtered.filter(i => i.severity === fSev);
+      if (fStatus) filtered = filtered.filter(i => i.status === fStatus);
+      if (fService) filtered = filtered.filter(i => i.service === fService);
+
+      const active = incidents.filter(i => ['ACTIVE','INVESTIGATING'].includes(i.status)).length;
+      const mitigated = incidents.filter(i => i.status === 'MITIGATED').length;
+      const resolved = incidents.filter(i => ['RESOLVED','POSTMORTEM'].includes(i.status)).length;
+      const mttr = incidents.filter(i => i.rca).length > 0 ? Math.floor(incidents.filter(i => i.timeline.length > 1).reduce((s,i) => {
+        const start = new Date(i.created_at).getTime();
+        const end = new Date(i.updated_at).getTime();
+        return s + (end - start) / 3600000;
+      }, 0) / incidents.length) : 0;
+
+      document.getElementById('incidentStats').innerHTML = `
+        <div class="card stat-card"><div class="stat-value" style="color:#ef4444">${active}</div><div class="stat-label">Active Incidents</div></div>
+        <div class="card stat-card"><div class="stat-value" style="color:#f59e0b">${mitigated}</div><div class="stat-label">Mitigated</div></div>
+        <div class="card stat-card"><div class="stat-value" style="color:#10b981">${resolved}</div><div class="stat-label">Resolved</div></div>
+        <div class="card stat-card"><div class="stat-value">${mttr}h</div><div class="stat-label">Avg MTTR</div></div>
+      `;
+
+      const sevColors = { P1: '#ef4444', P2: '#f97316', P3: '#f59e0b', P4: '#6b7280' };
+      const statusIcons = { ACTIVE: '🔴', INVESTIGATING: '🔍', MITIGATED: '🟡', RESOLVED: '✅', POSTMORTEM: '📝' };
+
+      document.getElementById('incidentList').innerHTML = filtered.map(inc => `
+        <div class="card" style="margin-bottom:12px;cursor:pointer;border-left:3px solid ${sevColors[inc.severity]}" onclick="openIncidentDetail('${inc.incident_id}')">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">${inc.incident_id}</span>
+                <span style="background:${sevColors[inc.severity]}20;color:${sevColors[inc.severity]};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">${inc.severity}</span>
+                ${statusBadge(inc.status)}
+                ${inc.status === 'INVESTIGATING' ? '<span style="animation:pulse 1.5s infinite;font-size:10px;">🔴 LIVE</span>' : ''}
+              </div>
+              <div style="font-weight:600;font-size:15px;margin-bottom:4px;">${statusIcons[inc.status] || ''} ${inc.title}</div>
+              <div style="font-size:12px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap;">
+                <span>🔧 ${inc.service}</span>
+                <span>👤 ${inc.assigned_to}</span>
+                <span>⏱ ${formatTime(inc.created_at)}</span>
+                <span>👥 ${inc.impact.users_affected} users affected</span>
+              </div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:12px;color:var(--text-muted);">Error Rate</div>
+              <div style="font-size:18px;font-weight:700;color:${inc.metrics.error_rate > 10 ? '#ef4444' : inc.metrics.error_rate > 5 ? '#f59e0b' : '#10b981'}">${inc.metrics.error_rate}%</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      updateLiveMetrics();
+    }
+
+    function openIncidentDetail(incidentId) {
+      const incidents = NexusStore.getIncidents();
+      const inc = incidents.find(i => i.incident_id === incidentId);
+      if (!inc) return;
+
+      document.getElementById('incidentDetailTitle').textContent = `${inc.incident_id}: ${inc.title}`;
+      const sevColors = { P1: '#ef4444', P2: '#f97316', P3: '#f59e0b', P4: '#6b7280' };
+      const typeIcons = { alert: '🚨', triage: '📋', investigation: '🔍', rca: '🎯', remediation: '🔧', action: '⚡', resolved: '✅' };
+
+      document.getElementById('incidentDetailBody').innerHTML = `
+        <!-- Impact Summary -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+          <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);">Users Affected</div>
+            <div style="font-size:20px;font-weight:700;color:#ef4444">${inc.impact.users_affected.toLocaleString()}</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);">Revenue Impact</div>
+            <div style="font-size:20px;font-weight:700;color:#f59e0b">${inc.impact.revenue_impact}</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);">Error Rate</div>
+            <div style="font-size:20px;font-weight:700;color:${inc.metrics.error_rate > 10 ? '#ef4444' : '#f59e0b'}">${inc.metrics.error_rate}%</div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);">SLA Status</div>
+            <div style="font-size:20px;font-weight:700;color:${inc.impact.sla_status === 'BREACHED' ? '#ef4444' : inc.impact.sla_status === 'AT_RISK' ? '#f59e0b' : '#10b981'}">${inc.impact.sla_status}</div>
+          </div>
+        </div>
+
+        <!-- Root Cause Analysis -->
+        ${inc.rca ? `
+        <div style="background:var(--bg-secondary);border-radius:8px;padding:16px;margin-bottom:16px;">
+          <h4 style="margin-bottom:10px;color:var(--text-primary);">🎯 Root Cause Analysis</h4>
+          <div style="background:var(--bg-tertiary);border-radius:6px;padding:12px;margin-bottom:12px;border-left:3px solid var(--accent);">
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Root Cause</div>
+            <div style="font-size:13px;color:var(--text-secondary);">${inc.rca.root_cause}</div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;">Contributing Factors</div>
+            ${inc.rca.contributing_factors.map(f => `<div style="font-size:12px;color:var(--text-muted);padding:2px 0;">• ${f}</div>`).join('')}
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;">Log Patterns</div>
+            ${inc.rca.log_summary.map(l => `
+              <div style="background:var(--bg-primary);border-radius:4px;padding:8px;margin-bottom:4px;font-family:var(--font-mono);font-size:11px;display:flex;gap:8px;align-items:center;">
+                <span style="color:${l.level === 'ERROR' ? '#ef4444' : '#f59e0b'};font-weight:700;min-width:45px;">${l.level}</span>
+                <span style="color:var(--text-muted);min-width:40px;">${l.count}x</span>
+                <span style="color:var(--text-secondary);flex:1;">${l.pattern}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;">Recommended Fixes</div>
+            ${inc.rca.recommended_fixes.map(f => `
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-color);">
+                <span style="font-size:14px;">${f.status === 'COMPLETED' ? '✅' : f.status === 'IN_PROGRESS' ? '🔄' : '⏳'}</span>
+                <span style="flex:1;font-size:13px;">${f.action}</span>
+                ${riskBadge(f.risk)}
+                <span style="font-size:11px;color:var(--text-muted);">${f.effort}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ` : ''}
+
+        <!-- Auto-Remediation -->
+        ${inc.auto_remediation && inc.auto_remediation.length > 0 ? `
+        <div style="background:var(--bg-secondary);border-radius:8px;padding:16px;margin-bottom:16px;">
+          <h4 style="margin-bottom:10px;color:var(--text-primary);">🤖 Auto-Remediation Actions</h4>
+          ${inc.auto_remediation.map(a => `
+            <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border-color);">
+              <span style="font-size:18px;">${a.status === 'COMPLETED' ? '✅' : a.status === 'IN_PROGRESS' ? '🔄' : '⏳'}</span>
+              <div style="flex:1;">
+                <div style="font-weight:600;font-size:13px;">${a.action}</div>
+                ${a.result ? `<div style="font-size:12px;color:var(--text-muted);">${a.result}</div>` : ''}
+              </div>
+              ${statusBadge(a.status)}
+              ${a.executed_at ? `<span style="font-size:11px;color:var(--text-muted);">${formatTime(a.executed_at)}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        <!-- Incident Timeline -->
+        <h4 style="margin-bottom:12px;color:var(--text-primary);">📋 Incident Timeline</h4>
+        <div class="timeline">
+          ${inc.timeline.map(e => `
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background:${e.type === 'alert' ? '#ef4444' : e.type === 'rca' ? '#f59e0b' : e.type === 'resolved' ? '#10b981' : 'var(--accent)'}"></div>
+              <div class="timeline-content">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-weight:600;font-size:13px;">${typeIcons[e.type] || '📌'} ${e.action}</span>
+                  <span style="font-size:11px;color:var(--text-muted);">${formatTime(e.timestamp)}</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${e.detail}</div>
+                <div style="font-size:11px;color:var(--accent);margin-top:2px;">by ${e.agent}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      document.getElementById('incidentDetailFooter').innerHTML = `
+        <div style="display:flex;gap:8px;width:100%;justify-content:flex-end;">
+          ${inc.status === 'ACTIVE' || inc.status === 'INVESTIGATING' ? `
+            <button class="btn btn-outline" onclick="updateIncidentStatus('${inc.incident_id}','MITIGATED')">Mark Mitigated</button>
+            <button class="btn btn-success" onclick="updateIncidentStatus('${inc.incident_id}','RESOLVED')">Resolve</button>
+            <button class="btn btn-primary" onclick="runAutoRemediation('${inc.incident_id}')">🤖 Auto-Remediate</button>
+          ` : ''}
+          ${inc.status === 'MITIGATED' ? `
+            <button class="btn btn-success" onclick="updateIncidentStatus('${inc.incident_id}','RESOLVED')">Resolve</button>
+          ` : ''}
+          ${inc.status === 'RESOLVED' ? `
+            <button class="btn btn-primary" onclick="updateIncidentStatus('${inc.incident_id}','POSTMORTEM')">Start Post-Mortem</button>
+          ` : ''}
+        </div>
+      `;
+
+      document.getElementById('incidentDetailModal').style.display = 'flex';
+    }
+
+    function closeIncidentDetail() { document.getElementById('incidentDetailModal').style.display = 'none'; }
+
+    function updateIncidentStatus(incidentId, newStatus) {
+      const incidents = NexusStore.getIncidents();
+      const inc = incidents.find(i => i.incident_id === incidentId);
+      if (inc) {
+        inc.status = newStatus;
+        inc.updated_at = new Date().toISOString();
+        inc.timeline.push({ timestamp: new Date().toISOString(), agent: NexusStore.getUser()?.name || 'Human', action: `Status changed to ${newStatus}`, detail: `Incident ${newStatus.toLowerCase()} by operator`, type: newStatus === 'RESOLVED' ? 'resolved' : 'action' });
+        NexusStore.setIncidents(incidents);
+        NexusEventBus.notify('incident', 'Incident Update', `${incidentId} status: ${newStatus}`, { incidentId });
+        openIncidentDetail(incidentId);
+        render();
+        showToast(`Incident ${newStatus.toLowerCase()}`, 'success');
+      }
+    }
+
+    function runAutoRemediation(incidentId) {
+      const incidents = NexusStore.getIncidents();
+      const inc = incidents.find(i => i.incident_id === incidentId);
+      if (!inc) return;
+      showLoading('Running auto-remediation...');
+      setTimeout(() => {
+        const actions = ['Restart affected pods', 'Scale up replicas', 'Flush cache', 'Reset connection pools', 'Enable fallback mode'];
+        const action = actions[Math.floor(Math.random() * actions.length)];
+        if (!inc.auto_remediation) inc.auto_remediation = [];
+        inc.auto_remediation.push({ action, status: 'COMPLETED', executed_at: new Date().toISOString(), result: 'Executed successfully by Support Agent' });
+        inc.timeline.push({ timestamp: new Date().toISOString(), agent: 'Support Agent', action: `Auto-remediation: ${action}`, detail: 'Automated fix applied', type: 'remediation' });
+        inc.updated_at = new Date().toISOString();
+        NexusStore.setIncidents(incidents);
+        hideLoading();
+        openIncidentDetail(incidentId);
+        render();
+        showToast(`Auto-remediation executed: ${action}`, 'success');
+      }, 2000);
+    }
+
+    function openCreateIncident() { document.getElementById('createIncidentModal').style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function createIncident() {
+      const title = document.getElementById('incTitle').value.trim();
+      const severity = document.getElementById('incSeverity').value;
+      const service = document.getElementById('incService').value;
+      const description = document.getElementById('incDescription').value.trim();
+      if (!title) { showToast('Title is required', 'error'); return; }
+
+      showLoading('Triaging incident...');
+      setTimeout(() => {
+        const incidents = NexusStore.getIncidents();
+        const inc = {
+          incident_id: 'INC-2026-' + String(incidents.length + 1).padStart(3,'0'),
+          title, severity, status: 'INVESTIGATING', service, description,
+          reported_by: NexusStore.getUser()?.name || 'Human', assigned_to: 'Support Agent',
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+          impact: { users_affected: Math.floor(Math.random() * 500) + 10, revenue_impact: '$' + (Math.floor(Math.random() * 50) * 100).toLocaleString(), sla_status: severity === 'P1' ? 'BREACHED' : severity === 'P2' ? 'AT_RISK' : 'OK' },
+          metrics: { error_rate: +(Math.random() * 20).toFixed(1), latency_p99: Math.floor(Math.random() * 5000) + 200, requests_failed: Math.floor(Math.random() * 2000), uptime: +(99 + Math.random()).toFixed(2) },
+          timeline: [
+            { timestamp: new Date().toISOString(), agent: NexusStore.getUser()?.name || 'Human', action: 'Incident reported', detail: description || title, type: 'alert' },
+            { timestamp: new Date().toISOString(), agent: 'Support Agent', action: 'Auto-triaged', detail: `Classified as ${severity} — assigned to Support Agent`, type: 'triage' }
+          ],
+          rca: null, auto_remediation: []
+        };
+        incidents.unshift(inc);
+        NexusStore.setIncidents(incidents);
+        NexusEventBus.notify('incident', '🚨 New Incident', `${inc.incident_id}: ${title} (${severity})`, { incidentId: inc.incident_id });
+        hideLoading();
+        closeModal('createIncidentModal');
+        render();
+        showToast(`Incident ${inc.incident_id} created`, severity === 'P1' ? 'error' : 'warning');
+
+        // Simulate AI RCA after 3 seconds
+        setTimeout(() => {
+          const incs = NexusStore.getIncidents();
+          const i = incs.find(x => x.incident_id === inc.incident_id);
+          if (i && !i.rca) {
+            i.rca = {
+              root_cause: 'AI-generated: Likely caused by resource exhaustion under increased load',
+              contributing_factors: ['Recent deployment may have introduced regression', 'No load shedding configured', 'Missing circuit breaker on downstream calls'],
+              log_summary: [{ level: 'ERROR', count: Math.floor(Math.random() * 1000) + 100, pattern: `${service}: Request processing failed — timeout exceeded` }],
+              recommended_fixes: [
+                { action: 'Restart affected service pods', risk: 'LOW', effort: '5min', status: 'PENDING' },
+                { action: 'Roll back to previous version', risk: 'MEDIUM', effort: '15min', status: 'PENDING' },
+                { action: 'Add circuit breaker pattern', risk: 'LOW', effort: '4hr', status: 'PENDING' }
+              ]
+            };
+            i.timeline.push({ timestamp: new Date().toISOString(), agent: 'Support Agent', action: 'AI RCA generated', detail: i.rca.root_cause, type: 'rca' });
+            NexusStore.setIncidents(incs);
+            showToast('AI Root Cause Analysis generated', 'info');
+            render();
+          }
+        }, 3000);
+      }, 1500);
+    }
+
+    // Start live updates
+    liveInterval = setInterval(updateLiveMetrics, 5000);
+    render();
+  </script>
+</body>
+</html>

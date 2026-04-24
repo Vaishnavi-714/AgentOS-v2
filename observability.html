@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Observability</title>
+  <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Observability</h1>
+        <p class="page-subtitle">Logs, metrics, traces — agent execution monitoring &amp; error analytics</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-outline btn-sm" onclick="refreshMetrics()">🔄 Refresh</button>
+      </div>
+    </div>
+
+    <!-- Live Health Bar -->
+    <div class="card" style="margin-bottom:16px;padding:12px 20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:#10b981;animation:pulse 2s infinite"></span>
+        <span style="font-weight:600;font-size:14px;">System Health: <span style="color:#10b981" id="healthStatus">Operational</span></span>
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);" id="topMetrics"></div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="grid grid-4" id="keyMetrics" style="margin-bottom:24px"></div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-bottom:20px;">
+      <button class="tab active" onclick="switchTab('metrics')">📊 Metrics</button>
+      <button class="tab" onclick="switchTab('logs')">📋 Logs</button>
+      <button class="tab" onclick="switchTab('traces')">🔗 Traces</button>
+      <button class="tab" onclick="switchTab('agents')">🤖 Agent Monitoring</button>
+      <button class="tab" onclick="switchTab('errors')">🐛 Error Analytics</button>
+    </div>
+
+    <div id="tabContent"></div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/mock-api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/permissions.js"></script>
+  <script src="js/event-bus.js"></script>
+  <script src="js/nav.js"></script>
+  <script>
+    seedNexusData();
+    createNavigation('observability');
+    NexusPermissions.enforcePageAccess('observability');
+    injectTenantInfoCard();
+
+    let currentTab = 'metrics';
+
+    // Simulated metrics data
+    function genMetricHistory(base, variance, count) {
+      return Array.from({length: count}, (_, i) => ({
+        time: new Date(Date.now() - (count - i) * 60000).toISOString(),
+        value: Math.max(0, base + (Math.random() - 0.5) * variance * 2)
+      }));
+    }
+
+    const metricsData = {
+      latency_p50: genMetricHistory(45, 15, 30),
+      latency_p99: genMetricHistory(180, 60, 30),
+      throughput: genMetricHistory(2500, 500, 30),
+      error_rate: genMetricHistory(1.2, 0.8, 30),
+      cpu: genMetricHistory(42, 15, 30),
+      memory: genMetricHistory(58, 10, 30),
+      active_connections: genMetricHistory(340, 80, 30),
+      queue_depth: genMetricHistory(12, 8, 30)
+    };
+
+    // Simulated log entries
+    function genLogs() {
+      const levels = ['INFO','INFO','INFO','WARN','ERROR','DEBUG','INFO','INFO'];
+      const services = ['auth-service','payment-service','order-service','api-gateway','agent-runtime','orchestrator'];
+      const messages = {
+        INFO: ['Request processed successfully','User authenticated','Payment confirmed','Order created','Agent task completed','Health check passed','Cache hit ratio: 94%','Connection pool: 45/100 active'],
+        WARN: ['High latency detected: 450ms','Connection pool utilization at 80%','Rate limit threshold approaching','Memory usage above 70%','Slow query detected: 2.3s','Retry attempt 2/3 for external API'],
+        ERROR: ['Failed to process payment: timeout','Database connection refused','JWT validation failed: expired token','Service unavailable: upstream 503','Unhandled exception in order saga','Circuit breaker OPEN for stripe-api'],
+        DEBUG: ['Cache invalidation triggered','Event published: order.created','Saga step completed: reserve_inventory','Worker heartbeat received','GC pause: 12ms']
+      };
+      return Array.from({length: 50}, (_, i) => {
+        const level = levels[Math.floor(Math.random() * levels.length)];
+        const msgs = messages[level];
+        return {
+          timestamp: new Date(Date.now() - i * 3000 - Math.random() * 10000).toISOString(),
+          level,
+          service: services[Math.floor(Math.random() * services.length)],
+          message: msgs[Math.floor(Math.random() * msgs.length)],
+          trace_id: 'trace-' + Math.random().toString(36).substr(2, 8),
+          request_id: 'req-' + Math.random().toString(36).substr(2, 12)
+        };
+      }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    }
+
+    // Simulated traces
+    function genTraces() {
+      return [
+        { trace_id: 'trace-abc12345', service: 'api-gateway', operation: 'POST /api/orders', duration: 342, status: 'OK', spans: [
+          { service: 'api-gateway', operation: 'route', duration: 2, start: 0 },
+          { service: 'auth-service', operation: 'validate_token', duration: 15, start: 2 },
+          { service: 'order-service', operation: 'create_order', duration: 180, start: 17 },
+          { service: 'payment-service', operation: 'process_payment', duration: 120, start: 197 },
+          { service: 'order-service', operation: 'confirm_order', duration: 25, start: 317 }
+        ]},
+        { trace_id: 'trace-def67890', service: 'api-gateway', operation: 'GET /api/users/me', duration: 45, status: 'OK', spans: [
+          { service: 'api-gateway', operation: 'route', duration: 1, start: 0 },
+          { service: 'auth-service', operation: 'validate_token', duration: 12, start: 1 },
+          { service: 'auth-service', operation: 'get_user', duration: 32, start: 13 }
+        ]},
+        { trace_id: 'trace-ghi11111', service: 'api-gateway', operation: 'POST /api/payments/webhook', duration: 8200, status: 'ERROR', spans: [
+          { service: 'api-gateway', operation: 'route', duration: 1, start: 0 },
+          { service: 'payment-service', operation: 'process_webhook', duration: 8100, start: 1 },
+          { service: 'payment-service', operation: 'db_query', duration: 7800, start: 300, error: 'ConnectionPool: exhausted (50/50)' }
+        ]},
+        { trace_id: 'trace-jkl22222', service: 'agent-runtime', operation: 'execute_task', duration: 4500, status: 'OK', spans: [
+          { service: 'orchestrator', operation: 'dispatch_task', duration: 50, start: 0 },
+          { service: 'agent-runtime', operation: 'load_context', duration: 200, start: 50 },
+          { service: 'agent-runtime', operation: 'llm_inference', duration: 3800, start: 250 },
+          { service: 'agent-runtime', operation: 'store_result', duration: 450, start: 4050 }
+        ]}
+      ];
+    }
+
+    // Error analytics
+    const errorPatterns = [
+      { pattern: 'ConnectionPool: exhausted', count: 234, service: 'payment-service', first_seen: new Date(Date.now() - 86400000*2).toISOString(), last_seen: new Date(Date.now() - 600000).toISOString(), trend: 'INCREASING', impact: 'HIGH' },
+      { pattern: 'JWT validation failed: expired', count: 156, service: 'auth-service', first_seen: new Date(Date.now() - 86400000*1).toISOString(), last_seen: new Date(Date.now() - 3600000*6).toISOString(), trend: 'DECREASING', impact: 'MEDIUM' },
+      { pattern: 'Rate limit exceeded (429)', count: 89, service: 'api-gateway', first_seen: new Date(Date.now() - 86400000*5).toISOString(), last_seen: new Date(Date.now() - 86400000*2).toISOString(), trend: 'RESOLVED', impact: 'LOW' },
+      { pattern: 'Timeout: upstream service 503', count: 67, service: 'api-gateway', first_seen: new Date(Date.now() - 86400000*3).toISOString(), last_seen: new Date(Date.now() - 3600000*12).toISOString(), trend: 'STABLE', impact: 'MEDIUM' },
+      { pattern: 'Unhandled promise rejection', count: 12, service: 'order-service', first_seen: new Date(Date.now() - 86400000*1).toISOString(), last_seen: new Date(Date.now() - 3600000*4).toISOString(), trend: 'NEW', impact: 'HIGH' }
+    ];
+
+    const logs = genLogs();
+    const traces = genTraces();
+
+    function render() {
+      const latestLatency = Math.round(metricsData.latency_p99[metricsData.latency_p99.length-1].value);
+      const latestThroughput = Math.round(metricsData.throughput[metricsData.throughput.length-1].value);
+      const latestErrorRate = metricsData.error_rate[metricsData.error_rate.length-1].value.toFixed(2);
+      const latestCpu = Math.round(metricsData.cpu[metricsData.cpu.length-1].value);
+
+      document.getElementById('topMetrics').innerHTML = `
+        <span>Latency P99: <strong>${latestLatency}ms</strong></span>
+        <span>Throughput: <strong>${latestThroughput} req/s</strong></span>
+        <span>Error Rate: <strong>${latestErrorRate}%</strong></span>
+        <span>CPU: <strong>${latestCpu}%</strong></span>
+      `;
+
+      document.getElementById('keyMetrics').innerHTML = `
+        <div class="card stat-card">
+          <div class="stat-value" style="color:${latestLatency > 300 ? '#ef4444' : latestLatency > 150 ? '#f59e0b' : '#10b981'}">${latestLatency}ms</div>
+          <div class="stat-label">P99 Latency</div>
+          ${renderSparkline(metricsData.latency_p99)}
+        </div>
+        <div class="card stat-card">
+          <div class="stat-value">${latestThroughput}</div>
+          <div class="stat-label">Requests/sec</div>
+          ${renderSparkline(metricsData.throughput)}
+        </div>
+        <div class="card stat-card">
+          <div class="stat-value" style="color:${latestErrorRate > 2 ? '#ef4444' : latestErrorRate > 1 ? '#f59e0b' : '#10b981'}">${latestErrorRate}%</div>
+          <div class="stat-label">Error Rate</div>
+          ${renderSparkline(metricsData.error_rate)}
+        </div>
+        <div class="card stat-card">
+          <div class="stat-value" style="color:${latestCpu > 80 ? '#ef4444' : latestCpu > 60 ? '#f59e0b' : '#10b981'}">${latestCpu}%</div>
+          <div class="stat-label">CPU Usage</div>
+          ${renderSparkline(metricsData.cpu)}
+        </div>
+      `;
+
+      renderTab();
+    }
+
+    function renderSparkline(data) {
+      const values = data.map(d => d.value);
+      const max = Math.max(...values);
+      const min = Math.min(...values);
+      const range = max - min || 1;
+      const w = 120, h = 24;
+      const points = values.map((v, i) => `${(i/(values.length-1))*w},${h - ((v-min)/range)*h}`).join(' ');
+      return `<svg width="${w}" height="${h}" style="margin-top:6px;"><polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.6"/></svg>`;
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      renderTab();
+    }
+
+    function renderTab() {
+      const c = document.getElementById('tabContent');
+      switch(currentTab) {
+        case 'metrics': renderMetrics(c); break;
+        case 'logs': renderLogs(c); break;
+        case 'traces': renderTraces(c); break;
+        case 'agents': renderAgentMonitor(c); break;
+        case 'errors': renderErrors(c); break;
+      }
+    }
+
+    function renderMetrics(container) {
+      const metricSets = [
+        { label: 'Latency P50', data: metricsData.latency_p50, unit: 'ms', color: '#3b82f6' },
+        { label: 'Latency P99', data: metricsData.latency_p99, unit: 'ms', color: '#8b5cf6' },
+        { label: 'Throughput', data: metricsData.throughput, unit: 'req/s', color: '#10b981' },
+        { label: 'Error Rate', data: metricsData.error_rate, unit: '%', color: '#ef4444' },
+        { label: 'CPU', data: metricsData.cpu, unit: '%', color: '#f59e0b' },
+        { label: 'Memory', data: metricsData.memory, unit: '%', color: '#6366f1' },
+        { label: 'Active Connections', data: metricsData.active_connections, unit: '', color: '#ec4899' },
+        { label: 'Queue Depth', data: metricsData.queue_depth, unit: '', color: '#14b8a6' }
+      ];
+
+      container.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        ${metricSets.map(m => {
+          const values = m.data.map(d => d.value);
+          const max = Math.max(...values);
+          const min = Math.min(...values);
+          const current = values[values.length - 1];
+          const avg = (values.reduce((a,b)=>a+b,0) / values.length);
+          const range = max - min || 1;
+          const w = 400, h = 80;
+          const points = values.map((v, i) => `${(i/(values.length-1))*w},${h - ((v-min)/range)*h}`).join(' ');
+          return `
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-weight:600;font-size:13px;">${m.label}</span>
+              <span style="font-size:16px;font-weight:700;color:${m.color}">${current.toFixed(m.unit === '%' ? 1 : 0)}${m.unit}</span>
+            </div>
+            <svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block;">
+              <defs><linearGradient id="grad_${m.label.replace(/\s/g,'')}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${m.color}" stop-opacity="0.3"/><stop offset="100%" stop-color="${m.color}" stop-opacity="0.02"/></linearGradient></defs>
+              <polygon points="0,${h} ${points} ${w},${h}" fill="url(#grad_${m.label.replace(/\s/g,'')})" />
+              <polyline points="${points}" fill="none" stroke="${m.color}" stroke-width="2"/>
+            </svg>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:4px;">
+              <span>Min: ${min.toFixed(1)}</span><span>Avg: ${avg.toFixed(1)}</span><span>Max: ${max.toFixed(1)}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    function renderLogs(container) {
+      const levelColors = { INFO: '#10b981', WARN: '#f59e0b', ERROR: '#ef4444', DEBUG: '#6b7280' };
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Live Log Stream</h3>
+            <div style="display:flex;gap:8px;">
+              <select id="logLevel" class="form-select" style="width:auto;font-size:12px;" onchange="renderLogs(document.getElementById('tabContent'))">
+                <option value="">All Levels</option>
+                <option value="ERROR">ERROR</option>
+                <option value="WARN">WARN</option>
+                <option value="INFO">INFO</option>
+                <option value="DEBUG">DEBUG</option>
+              </select>
+              <select id="logService" class="form-select" style="width:auto;font-size:12px;" onchange="renderLogs(document.getElementById('tabContent'))">
+                <option value="">All Services</option>
+                <option value="auth-service">auth-service</option>
+                <option value="payment-service">payment-service</option>
+                <option value="order-service">order-service</option>
+                <option value="api-gateway">api-gateway</option>
+                <option value="agent-runtime">agent-runtime</option>
+              </select>
+            </div>
+          </div>
+          <div style="max-height:500px;overflow-y:auto;background:var(--bg-primary);border-radius:6px;font-family:var(--font-mono);font-size:11px;">
+            ${logs.filter(l => {
+              const levelFilter = document.getElementById('logLevel')?.value || '';
+              const serviceFilter = document.getElementById('logService')?.value || '';
+              return (!levelFilter || l.level === levelFilter) && (!serviceFilter || l.service === serviceFilter);
+            }).map(l => `
+              <div style="padding:4px 12px;border-bottom:1px solid var(--border-color);display:flex;gap:8px;align-items:center;${l.level === 'ERROR' ? 'background:#ef444408;' : ''}">
+                <span style="color:var(--text-muted);min-width:75px;font-size:10px;">${new Date(l.timestamp).toLocaleTimeString()}</span>
+                <span style="color:${levelColors[l.level]};font-weight:700;min-width:40px;">${l.level}</span>
+                <span style="color:var(--accent);min-width:110px;">${l.service}</span>
+                <span style="color:var(--text-secondary);flex:1;">${l.message}</span>
+                <span style="color:var(--text-muted);font-size:9px;">${l.trace_id}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTraces(container) {
+      container.innerHTML = `
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header"><h3 class="card-title">Distributed Traces</h3></div>
+          ${traces.map(t => {
+            const maxDur = t.duration;
+            return `
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div>
+                  <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent);">${t.trace_id}</span>
+                  <strong style="margin-left:8px;font-size:13px;">${t.operation}</strong>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="font-size:13px;font-weight:700;color:${t.duration > 1000 ? '#ef4444' : t.duration > 300 ? '#f59e0b' : '#10b981'}">${t.duration}ms</span>
+                  ${statusBadge(t.status)}
+                </div>
+              </div>
+              <!-- Span Waterfall -->
+              <div style="background:var(--bg-secondary);border-radius:6px;padding:8px 12px;">
+                ${t.spans.map(s => {
+                  const left = (s.start / maxDur) * 100;
+                  const width = Math.max(1, (s.duration / maxDur) * 100);
+                  const color = s.error ? '#ef4444' : s.duration > maxDur * 0.5 ? '#f59e0b' : '#10b981';
+                  return `
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <span style="font-size:10px;color:var(--text-muted);min-width:100px;">${s.service}</span>
+                    <div style="flex:1;height:16px;position:relative;background:var(--bg-tertiary);border-radius:3px;">
+                      <div style="position:absolute;left:${left}%;width:${width}%;height:100%;background:${color}40;border:1px solid ${color};border-radius:3px;display:flex;align-items:center;padding:0 4px;">
+                        <span style="font-size:9px;color:${color};white-space:nowrap;">${s.operation} (${s.duration}ms)</span>
+                      </div>
+                    </div>
+                  </div>
+                  ${s.error ? `<div style="font-size:10px;color:#ef4444;padding-left:108px;margin-bottom:4px;">⚠ ${s.error}</div>` : ''}`;
+                }).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderAgentMonitor(container) {
+      const agents = NexusStore.getAgents();
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Agent Execution Monitoring</h3></div>
+          <div style="overflow-x:auto;">
+            <table class="table">
+              <thead><tr><th>Agent</th><th>Role</th><th>Status</th><th>Tasks</th><th>Escalations</th><th>Gate Pass Rate</th><th>Tokens Used</th><th>Avg Latency</th></tr></thead>
+              <tbody>
+                ${agents.map(a => {
+                  const tokens = Math.floor(Math.random() * 50000) + 5000;
+                  const latency = Math.floor(Math.random() * 3000) + 200;
+                  return `<tr>
+                    <td style="font-weight:600;">${a.agent_name}</td>
+                    <td>${a.role}</td>
+                    <td>${statusBadge(a.status)}</td>
+                    <td>${a.metrics?.tasks_completed || 0}</td>
+                    <td style="color:${(a.metrics?.escalations_raised||0) > 0 ? '#f59e0b' : '#10b981'}">${a.metrics?.escalations_raised || 0}</td>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:60px;height:4px;background:var(--bg-tertiary);border-radius:2px;overflow:hidden;">
+                          <div style="height:100%;width:${a.metrics?.gate_pass_rate || 100}%;background:${(a.metrics?.gate_pass_rate||100) >= 80 ? '#10b981' : '#f59e0b'};border-radius:2px;"></div>
+                        </div>
+                        <span style="font-size:12px;">${a.metrics?.gate_pass_rate || 100}%</span>
+                      </div>
+                    </td>
+                    <td style="font-family:var(--font-mono);font-size:12px;">${tokens.toLocaleString()}</td>
+                    <td style="color:${latency > 2000 ? '#ef4444' : latency > 1000 ? '#f59e0b' : '#10b981'}">${latency}ms</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderErrors(container) {
+      const trendColors = { INCREASING: '#ef4444', DECREASING: '#10b981', STABLE: '#f59e0b', RESOLVED: '#6b7280', NEW: '#8b5cf6' };
+      const trendIcons = { INCREASING: '📈', DECREASING: '📉', STABLE: '➡️', RESOLVED: '✅', NEW: '🆕' };
+      container.innerHTML = `
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Error Pattern Analytics</h3></div>
+          ${errorPatterns.map(e => `
+            <div style="padding:12px 16px;border-bottom:1px solid var(--border-color);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-size:14px;">${trendIcons[e.trend]}</span>
+                  <code style="font-size:12px;background:var(--bg-tertiary);padding:2px 8px;border-radius:4px;">${e.pattern}</code>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="font-size:14px;font-weight:700;color:${e.count > 100 ? '#ef4444' : '#f59e0b'}">${e.count}x</span>
+                  <span style="font-size:10px;padding:1px 6px;border-radius:8px;background:${trendColors[e.trend]}20;color:${trendColors[e.trend]};font-weight:600">${e.trend}</span>
+                  ${riskBadge(e.impact)}
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);display:flex;gap:16px;">
+                <span>Service: <strong>${e.service}</strong></span>
+                <span>First: ${formatTime(e.first_seen)}</span>
+                <span>Last: ${formatTime(e.last_seen)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function refreshMetrics() {
+      // Regenerate new data points
+      Object.keys(metricsData).forEach(key => {
+        const last = metricsData[key][metricsData[key].length - 1].value;
+        metricsData[key].push({ time: new Date().toISOString(), value: Math.max(0, last + (Math.random() - 0.5) * 20) });
+        if (metricsData[key].length > 60) metricsData[key].shift();
+      });
+      render();
+      showToast('Metrics refreshed', 'info');
+    }
+
+    render();
+
+    // Auto-refresh every 10 seconds
+    setInterval(() => {
+      Object.keys(metricsData).forEach(key => {
+        const last = metricsData[key][metricsData[key].length - 1].value;
+        metricsData[key].push({ time: new Date().toISOString(), value: Math.max(0, last + (Math.random() - 0.5) * 10) });
+        if (metricsData[key].length > 60) metricsData[key].shift();
+      });
+      if (currentTab === 'metrics') render();
+    }, 10000);
+  </script>
+</body>
+</html>
