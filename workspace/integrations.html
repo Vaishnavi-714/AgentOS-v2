@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Integrations</title>
-  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="../css/common.css">
 </head>
 <body>
   <div class="main-content" id="app">
@@ -34,21 +34,21 @@
     </div>
   </div>
 
-  <script src="js/store.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/mock-api.js"></script>
-  <script src="js/state.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/permissions.js"></script>
-  <script src="js/event-bus.js"></script>
-  <script src="js/nav.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/event-bus.js"></script>
+  <script src="../js/nav.js"></script>
   <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('integrations');
     // Admin-only page guard
-    if (!TenantState.isSystemAdmin()) {
-      NexusPermissions.enforcePageAccess('integrations');
-    }
+    NexusPermissions.enforcePageAccess('integrations');
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
 
     function seedIntegrations() {

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Projects</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Projects</h1>
+        <p class="page-subtitle">Manage projects, requirements, backlog, tasks, and timelines</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelectorContainer" style="display:inline-block"></div>
+        <button class="btn btn-primary" onclick="openModal('createProjectModal')">+ New Project</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" data-tab-group="projects">
+      <button class="tab active" data-tab="projectListing" onclick="switchTab('projects','projectListing')">📂 Projects</button>
+      <button class="tab" data-tab="projectOverview" onclick="switchTab('projects','projectOverview')">📋 Overview</button>
+      <button class="tab" data-tab="requirements" onclick="switchTab('projects','requirements')">📄 Requirements</button>
+      <button class="tab" data-tab="backlog" onclick="switchTab('projects','backlog')">📝 Backlog</button>
+      <button class="tab" data-tab="tasks" onclick="switchTab('projects','tasks')">✅ Tasks</button>
+      <button class="tab" data-tab="timeline" onclick="switchTab('projects','timeline')">📅 Timeline</button>
+      <button class="tab" data-tab="pipeline" onclick="switchTab('projects','pipeline')">⚙️ Pipeline</button>
+    </div>
+
+    <!-- Projects Listing -->
+    <div class="tab-content active" id="projectListing">
+      <div class="grid grid-4" id="projStatsGrid" style="margin-bottom:20px"></div>
+      <div id="projectCards"></div>
+    </div>
+
+    <!-- Project Overview -->
+    <div class="tab-content" id="projectOverview">
+      <div class="grid grid-4" id="overviewStats" style="margin-bottom:20px"></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card-header"><h3 class="card-title">📊 Progress</h3></div><div id="overviewProgress"></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">👥 Team</h3></div><div id="overviewTeam"></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="card-header"><h3 class="card-title">📜 Activity</h3></div><div id="overviewActivity" class="timeline"></div></div>
+    </div>
+
+    <!-- Requirements -->
+    <div class="tab-content" id="requirements">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">📄 Requirements</h3>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" onclick="generateRequirements()">🤖 AI Generate</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('uploadReqModal')">+ Upload</button>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <select class="form-select" id="reqFilterType" onchange="renderRequirements()">
+            <option value="ALL">All Types</option><option value="FUNCTIONAL">Functional</option><option value="NON_FUNCTIONAL">Non-Functional</option><option value="CONSTRAINT">Constraint</option>
+          </select>
+          <select class="form-select" id="reqFilterModule" onchange="renderRequirements()"><option value="ALL">All Modules</option></select>
+          <select class="form-select" id="reqFilterPriority" onchange="renderRequirements()">
+            <option value="ALL">All Priorities</option><option value="MUST_HAVE">Must Have</option><option value="SHOULD_HAVE">Should Have</option><option value="COULD_HAVE">Could Have</option>
+          </select>
+        </div>
+        <div class="table-container">
+          <table><thead><tr><th>ID</th><th>Requirement</th><th>Type</th><th>Module</th><th>Priority</th><th>Confidence</th></tr></thead>
+          <tbody id="reqTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backlog (Kanban) -->
+    <div class="tab-content" id="backlog">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">📝 Backlog Board</h3>
+          <div class="page-actions">
+            <select class="form-select" id="backlogFilter" onchange="renderBacklog()" style="max-width:160px">
+              <option value="ALL">All Types</option><option value="EPIC">Epics</option><option value="FEATURE">Features</option><option value="USER_STORY">User Stories</option>
+            </select>
+          </div>
+        </div>
+        <div id="backlogKanban" class="kanban-grid" style="grid-template-columns:repeat(5,minmax(200px,1fr))"></div>
+      </div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="tab-content" id="tasks">
+      <div class="grid grid-4" id="taskStats" style="margin-bottom:20px"></div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">✅ Task Board</h3>
+          <div class="page-actions">
+            <select class="form-select" id="taskFilter" onchange="renderTasks()" style="max-width:160px">
+              <option value="ALL">All Status</option><option value="EXECUTING">In Progress</option><option value="DONE">Completed</option><option value="BLOCKED">Blocked</option><option value="ESCALATED">Escalated</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-container">
+          <table><thead><tr><th>ID</th><th>Task</th><th>Module</th><th>Assigned To</th><th>Status</th><th>Risk</th><th>Gate</th></tr></thead>
+          <tbody id="taskTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline / Roadmap -->
+    <div class="tab-content" id="timeline">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📅 Project Timeline & Roadmap</h3></div>
+        <div id="timelineView" style="padding:16px"></div>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="tab-content" id="pipeline">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">⚙️ Requirements Pipeline</h3>
+          <button class="btn btn-primary btn-sm" onclick="runPipeline()">▶ Run Pipeline</button>
+        </div>
+        <div id="pipelineStages"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Project Modal -->
+  <div class="modal-overlay" id="createProjectModal">
+    <div class="modal">
+      <div class="modal-header"><h3 class="modal-title">Create New Project</h3><button class="modal-close" onclick="closeModal('createProjectModal')">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Project Name</label><input type="text" id="projName" class="form-input" placeholder="e.g., E-Commerce Platform"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea id="projDesc" class="form-textarea" placeholder="Describe the project scope..."></textarea></div>
+        <div class="form-group"><label class="form-label">Domain</label>
+          <select id="projDomain" class="form-select"><option value="E-Commerce">E-Commerce</option><option value="Healthcare">Healthcare</option><option value="Finance">Finance</option><option value="Education">Education</option><option value="SaaS">SaaS</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Tech Stack</label><input type="text" id="projTech" class="form-input" placeholder="Node.js, React, PostgreSQL"></div>
+        <div class="form-group"><label class="form-label">Modules</label><input type="text" id="projModules" class="form-input" placeholder="auth, payments, orders"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProject()">Create Project</button></div>
+    </div>
+  </div>
+
+  <!-- Upload Requirements Modal -->
+  <div class="modal-overlay" id="uploadReqModal">
+    <div class="modal">
+      <div class="modal-header"><h3 class="modal-title">Upload Requirements</h3><button class="modal-close" onclick="closeModal('uploadReqModal')">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Requirement Text</label><textarea id="reqText" class="form-textarea" placeholder="Enter requirement text..."></textarea></div>
+        <div class="form-group"><label class="form-label">Type</label>
+          <select id="reqType" class="form-select"><option value="FUNCTIONAL">Functional</option><option value="NON_FUNCTIONAL">Non-Functional</option><option value="CONSTRAINT">Constraint</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Module</label><input type="text" id="reqModule" class="form-input" placeholder="auth"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('uploadReqModal')">Cancel</button><button class="btn btn-primary" onclick="uploadRequirement()">Add Requirement</button></div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('projects');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+
+    function openModal(id) { document.getElementById(id).classList.add('show'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    const projId = createProjectSelector('projectSelectorContainer', () => renderAll());
+
+    function renderAll() {
+      renderProjectListing();
+      renderProjectOverview();
+      renderRequirements();
+      renderBacklog();
+      renderTasks();
+      renderTimeline();
+      renderPipeline();
+    }
+
+    function renderProjectListing() {
+      const projects = NexusStore.getProjects();
+      const agents = NexusStore.getAgents();
+      const escalations = NexusStore.getEscalations();
+
+      document.getElementById('projStatsGrid').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Projects</span><span class="stat-value">${projects.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Active</span><span class="stat-value">${projects.filter(p=>p.status==='ACTIVE').length}</span></div>
+        <div class="stat-card"><span class="stat-label">Agents Assigned</span><span class="stat-value">${agents.filter(a=>a.status==='ACTIVE').length}</span></div>
+        <div class="stat-card"><span class="stat-label">Escalations</span><span class="stat-value">${escalations.filter(e=>e.status==='PENDING').length}</span></div>
+      `;
+
+      document.getElementById('projectCards').innerHTML = projects.length === 0 ?
+        `<div class="empty-state"><div class="empty-state-icon">📂</div><h3 class="empty-state-title">No Projects Yet</h3><p class="empty-state-text">Create your first project to get started</p><button class="btn btn-primary" onclick="openModal('createProjectModal')">+ Create Project</button></div>` :
+        `<div class="grid grid-2">${projects.map(p => {
+          const pipeline = NexusStore.getPipeline(p.id);
+          const tasks = NexusStore.getTasks(p.id);
+          const done = tasks.filter(t=>t.status==='DONE').length;
+          const pct = pipeline ? Math.round(pipeline.stages.filter(s=>s.status==='COMPLETED').length/pipeline.stages.length*100) : 0;
+          return `<div class="card" style="cursor:pointer" onclick="selectProject('${p.id}')">
+            <div class="card-header"><div><h3 class="card-title">${escapeHtml(p.name)}</h3><p class="card-subtitle">${escapeHtml(p.domain)} · ${formatTime(p.createdAt)}</p></div>${statusBadge(p.status)}</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">${escapeHtml(p.description)}</p>
+            <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text-muted)">Pipeline</span><span style="font-size:12px">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${(p.techStack||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>Tasks: ${done}/${tasks.length}</span><span>Modules: ${(p.modules||[]).length}</span></div>
+          </div>`;
+        }).join('')}</div>`;
+    }
+
+    function selectProject(id) {
+      sessionStorage.setItem('nexus_selected_project', id);
+      if (document.getElementById('projectSelect')) document.getElementById('projectSelect').value = id;
+      switchTab('projects', 'projectOverview');
+      renderAll();
+    }
+
+    function renderProjectOverview() {
+      const pid = getSelectedProject();
+      const project = NexusStore.getProject(pid);
+      if (!project) return;
+      const tasks = NexusStore.getTasks(pid);
+      const reqs = NexusStore.getRequirements(pid);
+      const backlog = NexusStore.getBacklog(pid);
+      const agents = NexusStore.getAgents();
+      const done = tasks.filter(t=>t.status==='DONE').length;
+
+      document.getElementById('overviewStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Requirements</span><span class="stat-value">${reqs.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Backlog Items</span><span class="stat-value">${backlog.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Tasks</span><span class="stat-value">${done}/${tasks.length}</span><span class="stat-change up">${tasks.length?Math.round(done/tasks.length*100):0}% done</span></div>
+        <div class="stat-card"><span class="stat-label">Agents</span><span class="stat-value">${agents.filter(a=>a.module_scope===project.modules?.[0]||a.module_scope==='global').length}</span></div>
+      `;
+
+      document.getElementById('overviewProgress').innerHTML = (project.modules||[]).map(m => {
+        const modTasks = tasks.filter(t=>t.module===m);
+        const modDone = modTasks.filter(t=>t.status==='DONE').length;
+        const pct = modTasks.length ? Math.round(modDone/modTasks.length*100) : 0;
+        return `<div class="metric-bar"><span class="metric-label">${m}</span><div class="metric-track"><div class="metric-fill" style="width:${pct}%;background:var(--accent)"></div></div><span class="metric-value">${pct}%</span></div>`;
+      }).join('') || '<p style="color:var(--text-muted);font-size:12px">No modules defined</p>';
+
+      document.getElementById('overviewTeam').innerHTML = agents.filter(a => a.module_scope === 'global' || (project.modules||[]).includes(a.module_scope)).slice(0, 8).map(a => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><span style="font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(a.agent_name)}</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${a.role}</span></div>
+          ${statusBadge(a.status)}
+        </div>
+      `).join('');
+
+      const logs = NexusStore.getLogs().filter(l => l.message && l.message.includes(pid)).slice(0, 8);
+      document.getElementById('overviewActivity').innerHTML = logs.map(l => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(l.message)}</p><span style="font-size:11px;color:var(--text-muted)">${formatTime(l.timestamp)}</span></div>`).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:12px">No activity</p>';
+    }
+
+    function renderRequirements() {
+      const pid = getSelectedProject();
+      const reqs = NexusStore.getRequirements(pid);
+      const filterType = document.getElementById('reqFilterType')?.value || 'ALL';
+      const filterModule = document.getElementById('reqFilterModule')?.value || 'ALL';
+      const filterPriority = document.getElementById('reqFilterPriority')?.value || 'ALL';
+
+      // Populate module filter
+      const modules = [...new Set(reqs.map(r => r.module))];
+      const moduleSelect = document.getElementById('reqFilterModule');
+      if (moduleSelect && moduleSelect.options.length <= 1) {
+        modules.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; moduleSelect.appendChild(opt); });
+      }
+
+      const filtered = reqs.filter(r => {
+        if (filterType !== 'ALL' && r.type !== filterType) return false;
+        if (filterModule !== 'ALL' && r.module !== filterModule) return false;
+        if (filterPriority !== 'ALL' && r.priority !== filterPriority) return false;
+        return true;
+      });
+
+      document.getElementById('reqTable').innerHTML = filtered.map(r => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${r.id}</td>
+        <td style="max-width:300px">${escapeHtml(r.text)}</td>
+        <td><span class="tag">${r.type}</span></td>
+        <td>${r.module}</td>
+        <td>${priorityBadge(r.priority)}</td>
+        <td>${(r.confidence * 100).toFixed(0)}%</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No requirements found</td></tr>';
+    }
+
+    function renderBacklog() {
+      const pid = getSelectedProject();
+      const backlog = NexusStore.getBacklog(pid);
+      const filter = document.getElementById('backlogFilter')?.value || 'ALL';
+      const items = filter === 'ALL' ? backlog : backlog.filter(b => b.type === filter);
+      const statuses = ['SPECIFIED', 'IN_PROGRESS', 'DONE', 'BLOCKED', 'NOT_STARTED'];
+
+      document.getElementById('backlogKanban').innerHTML = statuses.map(status => {
+        const colItems = items.filter(i => i.status === status || (status === 'NOT_STARTED' && !statuses.slice(0,4).includes(i.status)));
+        return `<div class="kanban-col">
+          <div class="kanban-col-header"><span class="kanban-col-title">${status.replace(/_/g,' ')}</span><span class="tag">${colItems.length}</span></div>
+          <div class="kanban-dropzone">${colItems.map(i => `
+            <div class="kanban-task">
+              <div style="display:flex;justify-content:space-between"><span class="tag" style="font-size:10px">${i.type}</span>${i.priority ? priorityBadge(i.priority) : ''}</div>
+              <div class="kanban-task-title">${escapeHtml(i.title)}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${i.module || ''}${i.storyPoints ? ' · '+i.storyPoints+'pts' : ''}</div>
+            </div>
+          `).join('')}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderTasks() {
+      const pid = getSelectedProject();
+      const tasks = NexusStore.getTasks(pid);
+      const filter = document.getElementById('taskFilter')?.value || 'ALL';
+      const filtered = filter === 'ALL' ? tasks : tasks.filter(t => t.status === filter);
+      const agents = NexusStore.getAgents();
+
+      const done = tasks.filter(t=>t.status==='DONE').length;
+      const blocked = tasks.filter(t=>t.status==='BLOCKED'||t.status==='ESCALATED').length;
+      document.getElementById('taskStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Tasks</span><span class="stat-value">${tasks.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Completed</span><span class="stat-value" style="color:var(--success)">${done}</span></div>
+        <div class="stat-card"><span class="stat-label">In Progress</span><span class="stat-value" style="color:var(--info)">${tasks.filter(t=>t.status==='EXECUTING').length}</span></div>
+        <div class="stat-card"><span class="stat-label">Blocked</span><span class="stat-value" style="color:${blocked?'var(--danger)':'var(--text-primary)'}">${blocked}</span></div>
+      `;
+
+      document.getElementById('taskTable').innerHTML = filtered.map(t => {
+        const agent = agents.find(a => a.agent_id === t.assignedTo);
+        return `<tr>
+          <td style="font-weight:600;color:var(--accent)">${t.task_id}</td>
+          <td>${escapeHtml(t.title)}</td>
+          <td><span class="tag">${t.module}</span></td>
+          <td style="font-size:12px">${agent ? escapeHtml(agent.agent_name) : t.assignedTo}</td>
+          <td>${statusBadge(t.status)}</td>
+          <td>${riskBadge(t.risk)}</td>
+          <td>${t.gateStatus ? statusBadge(t.gateStatus) : '—'}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No tasks</td></tr>';
+    }
+
+    function renderTimeline() {
+      const pid = getSelectedProject();
+      const project = NexusStore.getProject(pid);
+      const tasks = NexusStore.getTasks(pid);
+      if (!project) return;
+
+      const phases = [
+        { name: 'Requirements', icon: '📄', status: 'COMPLETED', date: project.createdAt },
+        { name: 'Architecture', icon: '🏗️', status: tasks.some(t=>t.module&&t.status==='DONE') ? 'COMPLETED' : 'IN_PROGRESS', date: null },
+        { name: 'Development', icon: '💻', status: tasks.filter(t=>t.status==='EXECUTING').length > 0 ? 'IN_PROGRESS' : 'PENDING', date: null },
+        { name: 'Testing', icon: '🧪', status: 'PENDING', date: null },
+        { name: 'Deployment', icon: '🚀', status: 'PENDING', date: null },
+        { name: 'Release', icon: '🎉', status: 'PENDING', date: null }
+      ];
+
+      document.getElementById('timelineView').innerHTML = `
+        <div style="display:flex;gap:16px;overflow-x:auto;padding:20px 0">
+          ${phases.map((p, i) => {
+            const colors = { COMPLETED: 'var(--success)', IN_PROGRESS: 'var(--accent)', PENDING: 'var(--text-muted)' };
+            const color = colors[p.status] || 'var(--text-muted)';
+            return `
+              <div style="flex:1;min-width:150px;text-align:center">
+                <div style="width:48px;height:48px;border-radius:50%;background:${color}20;border:2px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px">${p.icon}</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${p.name}</div>
+                ${statusBadge(p.status)}
+                ${i < phases.length - 1 ? '<div style="margin-top:8px;color:var(--text-muted)">→</div>' : ''}
+              </div>`;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderPipeline() {
+      const pid = getSelectedProject();
+      const pipeline = NexusStore.getPipeline(pid);
+      if (!pipeline) {
+        document.getElementById('pipelineStages').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚙️</div><h3 class="empty-state-title">No Pipeline</h3><p class="empty-state-text">Upload requirements to start the pipeline</p></div>';
+        return;
+      }
+      document.getElementById('pipelineStages').innerHTML = pipeline.stages.map(s => {
+        const cls = s.status === 'COMPLETED' ? 'completed' : s.status === 'IN_PROGRESS' ? 'in-progress' : 'pending';
+        return `<div class="pipeline-stage ${cls}">
+          <div class="pipeline-stage-number">${s.stage}</div>
+          <div class="pipeline-stage-info"><div class="pipeline-stage-name">${s.name}</div><div class="pipeline-stage-logs">${(s.logs||[]).slice(-2).join(' · ')}</div></div>
+          <div class="pipeline-stage-time">${statusBadge(s.status)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    async function createProject() {
+      const name = document.getElementById('projName').value.trim();
+      if (!name) { showToast('Project name required', 'error'); return; }
+      showLoading('Creating project...');
+      await MockAPI.createProject({ name, description: document.getElementById('projDesc').value.trim(), domain: document.getElementById('projDomain').value, techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean), modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean) });
+      hideLoading();
+      closeModal('createProjectModal');
+      showToast('Project created', 'success');
+      renderAll();
+    }
+
+    async function uploadRequirement() {
+      const pid = getSelectedProject();
+      const text = document.getElementById('reqText').value.trim();
+      if (!text) { showToast('Requirement text required', 'error'); return; }
+      showLoading('Processing...');
+      await MockAPI.uploadRequirements(pid, [{ content: text, type: document.getElementById('reqType').value, module: document.getElementById('reqModule').value.trim() || 'unassigned', name: 'manual_input' }]);
+      hideLoading();
+      closeModal('uploadReqModal');
+      showToast('Requirement added', 'success');
+      renderAll();
+    }
+
+    function generateRequirements() {
+      showToast('AI Requirements Generator activated — analyzing project context...', 'info');
+    }
+
+    async function runPipeline() {
+      const pid = getSelectedProject();
+      showLoading('Running pipeline stage...');
+      const result = await MockAPI.advancePipeline(pid);
+      hideLoading();
+      if (result.completed) showToast('Pipeline completed!', 'success');
+      else showToast('Pipeline stage completed', 'info');
+      renderAll();
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>

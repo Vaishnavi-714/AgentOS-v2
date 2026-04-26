@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Security</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Security</h1>
+        <p class="page-subtitle">Security center, AI safety, compliance, secrets management, and data privacy</p>
+      </div>
+      <div class="page-actions"><button class="btn btn-outline btn-sm" onclick="runSecurityScan()">🔒 Run Security Scan</button></div>
+    </div>
+
+    <div class="tabs" data-tab-group="security">
+      <button class="tab active" data-tab="secCenter" onclick="switchTab('security','secCenter')">🛡️ Security Center</button>
+      <button class="tab" data-tab="aiSafety" onclick="switchTab('security','aiSafety')">🧠 AI Safety</button>
+      <button class="tab" data-tab="complianceTab" onclick="switchTab('security','complianceTab')">📑 Compliance</button>
+      <button class="tab" data-tab="secrets" onclick="switchTab('security','secrets')">🔐 Secrets</button>
+      <button class="tab" data-tab="privacy" onclick="switchTab('security','privacy')">🔏 Data Privacy</button>
+    </div>
+
+    <!-- Security Center -->
+    <div class="tab-content active" id="secCenter">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Security Score</span><span class="stat-value" style="color:var(--success)">92</span></div>
+        <div class="stat-card"><span class="stat-label">Vulnerabilities</span><span class="stat-value">3</span><span class="stat-change down">2 critical</span></div>
+        <div class="stat-card"><span class="stat-label">Last Scan</span><span class="stat-value" style="font-size:16px">2h ago</span></div>
+        <div class="stat-card"><span class="stat-label">Threats Blocked</span><span class="stat-value" style="color:var(--success)">147</span></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Vulnerability Report</h3></div>
+          <div id="vulnReport"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Security Events</h3></div>
+          <div id="secEvents" class="timeline"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Safety -->
+    <div class="tab-content" id="aiSafety">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Safety Alerts</span><span class="stat-value" id="safetyAlertCount">0</span></div>
+        <div class="stat-card"><span class="stat-label">Hallucination Checks</span><span class="stat-value">1,247</span><span class="stat-change up">99.2% accurate</span></div>
+        <div class="stat-card"><span class="stat-label">Prompt Guardrails</span><span class="stat-value" style="color:var(--success)">Active</span></div>
+        <div class="stat-card"><span class="stat-label">Data Masking</span><span class="stat-value" style="color:var(--success)">Enabled</span></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🧠 Hallucination Detection</h3></div>
+          <div id="hallucinationPanel"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🛡️ Prompt Guardrails</h3></div>
+          <div id="guardrailPanel"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">🔍 Output Validation Log</h3></div>
+        <div class="table-container">
+          <table><thead><tr><th>Timestamp</th><th>Agent</th><th>Check</th><th>Input Hash</th><th>Result</th><th>Action</th></tr></thead>
+          <tbody id="validationLog"></tbody></table>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">🔒 Sensitive Data Masking</h3></div>
+        <div id="dataMasking"></div>
+      </div>
+    </div>
+
+    <!-- Compliance -->
+    <div class="tab-content" id="complianceTab">
+      <div class="grid grid-3" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">SOC 2 Status</span><span class="stat-value" style="color:var(--success)">Compliant</span></div>
+        <div class="stat-card"><span class="stat-label">GDPR Status</span><span class="stat-value" style="color:var(--success)">Compliant</span></div>
+        <div class="stat-card"><span class="stat-label">Controls Passed</span><span class="stat-value">42/45</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📑 Compliance Controls</h3></div>
+        <div class="table-container">
+          <table><thead><tr><th>Control</th><th>Framework</th><th>Category</th><th>Status</th><th>Last Audit</th></tr></thead>
+          <tbody id="complianceTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secrets Management -->
+    <div class="tab-content" id="secrets">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🔐 Secrets Vault</h3><button class="btn btn-primary btn-sm">+ Add Secret</button></div>
+        <div class="table-container">
+          <table><thead><tr><th>Name</th><th>Type</th><th>Scope</th><th>Last Rotated</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="secretsTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Privacy -->
+    <div class="tab-content" id="privacy">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🔏 Data Privacy Settings</h3></div>
+        <div id="privacySettings"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('security');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+
+    function renderAll() {
+      // Vulnerability Report
+      document.getElementById('vulnReport').innerHTML = [
+        { severity: 'CRITICAL', name: 'SQL Injection in User Query', file: 'src/auth/login.js:45', status: 'OPEN' },
+        { severity: 'HIGH', name: 'Missing Rate Limiter on Reset Endpoint', file: 'src/auth/reset.js:12', status: 'OPEN' },
+        { severity: 'MEDIUM', name: 'Weak Password Policy', file: 'src/auth/register.js:23', status: 'IN_PROGRESS' },
+        { severity: 'LOW', name: 'Verbose Error Messages', file: 'src/utils/error.js:8', status: 'RESOLVED' }
+      ].map(v => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">${riskBadge(v.severity)}<span style="font-size:13px;font-weight:600;color:var(--text-primary)">${v.name}</span></div>
+          <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">${v.file}</span></div>
+          ${statusBadge(v.status)}
+        </div>
+      `).join('');
+
+      // Security Events
+      document.getElementById('secEvents').innerHTML = [
+        { msg: 'Security scan completed — 3 issues found', time: '2 hours ago', type: 'scan' },
+        { msg: 'API key rotated for OpenAI provider', time: '1 day ago', type: 'rotation' },
+        { msg: 'Failed login attempt blocked (rate limit)', time: '2 days ago', type: 'block' },
+        { msg: 'New compliance control verified: SOC2-CC6.1', time: '3 days ago', type: 'compliance' }
+      ].map(e => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${e.msg}</p><span style="font-size:11px;color:var(--text-muted)">${e.time}</span></div>`).join('');
+
+      // AI Safety
+      const alerts = NexusStore.getSafetyAlerts();
+      document.getElementById('safetyAlertCount').textContent = alerts.length || '0';
+
+      document.getElementById('hallucinationPanel').innerHTML = [
+        { check: 'Fact Verification', desc: 'Cross-reference outputs with knowledge base', status: 'ACTIVE', accuracy: '99.2%' },
+        { check: 'Citation Validation', desc: 'Verify referenced code and documentation exist', status: 'ACTIVE', accuracy: '98.5%' },
+        { check: 'Logic Consistency', desc: 'Check for contradictions in generated output', status: 'ACTIVE', accuracy: '97.8%' }
+      ].map(h => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${h.check}</div><div style="font-size:11px;color:var(--text-muted)">${h.desc}</div></div>
+          <div style="display:flex;gap:8px;align-items:center">${statusBadge(h.status)}<span style="font-size:12px;font-weight:600;color:var(--success)">${h.accuracy}</span></div>
+        </div>
+      `).join('');
+
+      document.getElementById('guardrailPanel').innerHTML = [
+        { rule: 'No PII in prompts', severity: 'CRITICAL', triggered: 12, status: 'ACTIVE' },
+        { rule: 'No production credentials', severity: 'CRITICAL', triggered: 3, status: 'ACTIVE' },
+        { rule: 'Max token limit per request', severity: 'HIGH', triggered: 28, status: 'ACTIVE' },
+        { rule: 'No harmful content generation', severity: 'CRITICAL', triggered: 0, status: 'ACTIVE' },
+        { rule: 'Injection attack prevention', severity: 'CRITICAL', triggered: 5, status: 'ACTIVE' }
+      ].map(g => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${g.rule}</div><div style="font-size:11px;color:var(--text-muted)">${g.triggered} times triggered</div></div>
+          <div style="display:flex;gap:8px;align-items:center">${riskBadge(g.severity)}${statusBadge(g.status)}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('validationLog').innerHTML = [
+        { time: '14:32:00', agent: 'Dev Agent Auth 01', check: 'Output Validation', hash: 'a3f2...c8d1', result: 'PASS', action: '—' },
+        { time: '14:28:00', agent: 'Business Analyst', check: 'Hallucination Check', hash: 'b7e4...d2a3', result: 'PASS', action: '—' },
+        { time: '14:15:00', agent: 'Dev Agent Auth 02', check: 'PII Detection', hash: 'c1d5...f6e2', result: 'BLOCKED', action: 'Content redacted' },
+        { time: '13:45:00', agent: 'QA Agent', check: 'Output Validation', hash: 'e8f3...a1b4', result: 'PASS', action: '—' }
+      ].map(v => `<tr>
+        <td style="font-size:12px;color:var(--text-muted)">${v.time}</td><td>${v.agent}</td><td>${v.check}</td>
+        <td style="font-family:var(--mono);font-size:11px">${v.hash}</td><td>${statusBadge(v.result === 'PASS' ? 'PASS' : 'BLOCKED')}</td><td style="font-size:12px">${v.action}</td>
+      </tr>`).join('');
+
+      document.getElementById('dataMasking').innerHTML = [
+        { pattern: 'Email Addresses', regex: '[a-z]+@[a-z]+\\.com', action: 'Replace with [EMAIL]', enabled: true },
+        { pattern: 'API Keys', regex: 'sk-[a-zA-Z0-9]+', action: 'Replace with [API_KEY]', enabled: true },
+        { pattern: 'Phone Numbers', regex: '\\+?[0-9]{10,}', action: 'Replace with [PHONE]', enabled: true },
+        { pattern: 'Credit Card Numbers', regex: '[0-9]{4}-[0-9]{4}...', action: 'Replace with [CC]', enabled: true }
+      ].map(d => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${d.pattern}</div><div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">${d.regex} → ${d.action}</div></div>
+          ${statusBadge(d.enabled ? 'ACTIVE' : 'INACTIVE')}
+        </div>
+      `).join('');
+
+      // Compliance
+      document.getElementById('complianceTable').innerHTML = [
+        { control: 'CC6.1 - Logical Access', framework: 'SOC 2', category: 'Access Control', status: 'PASS', audit: '2024-01-10' },
+        { control: 'CC6.2 - Prior Authorization', framework: 'SOC 2', category: 'Access Control', status: 'PASS', audit: '2024-01-10' },
+        { control: 'CC7.1 - Change Management', framework: 'SOC 2', category: 'Change Management', status: 'PASS', audit: '2024-01-10' },
+        { control: 'Art. 5 - Data Principles', framework: 'GDPR', category: 'Data Protection', status: 'PASS', audit: '2024-01-08' },
+        { control: 'Art. 25 - Data by Design', framework: 'GDPR', category: 'Privacy', status: 'IN_PROGRESS', audit: '2024-01-12' },
+        { control: 'Art. 32 - Security of Processing', framework: 'GDPR', category: 'Security', status: 'PASS', audit: '2024-01-08' }
+      ].map(c => `<tr>
+        <td style="font-weight:600;color:var(--text-primary)">${c.control}</td><td><span class="tag">${c.framework}</span></td>
+        <td>${c.category}</td><td>${statusBadge(c.status)}</td><td style="font-size:12px;color:var(--text-muted)">${c.audit}</td>
+      </tr>`).join('');
+
+      // Secrets
+      document.getElementById('secretsTable').innerHTML = [
+        { name: 'OPENAI_API_KEY', type: 'API Key', scope: 'Global', rotated: '7 days ago', status: 'ACTIVE' },
+        { name: 'GITHUB_PAT', type: 'Token', scope: 'Repository', rotated: '14 days ago', status: 'ACTIVE' },
+        { name: 'DB_PASSWORD', type: 'Password', scope: 'Infrastructure', rotated: '30 days ago', status: 'WARNING' },
+        { name: 'JWT_SECRET', type: 'Secret', scope: 'Auth Module', rotated: '5 days ago', status: 'ACTIVE' },
+        { name: 'SLACK_WEBHOOK', type: 'Webhook', scope: 'Notifications', rotated: '60 days ago', status: 'WARNING' }
+      ].map(s => `<tr>
+        <td style="font-weight:600;color:var(--text-primary);font-family:var(--mono)">${s.name}</td><td><span class="tag">${s.type}</span></td>
+        <td>${s.scope}</td><td style="font-size:12px;color:var(--text-muted)">${s.rotated}</td>
+        <td>${statusBadge(s.status === 'WARNING' ? 'PENDING' : 'ACTIVE')}</td>
+        <td><button class="btn btn-outline btn-sm">Rotate</button></td>
+      </tr>`).join('');
+
+      // Privacy
+      document.getElementById('privacySettings').innerHTML = [
+        { name: 'Data Retention', desc: 'Auto-delete logs after 90 days', enabled: true },
+        { name: 'Data Anonymization', desc: 'Anonymize PII in analytics', enabled: true },
+        { name: 'Right to Erasure', desc: 'GDPR data deletion on request', enabled: true },
+        { name: 'Data Portability', desc: 'Export user data in standard formats', enabled: true },
+        { name: 'Consent Management', desc: 'Track and manage user consent', enabled: false }
+      ].map(p => `
+        <div style="padding:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${p.name}</div><div style="font-size:11px;color:var(--text-muted)">${p.desc}</div></div>
+          ${statusBadge(p.enabled ? 'ACTIVE' : 'INACTIVE')}
+        </div>
+      `).join('');
+    }
+
+    function runSecurityScan() { showToast('Security scan initiated...', 'info'); }
+
+    renderAll();
+  </script>
+</body>
+</html>

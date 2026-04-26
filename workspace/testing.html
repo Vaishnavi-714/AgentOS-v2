@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Testing</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Testing</h1>
+        <p class="page-subtitle">Test management, generation, execution, quality gates, and defect analytics</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelectorContainer" style="display:inline-block"></div>
+        <button class="btn btn-primary" onclick="generateTests()">🤖 AI Generate Tests</button>
+      </div>
+    </div>
+
+    <div class="tabs" data-tab-group="testing">
+      <button class="tab active" data-tab="testDashboard" onclick="switchTab('testing','testDashboard')">📊 Dashboard</button>
+      <button class="tab" data-tab="testGenerator" onclick="switchTab('testing','testGenerator')">🤖 Generator</button>
+      <button class="tab" data-tab="testExecution" onclick="switchTab('testing','testExecution')">▶ Execution</button>
+      <button class="tab" data-tab="qualityGates" onclick="switchTab('testing','qualityGates')">🛡️ Quality Gates</button>
+      <button class="tab" data-tab="defectAnalytics" onclick="switchTab('testing','defectAnalytics')">🐛 Defects</button>
+    </div>
+
+    <!-- Test Dashboard -->
+    <div class="tab-content active" id="testDashboard">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Total Tests</span><span class="stat-value" id="totalTests">0</span></div>
+        <div class="stat-card"><span class="stat-label">Passed</span><span class="stat-value" style="color:var(--success)" id="passedTests">0</span></div>
+        <div class="stat-card"><span class="stat-label">Failed</span><span class="stat-value" style="color:var(--danger)" id="failedTests">0</span></div>
+        <div class="stat-card"><span class="stat-label">Coverage</span><span class="stat-value" id="testCoverage">0%</span></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card-header"><h3 class="card-title">Coverage by Module</h3></div><div id="coverageByModule"></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">Test Results Trend</h3></div><div id="testTrend" style="display:flex;gap:8px;align-items:flex-end;height:200px;padding:20px"></div></div>
+      </div>
+    </div>
+
+    <!-- Test Generator -->
+    <div class="tab-content" id="testGenerator">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🤖 AI Test Case Generator</h3></div>
+        <div class="grid grid-2">
+          <div>
+            <div class="form-group"><label class="form-label">Source</label>
+              <select id="testSource" class="form-select"><option value="story">User Story</option><option value="api">API Contract</option><option value="code">Source Code</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Test Types</label>
+              <div class="checkbox-group">
+                <label class="checkbox-label"><input type="checkbox" checked> Unit Tests</label>
+                <label class="checkbox-label"><input type="checkbox" checked> Integration Tests</label>
+                <label class="checkbox-label"><input type="checkbox"> E2E Tests</label>
+                <label class="checkbox-label"><input type="checkbox" checked> Edge Cases</label>
+                <label class="checkbox-label"><input type="checkbox"> Security Tests</label>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="generateTests()">Generate Test Cases</button>
+          </div>
+          <div><div class="card-header"><h3 class="card-title">Generated Output</h3></div><div id="generatedTests" class="code-block" style="min-height:250px">// Generated tests will appear here...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Execution -->
+    <div class="tab-content" id="testExecution">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">▶ Test Execution</h3>
+          <div class="page-actions"><button class="btn btn-success btn-sm" onclick="runAllTests()">▶ Run All</button><button class="btn btn-outline btn-sm" onclick="runFailedTests()">🔄 Re-run Failed</button></div>
+        </div>
+        <div class="table-container">
+          <table><thead><tr><th>Test ID</th><th>Test Name</th><th>Module</th><th>Type</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody id="executionTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quality Gates -->
+    <div class="tab-content" id="qualityGates">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🛡️ Quality Gate Reviews</h3></div>
+        <div class="table-container">
+          <table><thead><tr><th>Gate ID</th><th>Task</th><th>Level</th><th>Tests</th><th>Lint</th><th>Review</th><th>Coverage</th><th>Security</th><th>Status</th></tr></thead>
+          <tbody id="gateTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Defect Analytics -->
+    <div class="tab-content" id="defectAnalytics">
+      <div class="grid grid-3" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Open Defects</span><span class="stat-value" style="color:var(--danger)">7</span></div>
+        <div class="stat-card"><span class="stat-label">Fixed This Week</span><span class="stat-value" style="color:var(--success)">12</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Fix Time</span><span class="stat-value">4.2h</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🐛 Defect Report</h3></div>
+        <div id="defectList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('testing');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+    createProjectSelector('projectSelectorContainer', () => renderAll());
+
+    function renderAll() {
+      const pid = getSelectedProject();
+      const testCases = NexusStore.getTestCases(pid);
+      const gates = NexusStore.getGateReviews(pid);
+
+      // Dashboard
+      const passed = testCases.filter(t => t.status === 'PASSED' || t.status === 'PASS').length;
+      const failed = testCases.filter(t => t.status === 'FAILED' || t.status === 'FAIL').length;
+      document.getElementById('totalTests').textContent = testCases.length || '24';
+      document.getElementById('passedTests').textContent = passed || '20';
+      document.getElementById('failedTests').textContent = failed || '2';
+      document.getElementById('testCoverage').textContent = (testCases.length ? Math.round(passed / testCases.length * 100) : 83) + '%';
+
+      document.getElementById('coverageByModule').innerHTML = ['auth','payments','orders','notifications'].map(m => {
+        const cov = 60 + Math.floor(Math.random() * 35);
+        return `<div class="metric-bar"><span class="metric-label">${m}</span><div class="metric-track"><div class="metric-fill" style="width:${cov}%;background:${cov>=80?'var(--success)':cov>=60?'var(--warning)':'var(--danger)'}"></div></div><span class="metric-value">${cov}%</span></div>`;
+      }).join('');
+
+      document.getElementById('testTrend').innerHTML = [18,20,19,22,21,24,23].map((v,i) =>
+        `<div style="flex:1;text-align:center"><div style="height:${v*7}px;background:var(--success);border-radius:3px 3px 0 0;margin-bottom:4px"></div><div style="font-size:10px;color:var(--text-muted)">D${i+1}</div></div>`
+      ).join('');
+
+      // Execution
+      const execData = testCases.length ? testCases : [
+        { id: 'TC-001', name: 'Register with valid email', module: 'auth', type: 'Unit', duration: '45ms', status: 'PASSED' },
+        { id: 'TC-002', name: 'Register with duplicate email', module: 'auth', type: 'Unit', duration: '32ms', status: 'PASSED' },
+        { id: 'TC-003', name: 'Login with valid credentials', module: 'auth', type: 'Integration', duration: '120ms', status: 'PASSED' },
+        { id: 'TC-004', name: 'Login with invalid password', module: 'auth', type: 'Unit', duration: '28ms', status: 'PASSED' },
+        { id: 'TC-005', name: 'Rate limiter enforcement', module: 'auth', type: 'Integration', duration: '340ms', status: 'FAILED' },
+        { id: 'TC-006', name: 'JWT token expiration', module: 'auth', type: 'Unit', duration: '18ms', status: 'PASSED' }
+      ];
+      document.getElementById('executionTable').innerHTML = execData.map(t => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${t.id || t.test_id}</td>
+        <td>${escapeHtml(t.name || t.title)}</td>
+        <td><span class="tag">${t.module}</span></td>
+        <td>${t.type || 'Unit'}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${t.duration || '—'}</td>
+        <td>${statusBadge(t.status)}</td>
+      </tr>`).join('');
+
+      // Quality Gates
+      document.getElementById('gateTable').innerHTML = gates.map(g => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${g.gate_id}</td>
+        <td>${g.task_id}</td>
+        <td><span class="tag">${g.level}</span></td>
+        <td style="color:${g.checks.automated_tests?'var(--success)':'var(--danger)'}">${g.checks.automated_tests?'✓':'✗'}</td>
+        <td style="color:${g.checks.linting?'var(--success)':'var(--danger)'}">${g.checks.linting?'✓':'✗'}</td>
+        <td style="color:${g.checks.reviewer_approval?'var(--success)':'var(--danger)'}">${g.checks.reviewer_approval?'✓':'✗'}</td>
+        <td>${g.checks.test_coverage}%</td>
+        <td>${g.checks.security_scan !== undefined ? (g.checks.security_scan ? '✓' : '✗') : '—'}</td>
+        <td>${statusBadge(g.status)}</td>
+      </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted)">No gate reviews</td></tr>';
+
+      // Defects
+      document.getElementById('defectList').innerHTML = [
+        { id: 'DEF-007', title: 'Rate limiter allows burst exceeding limit', severity: 'HIGH', module: 'auth', status: 'OPEN', assignee: 'Dev Agent Auth 02' },
+        { id: 'DEF-006', title: 'Missing input validation on password reset', severity: 'CRITICAL', module: 'auth', status: 'IN_PROGRESS', assignee: 'Dev Agent Auth 01' },
+        { id: 'DEF-005', title: 'JWT token not invalidated on logout', severity: 'HIGH', module: 'auth', status: 'OPEN', assignee: 'Unassigned' },
+        { id: 'DEF-004', title: 'Error message exposes stack trace', severity: 'MEDIUM', module: 'system', status: 'RESOLVED', assignee: 'Dev Agent Auth 01' }
+      ].map(d => `
+        <div style="padding:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+              <span style="font-weight:600;color:var(--accent)">${d.id}</span>
+              ${riskBadge(d.severity)}
+              <span class="tag">${d.module}</span>
+            </div>
+            <div style="font-size:13px;color:var(--text-primary)">${d.title}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Assigned: ${d.assignee}</div>
+          </div>
+          ${statusBadge(d.status)}
+        </div>
+      `).join('');
+    }
+
+    function generateTests() {
+      showLoading('Generating test cases...');
+      setTimeout(() => {
+        hideLoading();
+        document.getElementById('generatedTests').textContent =
+`describe('Auth Module', () => {
+  describe('POST /auth/register', () => {
+    it('should register with valid email and password', async () => {
+      const res = await request(app).post('/auth/register')
+        .send({ email: 'test@example.com', password: 'StrongP@ss1' });
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('token');
+    });
+
+    it('should reject duplicate email', async () => {
+      const res = await request(app).post('/auth/register')
+        .send({ email: 'existing@example.com', password: 'StrongP@ss1' });
+      expect(res.status).toBe(409);
+    });
+
+    it('should reject weak password', async () => {
+      const res = await request(app).post('/auth/register')
+        .send({ email: 'test@example.com', password: '123' });
+      expect(res.status).toBe(400);
+    });
+  });
+});`;
+        showToast('6 test cases generated', 'success');
+      }, 1500);
+    }
+
+    function runAllTests() { showToast('Running all tests...', 'info'); }
+    function runFailedTests() { showToast('Re-running failed tests...', 'info'); }
+
+    renderAll();
+  </script>
+</body>
+</html>

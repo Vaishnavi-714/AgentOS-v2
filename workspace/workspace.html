@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Workspace</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">AI Workspace</h1>
+        <p class="page-subtitle">Command Center · Live Console · Collaboration</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelectorContainer"></div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" data-tab-group="workspace">
+      <button class="tab active" data-tab="commandCenter" onclick="switchTab('workspace','commandCenter')">💬 Command Center</button>
+      <button class="tab" data-tab="liveConsole" onclick="switchTab('workspace','liveConsole')">🖥️ Live Console</button>
+      <button class="tab" data-tab="collaboration" onclick="switchTab('workspace','collaboration')">👥 Collaboration</button>
+      <button class="tab" data-tab="llmGateway" onclick="switchTab('workspace','llmGateway')">🧠 LLM Gateway</button>
+    </div>
+
+    <!-- Command Center Tab -->
+    <div class="tab-content active" id="commandCenter">
+      <div class="grid grid-3" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Active Agents</span><span class="stat-value" id="ccActiveAgents">0</span></div>
+        <div class="stat-card"><span class="stat-label">Messages Today</span><span class="stat-value" id="ccMessages">0</span></div>
+        <div class="stat-card"><span class="stat-label">Tokens Used</span><span class="stat-value" id="ccTokens">0</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🧠 AI Command Interface</h3>
+          <span class="status-badge" style="background:#10b98120;color:#10b981;border:1px solid #10b98140">Connected</span>
+        </div>
+        <div id="chatContainer" style="height:400px;overflow-y:auto;padding:16px;background:var(--bg-tertiary);border-radius:var(--radius);margin-bottom:16px;display:flex;flex-direction:column;gap:12px"></div>
+        <div style="display:flex;gap:10px">
+          <input type="text" id="chatInput" class="form-input" placeholder="Ask NEXUS AI anything... (e.g., 'Generate auth module tests', 'Show agent status')" onkeydown="if(event.key==='Enter')sendCommand()">
+          <button class="btn btn-primary" onclick="sendCommand()">Send</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">📜 Command History</h3></div>
+        <div id="commandHistory" class="timeline"></div>
+      </div>
+    </div>
+
+    <!-- Live Console Tab -->
+    <div class="tab-content" id="liveConsole">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🖥️ Multi-Agent Live Console</h3>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" onclick="clearConsole()">Clear</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleAutoScroll()">Auto-scroll</button>
+          </div>
+        </div>
+        <div id="liveConsoleOutput" style="height:500px;overflow-y:auto;padding:16px;background:var(--bg-tertiary);border-radius:var(--radius);font-family:var(--mono);font-size:12px;line-height:1.8"></div>
+      </div>
+      <div class="grid grid-3" style="margin-top:16px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Agent Activity</h3></div>
+          <div id="agentActivityList"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Task Queue</h3></div>
+          <div id="taskQueueList"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">System Events</h3></div>
+          <div id="systemEventsList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collaboration Tab -->
+    <div class="tab-content" id="collaboration">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">👥 Shared Workspace</h3>
+            <span class="status-badge" style="background:#3b82f620;color:#3b82f6;border:1px solid #3b82f640">3 online</span>
+          </div>
+          <div style="min-height:300px;padding:16px;background:var(--bg-tertiary);border-radius:var(--radius)">
+            <div id="collaborationFeed" class="timeline"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📌 Pinned Items</h3></div>
+          <div id="pinnedItems"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">🗂️ Shared Documents</h3></div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Document</th><th>Type</th><th>Owner</th><th>Last Modified</th><th>Status</th></tr></thead>
+            <tbody id="sharedDocsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LLM Gateway Tab -->
+    <div class="tab-content" id="llmGateway">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Model Calls</span><span class="stat-value" id="llmCalls">1,247</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Latency</span><span class="stat-value" id="llmLatency">340ms</span></div>
+        <div class="stat-card"><span class="stat-label">Total Cost</span><span class="stat-value" id="llmCost">$48.20</span></div>
+        <div class="stat-card"><span class="stat-label">Cache Hit Rate</span><span class="stat-value" id="llmCache">67%</span></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🧠 Model Router</h3></div>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Model</th><th>Provider</th><th>Calls</th><th>Tokens</th><th>Cost</th><th>Status</th></tr></thead>
+              <tbody id="modelRouterTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📊 Token Usage by Agent</h3></div>
+          <div id="tokenByAgent"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">📝 Prompt Templates</h3></div>
+        <div id="promptTemplates"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/event-bus.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('workspace');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+    createProjectSelector('projectSelectorContainer', () => renderWorkspace());
+
+    function renderWorkspace() {
+      const agents = NexusStore.getAgents();
+      const activeAgents = agents.filter(a => a.status === 'ACTIVE');
+      const history = NexusStore.getCommandHistory();
+
+      // Stats
+      document.getElementById('ccActiveAgents').textContent = activeAgents.length;
+      document.getElementById('ccMessages').textContent = history.length;
+      document.getElementById('ccTokens').textContent = agents.reduce((s,a) => s + (a.metrics?.tasks_completed || 0) * 150, 0).toLocaleString();
+
+      // Command history
+      document.getElementById('commandHistory').innerHTML = history.slice(0, 15).map(h => `
+        <div class="timeline-item completed">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:12px;font-weight:600;color:var(--accent)">${escapeHtml(h.command || h.type || 'Command')}</span>
+            <span style="font-size:11px;color:var(--text-muted)">${formatTime(h.timestamp)}</span>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(h.response || h.message || '')}</p>
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);padding:20px;text-align:center">No commands yet. Start by typing a command above.</p>';
+
+      // Live Console
+      renderLiveConsole();
+
+      // Collaboration
+      renderCollaboration();
+
+      // LLM Gateway
+      renderLLMGateway();
+    }
+
+    function sendCommand() {
+      const input = document.getElementById('chatInput');
+      const cmd = input.value.trim();
+      if (!cmd) return;
+
+      const container = document.getElementById('chatContainer');
+      // User message
+      container.innerHTML += `
+        <div style="align-self:flex-end;max-width:70%;padding:12px 16px;background:var(--accent);color:white;border-radius:var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);font-size:13px">${escapeHtml(cmd)}</div>
+      `;
+
+      // Simulate AI response
+      setTimeout(() => {
+        const responses = {
+          'status': `System is running normally. ${NexusStore.getAgents().filter(a=>a.status==='ACTIVE').length} agents active, ${NexusStore.getEscalations().filter(e=>e.status==='PENDING').length} pending escalations.`,
+          'agents': `Active agents: ${NexusStore.getAgents().filter(a=>a.status==='ACTIVE').map(a=>a.agent_name).join(', ')}`,
+          'help': 'Available commands: status, agents, tasks, escalations, deploy, test, review, generate, analyze'
+        };
+        const key = Object.keys(responses).find(k => cmd.toLowerCase().includes(k));
+        const response = key ? responses[key] : `Analyzing request: "${cmd}"... I'll coordinate with the appropriate agents to handle this. The task has been queued for processing.`;
+
+        container.innerHTML += `
+          <div style="align-self:flex-start;max-width:70%;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px var(--radius-lg) var(--radius-lg) var(--radius-lg);font-size:13px;color:var(--text-secondary)">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:6px;font-weight:600">🧠 NEXUS AI</div>
+            ${escapeHtml(response)}
+          </div>
+        `;
+        container.scrollTop = container.scrollHeight;
+
+        NexusStore.addCommandEntry({ command: cmd, response, timestamp: new Date().toISOString(), type: 'USER_COMMAND' });
+      }, 800);
+
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderLiveConsole() {
+      const logs = NexusStore.getLogs().slice(0, 30);
+      const output = document.getElementById('liveConsoleOutput');
+      output.innerHTML = logs.map(l => {
+        const colors = { SYSTEM: '#6b7280', AUTH: '#8b5cf6', PROJECT: '#10b981', PIPELINE: '#6366f1', AGENT: '#f59e0b', TASK: '#3b82f6', GATE: '#10b981', ESCALATION: '#f97316', DECISION: '#8b5cf6' };
+        return `<div style="margin-bottom:4px"><span style="color:${colors[l.type]||'#6b7280'};font-weight:600">[${l.type}]</span> <span style="color:var(--text-muted)">${formatTime(l.timestamp)}</span> — <span style="color:var(--text-secondary)">${escapeHtml(l.message)}</span></div>`;
+      }).join('');
+
+      // Agent activity
+      const agents = NexusStore.getAgents();
+      document.getElementById('agentActivityList').innerHTML = agents.filter(a => a.status === 'ACTIVE').slice(0, 5).map(a => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(a.agent_name)}</div><div style="font-size:11px;color:var(--text-muted)">${a.role}</div></div>
+          ${statusBadge(a.lifecycle || a.status)}
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:12px">No active agents</p>';
+
+      // Task queue
+      const projectId = getSelectedProject();
+      const tasks = NexusStore.getTasks(projectId);
+      document.getElementById('taskQueueList').innerHTML = tasks.filter(t => t.status !== 'DONE').slice(0, 5).map(t => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--text-primary)">${escapeHtml(t.title)}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">${statusBadge(t.status)}<span style="font-size:11px;color:var(--text-muted)">${t.assignedTo}</span></div>
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:12px">No pending tasks</p>';
+
+      // System events
+      document.getElementById('systemEventsList').innerHTML = logs.slice(0, 5).map(l => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-secondary)">${escapeHtml(l.message)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${formatTime(l.timestamp)}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderCollaboration() {
+      const users = [
+        { name: 'Alex Morgan', role: 'Human Orchestrator', status: 'online', avatar: '👤' },
+        { name: 'Business Analyst', role: 'AI Agent', status: 'online', avatar: '🤖' },
+        { name: 'Chief Architect', role: 'AI Agent', status: 'online', avatar: '🤖' }
+      ];
+
+      document.getElementById('collaborationFeed').innerHTML = [
+        { user: 'Chief Architect', msg: 'Auth module architecture finalized. Ready for dev task breakdown.', time: '5 min ago' },
+        { user: 'Business Analyst', msg: 'Requirements analysis complete for payments module. 12 stories generated.', time: '15 min ago' },
+        { user: 'Alex Morgan', msg: 'Approved ESC-2024-0045 — separate profile endpoint approach.', time: '1 hour ago' }
+      ].map(f => `
+        <div class="timeline-item completed">
+          <div style="font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${escapeHtml(f.user)}</div>
+          <p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(f.msg)}</p>
+          <span style="font-size:11px;color:var(--text-muted)">${f.time}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('pinnedItems').innerHTML = [
+        { title: 'Auth Module API Contract', type: 'Document', author: 'Chief Architect' },
+        { title: 'Sprint 3 Goals', type: 'Note', author: 'Scrum Master' },
+        { title: 'Payment Flow Diagram', type: 'Diagram', author: 'Module Architect' }
+      ].map(p => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">📌 ${escapeHtml(p.title)}</div><div style="font-size:11px;color:var(--text-muted)">${p.type} · ${p.author}</div></div>
+          <button class="btn btn-outline btn-sm">View</button>
+        </div>
+      `).join('');
+
+      document.getElementById('sharedDocsTable').innerHTML = [
+        { name: 'E-Commerce PRD v2.1', type: 'PRD', owner: 'Product Manager', modified: '2 hours ago', status: 'APPROVED' },
+        { name: 'Auth Module BRD', type: 'BRD', owner: 'Business Analyst', modified: '1 day ago', status: 'IN_PROGRESS' },
+        { name: 'Payment API Spec', type: 'API Spec', owner: 'Chief Architect', modified: '3 hours ago', status: 'APPROVED' },
+        { name: 'Test Plan Sprint 3', type: 'Test Plan', owner: 'QA Agent', modified: '5 hours ago', status: 'PENDING' }
+      ].map(d => `<tr>
+        <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(d.name)}</td>
+        <td><span class="tag">${d.type}</span></td>
+        <td>${d.owner}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${d.modified}</td>
+        <td>${statusBadge(d.status)}</td>
+      </tr>`).join('');
+    }
+
+    function renderLLMGateway() {
+      document.getElementById('modelRouterTable').innerHTML = [
+        { model: 'GPT-4o', provider: '🟢 OpenAI', calls: 523, tokens: '1.2M', cost: '$24.50', status: 'ACTIVE' },
+        { model: 'Claude 3 Opus', provider: '🟣 Anthropic', calls: 412, tokens: '890K', cost: '$18.70', status: 'ACTIVE' },
+        { model: 'Gemini Pro', provider: '🔵 Google', calls: 312, tokens: '670K', cost: '$5.00', status: 'ACTIVE' }
+      ].map(m => `<tr>
+        <td style="font-weight:600;color:var(--text-primary)">${m.model}</td>
+        <td>${m.provider}</td>
+        <td>${m.calls}</td>
+        <td>${m.tokens}</td>
+        <td>${m.cost}</td>
+        <td>${statusBadge(m.status)}</td>
+      </tr>`).join('');
+
+      const agents = NexusStore.getAgents();
+      document.getElementById('tokenByAgent').innerHTML = agents.slice(0, 6).map(a => {
+        const tokens = (a.metrics?.tasks_completed || 0) * 1500;
+        const pct = Math.min(100, (tokens / 50000) * 100);
+        return `
+          <div class="metric-bar">
+            <span class="metric-label">${escapeHtml(a.agent_name).substring(0, 20)}</span>
+            <div class="metric-track"><div class="metric-fill" style="width:${pct}%;background:var(--accent)"></div></div>
+            <span class="metric-value">${(tokens/1000).toFixed(1)}K</span>
+          </div>`;
+      }).join('');
+
+      document.getElementById('promptTemplates').innerHTML = [
+        { name: 'Code Generation', desc: 'Generate implementation code from task specs', usage: 234 },
+        { name: 'Code Review', desc: 'Analyze code for quality, security, and performance', usage: 189 },
+        { name: 'Test Generation', desc: 'Create unit and integration tests from specs', usage: 156 },
+        { name: 'Requirements Analysis', desc: 'Extract and classify requirements from documents', usage: 98 },
+        { name: 'Architecture Review', desc: 'Review system architecture decisions', usage: 67 }
+      ].map(t => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${t.name}</div><div style="font-size:11px;color:var(--text-muted)">${t.desc}</div></div>
+          <div style="display:flex;align-items:center;gap:10px"><span class="tag">${t.usage} uses</span><button class="btn btn-outline btn-sm">Edit</button></div>
+        </div>
+      `).join('');
+    }
+
+    function clearConsole() { document.getElementById('liveConsoleOutput').innerHTML = ''; }
+    function toggleAutoScroll() { showToast('Auto-scroll toggled', 'info'); }
+
+    renderWorkspace();
+  </script>
+</body>
+</html>

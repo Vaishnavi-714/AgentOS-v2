@@ -311,16 +311,16 @@
       </div>
       <nav class="rt-sidebar-nav">
         <div class="rt-sidebar-section">Overview</div>
-        <a class="rt-nav-item" href="admin-console.html#dashboard"><span class="ni">📊</span> Dashboard</a>
+        <a class="rt-nav-item" href="admin.html#dashboard"><span class="ni">📊</span> Dashboard</a>
         <div class="rt-sidebar-section">Management</div>
-        <a class="rt-nav-item" href="admin-console.html#tenants"><span class="ni">🏢</span> Tenants</a>
+        <a class="rt-nav-item" href="admin.html#tenants"><span class="ni">🏢</span> Tenants</a>
         <a class="rt-nav-item active"><span class="ni">📝</span> Register Tenant</a>
-        <a class="rt-nav-item" href="admin-console.html#users"><span class="ni">👥</span> Users</a>
-        <a class="rt-nav-item" href="admin-console.html#roles"><span class="ni">🔐</span> Roles & Permissions</a>
-        <a class="rt-nav-item" href="admin-console.html#billing"><span class="ni">💳</span> Billing & Plans</a>
+        <a class="rt-nav-item" href="admin.html#users"><span class="ni">👥</span> Users</a>
+        <a class="rt-nav-item" href="admin.html#roles"><span class="ni">🔐</span> Roles & Permissions</a>
+        <a class="rt-nav-item" href="admin.html#billing"><span class="ni">💳</span> Billing & Plans</a>
         <div class="rt-sidebar-section">Operations</div>
-        <a class="rt-nav-item" href="admin-console.html#audit"><span class="ni">📋</span> Audit Logs</a>
-        <a class="rt-nav-item" href="admin-console.html#settings"><span class="ni">⚙️</span> Settings</a>
+        <a class="rt-nav-item" href="admin.html#audit"><span class="ni">📋</span> Audit Logs</a>
+        <a class="rt-nav-item" href="admin.html#settings"><span class="ni">⚙️</span> Settings</a>
       </nav>
       <div class="rt-sidebar-footer">
         <div class="rt-sidebar-user">
@@ -339,16 +339,16 @@
       <!-- Topbar -->
       <header class="rt-topbar">
         <div class="rt-breadcrumb">
-          <a href="admin-console.html#dashboard">Admin Console</a>
+          <a href="admin/admin-console.html#dashboard">Admin Console</a>
           <span class="rt-breadcrumb-sep">›</span>
-          <a href="admin-console.html#tenants">Tenants</a>
+          <a href="admin/admin-console.html#tenants">Tenants</a>
           <span class="rt-breadcrumb-sep">›</span>
           <span class="rt-breadcrumb-current">Register New Tenant</span>
         </div>
         <div class="rt-topbar-right">
           <div class="rt-topbar-btn" title="Notifications">🔔<span class="nd"></span></div>
-          <div class="rt-topbar-btn" title="Back to Workspace" onclick="window.location.href='dashboard.html'">🖥️</div>
-          <div class="rt-topbar-profile" onclick="window.location.href='admin-console.html#settings'">
+          <div class="rt-topbar-btn" title="Back to Workspace" onclick="window.location.href='workspace/dashboard.html'">🖥️</div>
+          <div class="rt-topbar-profile" onclick="window.location.href='admin/admin-console.html#settings'">
             <span style="font-size:18px">🛡️</span> <span id="rtTopbarUser">Admin</span>
           </div>
         </div>
@@ -1227,7 +1227,7 @@
       document.getElementById('rtStep2').className = 'rt-step active';
 
       await new Promise(r => setTimeout(r, 2000));
-      window.location.href = _isAdmin ? 'admin-console.html#tenants' : 'index.html';
+      window.location.href = _isAdmin ? 'admin/admin-console.html' : 'index.html';
     }
 
     // ======== LOGOUT ========
@@ -1235,6 +1235,7 @@
       NexusStore.addLog({ type: 'AUTH', message: 'System Admin logged out', agent: 'system' });
       NexusStore.logout();
       TenantState.logoutSession();
+      localStorage.removeItem("role");
       window.location.href = 'index.html';
     }
 

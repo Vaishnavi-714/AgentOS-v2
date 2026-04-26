@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Billing</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Billing & Subscription</h1>
+        <p class="page-subtitle">Plans, usage, invoices, and quota management</p>
+      </div>
+      <div class="page-actions"><button class="btn btn-primary" onclick="showUpgrade()">⬆ Upgrade Plan</button></div>
+    </div>
+
+    <div class="tabs" data-tab-group="billing">
+      <button class="tab active" data-tab="billOverview" onclick="switchTab('billing','billOverview')">📊 Overview</button>
+      <button class="tab" data-tab="usageDetails" onclick="switchTab('billing','usageDetails')">📈 Usage</button>
+      <button class="tab" data-tab="invoicesTab" onclick="switchTab('billing','invoicesTab')">📄 Invoices</button>
+      <button class="tab" data-tab="quotaTab" onclick="switchTab('billing','quotaTab')">📏 Quotas</button>
+    </div>
+
+    <!-- Overview -->
+    <div class="tab-content active" id="billOverview">
+      <div class="grid grid-4" style="margin-bottom:20px" id="billingStats"></div>
+      <div class="grid grid-3" id="planCards"></div>
+    </div>
+
+    <!-- Usage -->
+    <div class="tab-content" id="usageDetails">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📈 Usage Breakdown</h3></div>
+        <div id="usageBreakdown"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">Usage by Agent</h3></div>
+        <div id="usageByAgent"></div>
+      </div>
+    </div>
+
+    <!-- Invoices -->
+    <div class="tab-content" id="invoicesTab">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📄 Invoice History</h3></div>
+        <div class="table-container">
+          <table><thead><tr><th>Invoice</th><th>Period</th><th>Plan</th><th>API Calls</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="invoiceTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quotas -->
+    <div class="tab-content" id="quotaTab">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📏 Resource Quotas</h3></div>
+        <div id="quotaList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('billing');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+
+    function renderAll() {
+      const tenant = TenantState.getCurrentTenant() || TenantState.getTenants()[0];
+      const limits = tenant ? TenantState.getSubscriptionLimits(tenant.subscription) : TenantState.getSubscriptionLimits('STANDARD');
+
+      document.getElementById('billingStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Current Plan</span><span class="stat-value">${limits.icon} ${limits.label}</span></div>
+        <div class="stat-card"><span class="stat-label">Monthly Cost</span><span class="stat-value">$${limits.label === 'Basic' ? '99' : limits.label === 'Standard' ? '499' : '$999'}</span></div>
+        <div class="stat-card"><span class="stat-label">API Usage</span><span class="stat-value">${tenant ? Math.round(tenant.api_usage / limits.api * 100) : 45}%</span></div>
+        <div class="stat-card"><span class="stat-label">Renewal</span><span class="stat-value" style="font-size:16px">Feb 1, 2024</span></div>
+      `;
+
+      document.getElementById('planCards').innerHTML = [
+        { plan: 'Basic', icon: '🟢', price: '$99', agents: 5, projects: 3, api: '10K', storage: '5GB', features: ['Basic AI agents', 'Simple workflows', 'Email support'] },
+        { plan: 'Standard', icon: '🟡', price: '$499', agents: 20, projects: 10, api: '100K', storage: '50GB', features: ['Advanced AI agents', 'Workflow builder', 'Priority support', 'Analytics'] },
+        { plan: 'Premium', icon: '🔴', price: '$999', agents: 100, projects: 50, api: '1M', storage: '500GB', features: ['Unlimited AI agents', 'Custom workflows', '24/7 support', 'Full analytics', 'Custom integrations', 'SLA guarantee'] }
+      ].map(p => {
+        const isActive = limits.label === p.plan;
+        return `
+        <div class="card" style="${isActive ? 'border:2px solid var(--accent)' : ''}">
+          <div style="text-align:center;padding-top:8px;margin-bottom:16px">
+            <div style="font-size:28px;margin-bottom:8px">${p.icon}</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text-primary)">${p.plan}</div>
+            <div style="font-size:28px;font-weight:800;color:var(--accent);margin:8px 0">${p.price}<span style="font-size:14px;color:var(--text-muted)">/mo</span></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;display:flex;justify-content:space-around">
+            <span>${p.agents} agents</span><span>${p.projects} projects</span><span>${p.api} API</span>
+          </div>
+          <div style="margin-bottom:16px">${p.features.map(f => `<div style="padding:6px 0;font-size:12px;color:var(--text-secondary);border-bottom:1px solid var(--border)">✓ ${f}</div>`).join('')}</div>
+          <button class="btn ${isActive ? 'btn-outline' : 'btn-primary'}" style="width:100%" ${isActive ? 'disabled' : ''}>${isActive ? 'Current Plan' : 'Upgrade'}</button>
+        </div>`;
+      }).join('');
+
+      // Usage
+      document.getElementById('usageBreakdown').innerHTML = [
+        { resource: 'API Calls', used: tenant?.api_usage || 45000, limit: limits.api, unit: '' },
+        { resource: 'Agents', used: tenant?.agents || 12, limit: limits.agents, unit: '' },
+        { resource: 'Projects', used: tenant?.projects || 3, limit: limits.projects, unit: '' },
+        { resource: 'Storage', used: Math.round((tenant?.storage_used || 2.5) * 10) / 10, limit: limits.storage / 1024, unit: 'GB' }
+      ].map(u => {
+        const pct = Math.round(u.used / u.limit * 100);
+        return `
+          <div style="padding:16px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+              <span style="font-size:14px;font-weight:600;color:var(--text-primary)">${u.resource}</span>
+              <span style="font-size:13px;color:var(--text-muted)">${typeof u.used === 'number' ? u.used.toLocaleString() : u.used}${u.unit} / ${u.limit.toLocaleString()}${u.unit}</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pct>90?'var(--danger)':pct>70?'var(--warning)':'var(--accent)'}"></div></div>
+            <span style="font-size:11px;color:var(--text-muted)">${pct}% used</span>
+          </div>`;
+      }).join('');
+
+      const agents = NexusStore.getAgents();
+      document.getElementById('usageByAgent').innerHTML = agents.slice(0, 8).map(a => {
+        const calls = (a.metrics?.tasks_completed || 0) * 450;
+        return `<div class="metric-bar"><span class="metric-label">${escapeHtml(a.agent_name).substring(0, 22)}</span><div class="metric-track"><div class="metric-fill" style="width:${Math.min(100, calls/500)}%;background:var(--accent)"></div></div><span class="metric-value">${calls.toLocaleString()}</span></div>`;
+      }).join('');
+
+      // Invoices
+      document.getElementById('invoiceTable').innerHTML = [
+        { id: 'INV-2024-001', period: 'Jan 2024', plan: 'Standard', calls: '45,230', amount: '$499.00', status: 'PENDING' },
+        { id: 'INV-2023-012', period: 'Dec 2023', plan: 'Standard', calls: '38,120', amount: '$499.00', status: 'COMPLETED' },
+        { id: 'INV-2023-011', period: 'Nov 2023', plan: 'Standard', calls: '41,890', amount: '$499.00', status: 'COMPLETED' },
+        { id: 'INV-2023-010', period: 'Oct 2023', plan: 'Basic', calls: '8,450', amount: '$99.00', status: 'COMPLETED' }
+      ].map(i => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${i.id}</td><td>${i.period}</td>
+        <td><span class="tag">${i.plan}</span></td><td>${i.calls}</td>
+        <td style="font-weight:600">${i.amount}</td>
+        <td>${statusBadge(i.status)}</td>
+        <td><button class="btn btn-outline btn-sm">Download</button></td>
+      </tr>`).join('');
+
+      // Quotas
+      document.getElementById('quotaList').innerHTML = [
+        { resource: 'Max Agents', current: limits.agents, desc: 'Maximum concurrent AI agents' },
+        { resource: 'Max Projects', current: limits.projects, desc: 'Maximum active projects' },
+        { resource: 'API Calls/month', current: limits.api.toLocaleString(), desc: 'Monthly API call allowance' },
+        { resource: 'Storage', current: (limits.storage / 1024) + ' GB', desc: 'Total storage allocation' },
+        { resource: 'Concurrent Tasks', current: limits.agents * 3, desc: 'Max parallel task executions' },
+        { resource: 'LLM Tokens/day', current: (limits.api * 150).toLocaleString(), desc: 'Daily token consumption limit' }
+      ].map(q => `
+        <div style="padding:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;font-weight:600;color:var(--text-primary)">${q.resource}</div><div style="font-size:11px;color:var(--text-muted)">${q.desc}</div></div>
+          <span style="font-size:16px;font-weight:700;color:var(--accent)">${q.current}</span>
+        </div>
+      `).join('');
+    }
+
+    function showUpgrade() { showToast('Contact sales for plan upgrades', 'info'); }
+
+    renderAll();
+  </script>
+</body>
+</html>

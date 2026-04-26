@@ -331,7 +331,7 @@ window.onRequirementsIngested = function(projectId) {
     
     // Redirect to system-flow so user can watch Business Analyst execute
     setTimeout(() => {
-      window.location.href = "system-flow.html";
+      window.location.href = "workspace.html";
     }, 500);
   } else {
     console.error("NexusOrchestration NOT LOADED — pipeline cannot start!");

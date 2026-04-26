@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Deployments</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Deployments</h1>
+        <p class="page-subtitle">CI/CD pipelines, deployment approvals, releases, and environment management</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelectorContainer" style="display:inline-block"></div>
+        <button class="btn btn-primary" onclick="triggerDeploy()">🚀 Deploy</button>
+      </div>
+    </div>
+
+    <div class="tabs" data-tab-group="deployments">
+      <button class="tab active" data-tab="cicdPipeline" onclick="switchTab('deployments','cicdPipeline')">⚙️ CI/CD Pipeline</button>
+      <button class="tab" data-tab="deployApproval" onclick="switchTab('deployments','deployApproval')">✅ Approvals</button>
+      <button class="tab" data-tab="releaseCenter" onclick="switchTab('deployments','releaseCenter')">🏷️ Releases</button>
+      <button class="tab" data-tab="envMgmt" onclick="switchTab('deployments','envMgmt')">🌍 Environments</button>
+    </div>
+
+    <!-- CI/CD Pipeline -->
+    <div class="tab-content active" id="cicdPipeline">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Builds Today</span><span class="stat-value">12</span></div>
+        <div class="stat-card"><span class="stat-label">Success Rate</span><span class="stat-value" style="color:var(--success)">92%</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Build Time</span><span class="stat-value">4m 32s</span></div>
+        <div class="stat-card"><span class="stat-label">Deployments</span><span class="stat-value">3</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Pipeline Runs</h3></div>
+        <div class="table-container">
+          <table><thead><tr><th>Build</th><th>Branch</th><th>Commit</th><th>Stages</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="pipelineTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deployment Approvals -->
+    <div class="tab-content" id="deployApproval">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">✅ Pending Approvals</h3></div>
+        <div id="approvalList"></div>
+      </div>
+    </div>
+
+    <!-- Release Center -->
+    <div class="tab-content" id="releaseCenter">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🏷️ Release Center</h3><button class="btn btn-primary btn-sm">+ Create Release</button></div>
+        <div id="releaseList"></div>
+      </div>
+    </div>
+
+    <!-- Environment Management -->
+    <div class="tab-content" id="envMgmt">
+      <div class="grid grid-3" id="envCards"></div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('deployments');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+    createProjectSelector('projectSelectorContainer', () => renderAll());
+
+    function renderAll() {
+      // Pipeline
+      document.getElementById('pipelineTable').innerHTML = [
+        { id: '#142', branch: 'feature/auth-login', commit: 'a3f2c8d', stages: '5/5 ✓', duration: '4m 12s', status: 'COMPLETED' },
+        { id: '#141', branch: 'fix/rate-limiter', commit: 'b7e4d2a', stages: '3/5', duration: '2m 45s', status: 'IN_PROGRESS' },
+        { id: '#140', branch: 'feature/auth-register', commit: 'c1d5f6e', stages: '5/5 ✓', duration: '5m 20s', status: 'COMPLETED' },
+        { id: '#139', branch: 'develop', commit: 'e8f3a1b', stages: '4/5 ✗', duration: '6m 10s', status: 'FAILED' },
+        { id: '#138', branch: 'main', commit: 'd4c7b2e', stages: '5/5 ✓', duration: '3m 55s', status: 'COMPLETED' }
+      ].map(p => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${p.id}</td>
+        <td style="font-family:var(--mono);font-size:12px">${p.branch}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--text-muted)">${p.commit}</td>
+        <td>${p.stages}</td><td>${p.duration}</td>
+        <td>${statusBadge(p.status)}</td>
+        <td><button class="btn btn-outline btn-sm">Logs</button></td>
+      </tr>`).join('');
+
+      // Approvals
+      document.getElementById('approvalList').innerHTML = [
+        { id: 'DEP-023', env: 'Production', version: 'v1.0.0-beta.3', requestor: 'Security Agent', reason: 'Auth module hotfix', status: 'PENDING' },
+        { id: 'DEP-022', env: 'Staging', version: 'v1.0.0-beta.3', requestor: 'Dev Agent Auth 01', reason: 'Login flow implementation', status: 'APPROVED' }
+      ].map(a => `
+        <div class="card" style="border-left:3px solid ${a.status==='PENDING'?'var(--warning)':'var(--success)'}">
+          <div class="card-header"><h3 class="card-title">${a.id} → ${a.env}</h3>${statusBadge(a.status)}</div>
+          <p style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">${a.reason}</p>
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-bottom:12px"><span>Version: ${a.version}</span><span>By: ${a.requestor}</span></div>
+          ${a.status === 'PENDING' ? `<div style="display:flex;gap:8px"><button class="btn btn-success btn-sm" onclick="approveDeploy('${a.id}')">✓ Approve</button><button class="btn btn-danger btn-sm">✗ Reject</button><button class="btn btn-outline btn-sm">Review Changes</button></div>` : ''}
+        </div>
+      `).join('');
+
+      // Releases
+      document.getElementById('releaseList').innerHTML = [
+        { tag: 'v1.0.0-beta.3', date: '2024-01-15', author: 'Chief Architect', changes: 8, tests: 24, status: 'STAGING' },
+        { tag: 'v1.0.0-beta.2', date: '2024-01-12', author: 'Chief Architect', changes: 12, tests: 20, status: 'COMPLETED' },
+        { tag: 'v0.9.0', date: '2024-01-10', author: 'System', changes: 45, tests: 38, status: 'COMPLETED' }
+      ].map(r => `
+        <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-bottom:4px">🏷️ ${r.tag}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${r.date} · ${r.author} · ${r.changes} changes · ${r.tests} tests passed</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">${statusBadge(r.status)}<button class="btn btn-outline btn-sm">Notes</button></div>
+        </div>
+      `).join('');
+
+      // Environments
+      document.getElementById('envCards').innerHTML = [
+        { name: 'Development', icon: '🔧', url: 'dev.nexus.internal', status: 'ACTIVE', version: 'v1.0.0-beta.3', uptime: '99.95%', cpu: 23, mem: 45 },
+        { name: 'Staging', icon: '🧪', url: 'staging.nexus.internal', status: 'ACTIVE', version: 'v1.0.0-beta.2', uptime: '99.90%', cpu: 35, mem: 58 },
+        { name: 'Production', icon: '🚀', url: 'api.nexus.com', status: 'ACTIVE', version: 'v0.9.0', uptime: '99.99%', cpu: 42, mem: 67 }
+      ].map(e => `
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">${e.icon} ${e.name}</h3>${statusBadge(e.status)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;font-family:var(--mono)">${e.url}</div>
+          <div style="margin-bottom:8px"><span style="font-size:12px;color:var(--text-muted)">Version:</span> <span style="font-size:13px;font-weight:600">${e.version}</span></div>
+          <div style="margin-bottom:8px"><span style="font-size:12px;color:var(--text-muted)">Uptime:</span> <span style="font-size:13px;font-weight:600;color:var(--success)">${e.uptime}</span></div>
+          <div class="metric-bar"><span class="metric-label">CPU</span><div class="metric-track"><div class="metric-fill" style="width:${e.cpu}%;background:var(--accent)"></div></div><span class="metric-value">${e.cpu}%</span></div>
+          <div class="metric-bar"><span class="metric-label">Memory</span><div class="metric-track"><div class="metric-fill" style="width:${e.mem}%;background:var(--purple)"></div></div><span class="metric-value">${e.mem}%</span></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm">Logs</button>
+            <button class="btn btn-outline btn-sm">Config</button>
+            ${e.name !== 'Production' ? `<button class="btn btn-primary btn-sm">Deploy</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function triggerDeploy() { showToast('Deployment triggered — awaiting approval', 'info'); }
+    function approveDeploy(id) { showToast('Deployment ' + id + ' approved', 'success'); renderAll(); }
+
+    renderAll();
+  </script>
+</body>
+</html>

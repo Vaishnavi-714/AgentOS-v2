@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Admin Console</title>
-  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="../css/common.css">
   <style>
     /* ===== ADMIN CONSOLE LAYOUT ===== */
     body { display: block; background: var(--bg-primary); }
@@ -249,7 +249,7 @@
           <div class="ac-topbar-btn" onclick="acToggleNotifPanel()" title="Notifications">
             🔔<span class="notif-dot" id="acNotifDot"></span>
           </div>
-          <div class="ac-topbar-btn" onclick="window.location.href='dashboard.html'" title="Back to Workspace">
+          <div class="ac-topbar-btn" onclick="window.location.href='../workspace/dashboard.html'" title="Back to Workspace">
             🖥️
           </div>
           <div class="ac-topbar-profile" onclick="acNav('settings')">
@@ -274,14 +274,15 @@
     </div>
   </div>
 
-  <script src="js/store.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/mock-api.js"></script>
-  <script src="js/state.js"></script>
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
   <script>
     // ========== AUTH GUARD ==========
-    if (!TenantState.isLoggedIn() || !TenantState.isSystemAdmin()) {
-      window.location.href = 'index.html';
+    const role = localStorage.getItem("role");
+    if (role !== "admin") {
+      window.location.href = '../index.html';
     }
     seedNexusData();
 
@@ -328,7 +329,8 @@
       NexusStore.addLog({ type: 'AUTH', message: 'System Admin logged out', agent: 'system' });
       NexusStore.logout();
       TenantState.logoutSession();
-      window.location.href = 'index.html';
+      localStorage.removeItem("role");
+      window.location.href = '../index.html';
     }
 
     function acFilterGlobal(q) {

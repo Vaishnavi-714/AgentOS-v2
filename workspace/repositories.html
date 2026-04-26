@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Repositories</title>
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Repositories</h1>
+        <p class="page-subtitle">Code management, AI coding workspace, pull requests, and code review</p>
+      </div>
+      <div class="page-actions">
+        <div id="projectSelectorContainer" style="display:inline-block"></div>
+      </div>
+    </div>
+
+    <div class="tabs" data-tab-group="repos">
+      <button class="tab active" data-tab="repoExplorer" onclick="switchTab('repos','repoExplorer')">📦 Explorer</button>
+      <button class="tab" data-tab="aiCoding" onclick="switchTab('repos','aiCoding')">💻 AI Coding</button>
+      <button class="tab" data-tab="pullRequests" onclick="switchTab('repos','pullRequests')">🔀 Pull Requests</button>
+      <button class="tab" data-tab="codeReview" onclick="switchTab('repos','codeReview')">🔍 Code Review</button>
+      <button class="tab" data-tab="branchRelease" onclick="switchTab('repos','branchRelease')">🌿 Branch & Release</button>
+    </div>
+
+    <!-- Repo Explorer -->
+    <div class="tab-content active" id="repoExplorer">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Files</span><span class="stat-value">47</span></div>
+        <div class="stat-card"><span class="stat-label">Commits</span><span class="stat-value">128</span></div>
+        <div class="stat-card"><span class="stat-label">Branches</span><span class="stat-value">6</span></div>
+        <div class="stat-card"><span class="stat-label">Contributors</span><span class="stat-value">5</span></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">📂 File Explorer</h3>
+          <span class="tag">main</span>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Last Modified</th><th>Author</th></tr></thead>
+            <tbody id="fileTree"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Coding Workspace -->
+    <div class="tab-content" id="aiCoding">
+      <div id="codingGateMessage"></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">💻 AI Pair Programming</h3><span class="status-badge" style="background:#10b98120;color:#10b981;border:1px solid #10b98140" id="codingStatus">Ready</span></div>
+          <div class="form-group"><label class="form-label">Task / Context</label><textarea id="codingContext" class="form-textarea" placeholder="Describe what you want to build..."></textarea></div>
+          <div class="form-group"><label class="form-label">Language</label>
+            <select id="codingLang" class="form-select"><option>JavaScript</option><option>TypeScript</option><option>Python</option><option>Java</option><option>C#</option><option>Go</option></select>
+          </div>
+          <button class="btn btn-primary" onclick="generateCode()">🤖 Generate Code</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📝 Generated Output</h3></div>
+          <div id="codeOutput" class="code-block" style="min-height:300px">// AI-generated code will appear here...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pull Requests -->
+    <div class="tab-content" id="pullRequests">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🔀 Pull Request Center</h3><button class="btn btn-primary btn-sm">+ New PR</button></div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>PR</th><th>Title</th><th>Author</th><th>Branch</th><th>Reviews</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="prTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Review -->
+    <div class="tab-content" id="codeReview">
+      <div id="reviewGateMessage"></div>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">🔍 Code Review Dashboard</h3></div>
+        <div class="grid grid-4" style="margin-bottom:16px">
+          <div class="stat-card"><span class="stat-label">Pending Reviews</span><span class="stat-value" id="pendingReviews">0</span></div>
+          <div class="stat-card"><span class="stat-label">Approved</span><span class="stat-value" style="color:var(--success)" id="approvedReviews">0</span></div>
+          <div class="stat-card"><span class="stat-label">Changes Requested</span><span class="stat-value" style="color:var(--warning)" id="changesReviews">0</span></div>
+          <div class="stat-card"><span class="stat-label">Avg Review Time</span><span class="stat-value" id="avgReviewTime">—</span></div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Review ID</th><th>File</th><th>Reviewer</th><th>Score</th><th>Issues</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="reviewTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Branch & Release -->
+    <div class="tab-content" id="branchRelease">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🌿 Branches</h3><button class="btn btn-outline btn-sm">+ New Branch</button></div>
+          <div id="branchList"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🏷️ Releases</h3></div>
+          <div id="releaseList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('repositories');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+    createProjectSelector('projectSelectorContainer', () => renderAll());
+
+    function renderAll() {
+      renderExplorer();
+      renderCoding();
+      renderPRs();
+      renderReviews();
+      renderBranches();
+    }
+
+    function renderExplorer() {
+      const files = [
+        { name: 'src/', type: 'dir', size: '—', modified: '2 hours ago', author: 'Dev Agent Auth 01' },
+        { name: 'src/auth/', type: 'dir', size: '—', modified: '3 hours ago', author: 'Dev Agent Auth 01' },
+        { name: 'src/auth/register.js', type: 'file', size: '2.4 KB', modified: '3 hours ago', author: 'Dev Agent Auth 01' },
+        { name: 'src/auth/login.js', type: 'file', size: '1.8 KB', modified: '2 hours ago', author: 'Dev Agent Auth 01' },
+        { name: 'src/auth/middleware.js', type: 'file', size: '1.2 KB', modified: '5 hours ago', author: 'Dev Agent Auth 02' },
+        { name: 'src/payments/', type: 'dir', size: '—', modified: '1 day ago', author: 'Module Arch Payments' },
+        { name: 'tests/', type: 'dir', size: '—', modified: '4 hours ago', author: 'QA Agent' },
+        { name: 'tests/auth.test.js', type: 'file', size: '3.1 KB', modified: '4 hours ago', author: 'QA Agent' },
+        { name: 'package.json', type: 'file', size: '0.8 KB', modified: '1 day ago', author: 'Chief Architect' },
+        { name: 'README.md', type: 'file', size: '1.5 KB', modified: '2 days ago', author: 'Business Analyst' }
+      ];
+      document.getElementById('fileTree').innerHTML = files.map(f => `<tr>
+        <td style="font-weight:600;color:var(--text-primary)">${f.type === 'dir' ? '📁' : '📄'} ${f.name}</td>
+        <td><span class="tag">${f.type}</span></td><td>${f.size}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${f.modified}</td>
+        <td style="font-size:12px">${f.author}</td>
+      </tr>`).join('');
+    }
+
+    function renderCoding() {
+      // Gate: Coding only active when Developer Agent is active
+      const isActive = NexusPermissions.isCodingModuleActive();
+      const gate = document.getElementById('codingGateMessage');
+      if (!isActive) {
+        gate.innerHTML = `<div style="padding:16px;background:var(--warning)10;border:1px solid var(--warning)40;border-radius:var(--radius);margin-bottom:16px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">⚠️</span>
+          <div><div style="font-size:14px;font-weight:600;color:var(--warning)">Coding Module Restricted</div>
+          <div style="font-size:12px;color:var(--text-secondary)">AI Coding workspace is only active when a Developer Agent is running. Activate a developer agent to use this module.</div></div>
+        </div>`;
+      } else {
+        gate.innerHTML = '';
+      }
+    }
+
+    function generateCode() {
+      if (!NexusPermissions.isCodingModuleActive()) {
+        showToast('Coding module requires an active Developer Agent', 'error');
+        return;
+      }
+      const ctx = document.getElementById('codingContext').value;
+      const lang = document.getElementById('codingLang').value;
+      document.getElementById('codingStatus').textContent = 'Generating...';
+      setTimeout(() => {
+        document.getElementById('codeOutput').textContent =
+`// Auto-generated ${lang} code
+// Context: ${ctx || 'User registration endpoint'}
+
+const express = require('express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+const router = express.Router();
+
+// POST /auth/register
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user (simulated)
+    const user = { id: Date.now(), email, name, createdAt: new Date() };
+
+    // Generate JWT
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: '15m'
+    });
+
+    res.status(201).json({ user, token });
+  } catch (error) {
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+module.exports = router;`;
+        document.getElementById('codingStatus').textContent = 'Ready';
+        showToast('Code generated successfully', 'success');
+      }, 1500);
+    }
+
+    function renderPRs() {
+      const prs = [
+        { id: 'PR-042', title: 'feat: Add user registration endpoint', author: 'Dev Agent Auth 01', branch: 'feature/auth-register → main', reviews: '2/2 ✓', status: 'APPROVED' },
+        { id: 'PR-041', title: 'feat: Implement JWT login flow', author: 'Dev Agent Auth 01', branch: 'feature/auth-login → main', reviews: '1/2', status: 'IN_PROGRESS' },
+        { id: 'PR-040', title: 'fix: Rate limiter edge case', author: 'Dev Agent Auth 02', branch: 'fix/rate-limiter → main', reviews: '0/2', status: 'PENDING' },
+        { id: 'PR-039', title: 'feat: Password hashing service', author: 'Dev Agent Auth 01', branch: 'feature/password-hash → main', reviews: '2/2 ✓', status: 'COMPLETED' }
+      ];
+      document.getElementById('prTable').innerHTML = prs.map(pr => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${pr.id}</td>
+        <td>${escapeHtml(pr.title)}</td>
+        <td style="font-size:12px">${pr.author}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${pr.branch}</td>
+        <td>${pr.reviews}</td>
+        <td>${statusBadge(pr.status)}</td>
+        <td><button class="btn btn-outline btn-sm">Review</button></td>
+      </tr>`).join('');
+    }
+
+    function renderReviews() {
+      // Gate: Code Review only for Reviewer / Architect
+      const isActive = NexusPermissions.isCodeReviewActive();
+      const gate = document.getElementById('reviewGateMessage');
+      if (!isActive) {
+        gate.innerHTML = `<div style="padding:16px;background:var(--info)10;border:1px solid var(--info)40;border-radius:var(--radius);margin-bottom:16px;display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">ℹ️</span>
+          <div><div style="font-size:14px;font-weight:600;color:var(--info)">Code Review Restricted</div>
+          <div style="font-size:12px;color:var(--text-secondary)">Code review is only available when a Reviewer or Architect Agent is active.</div></div>
+        </div>`;
+      } else { gate.innerHTML = ''; }
+
+      const pid = getSelectedProject();
+      const reviews = NexusStore.getCodeReviews(pid);
+      document.getElementById('pendingReviews').textContent = reviews.filter(r => r.status === 'PENDING').length || '3';
+      document.getElementById('approvedReviews').textContent = reviews.filter(r => r.status === 'APPROVED').length || '12';
+      document.getElementById('changesReviews').textContent = reviews.filter(r => r.status === 'CHANGES_REQUESTED').length || '2';
+      document.getElementById('avgReviewTime').textContent = '14m';
+
+      const reviewData = reviews.length ? reviews : [
+        { id: 'REV-023', file: 'src/auth/register.js', reviewer: 'Module Architect Auth', score: 92, issues: 1, status: 'APPROVED' },
+        { id: 'REV-022', file: 'src/auth/login.js', reviewer: 'QA Agent', score: 78, issues: 3, status: 'CHANGES_REQUESTED' },
+        { id: 'REV-021', file: 'src/auth/middleware.js', reviewer: 'Security Agent', score: 95, issues: 0, status: 'APPROVED' },
+        { id: 'REV-020', file: 'src/auth/hash.js', reviewer: 'Module Architect Auth', score: 88, issues: 2, status: 'PENDING' }
+      ];
+      document.getElementById('reviewTable').innerHTML = reviewData.map(r => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${r.id}</td>
+        <td style="font-family:var(--mono);font-size:12px">${r.file}</td>
+        <td style="font-size:12px">${r.reviewer}</td>
+        <td><span style="color:${r.score >= 80 ? 'var(--success)' : 'var(--warning)'};font-weight:600">${r.score}%</span></td>
+        <td>${r.issues}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td><button class="btn btn-outline btn-sm">View</button></td>
+      </tr>`).join('');
+    }
+
+    function renderBranches() {
+      const branches = [
+        { name: 'main', type: 'default', commits: 128, lastCommit: '2 hours ago', status: 'ACTIVE' },
+        { name: 'develop', type: 'integration', commits: 145, lastCommit: '1 hour ago', status: 'ACTIVE' },
+        { name: 'feature/auth-register', type: 'feature', commits: 8, lastCommit: '3 hours ago', status: 'COMPLETED' },
+        { name: 'feature/auth-login', type: 'feature', commits: 5, lastCommit: '2 hours ago', status: 'ACTIVE' },
+        { name: 'fix/rate-limiter', type: 'hotfix', commits: 2, lastCommit: '4 hours ago', status: 'IN_PROGRESS' },
+        { name: 'release/v1.0.0', type: 'release', commits: 3, lastCommit: '1 day ago', status: 'PENDING' }
+      ];
+      document.getElementById('branchList').innerHTML = branches.map(b => `
+        <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary)">🌿 ${b.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${b.type} · ${b.commits} commits · ${b.lastCommit}</div>
+          </div>
+          ${statusBadge(b.status)}
+        </div>
+      `).join('');
+
+      const releases = [
+        { tag: 'v1.0.0-beta.3', date: '2024-01-15', notes: 'Auth module complete, payments in progress', status: 'PENDING' },
+        { tag: 'v0.9.0', date: '2024-01-10', notes: 'Requirements pipeline and backlog generation', status: 'COMPLETED' },
+        { tag: 'v0.8.0', date: '2024-01-05', notes: 'Initial project setup and agent configuration', status: 'COMPLETED' }
+      ];
+      document.getElementById('releaseList').innerHTML = releases.map(r => `
+        <div style="padding:12px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:14px;font-weight:600;color:var(--text-primary)">🏷️ ${r.tag}</span>
+            ${statusBadge(r.status)}
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary)">${r.notes}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${r.date}</div>
+        </div>
+      `).join('');
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
