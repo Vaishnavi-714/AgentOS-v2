@@ -167,18 +167,18 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('orgchart', event)">Org Structure</button>
-      <button class="tab" onclick="switchTab('flow', event)">Agent Flow</button>
-      <button class="tab" onclick="switchTab('live', event)">Live Activity</button>
-      <button class="tab" onclick="switchTab('list', event)">Agent List</button>
-      <button class="tab" onclick="switchTab('performance', event)">Performance</button>
+      <a href="#tab-orgchart-section" class="tab nav-link active">Org Structure</a>
+      <a href="#tab-flow-section" class="tab nav-link">Agent Flow</a>
+      <a href="#tab-live-section" class="tab nav-link">Live Activity</a>
+      <a href="#tab-list-section" class="tab nav-link">Agent List</a>
+      <a href="#tab-performance-section" class="tab nav-link">Performance</a>
     </div>
 
-    <div id="tab-orgchart" class="tab-content active"></div>
-    <div id="tab-flow" class="tab-content"></div>
-    <div id="tab-live" class="tab-content"></div>
-    <div id="tab-list" class="tab-content"></div>
-    <div id="tab-performance" class="tab-content"></div>
+    <div id="tab-orgchart-section" class="tab-content active"></div>
+    <div id="tab-flow-section" class="tab-content"></div>
+    <div id="tab-live-section" class="tab-content"></div>
+    <div id="tab-list-section" class="tab-content"></div>
+    <div id="tab-performance-section" class="tab-content"></div>
   </div>
 
   <!-- Create Agent Modal -->
@@ -476,7 +476,7 @@
     }
 
     function renderOrgChart(snapshot) {
-      document.getElementById('tab-orgchart').innerHTML = `
+      document.getElementById('tab-orgchart-section').innerHTML = `
         <div class="org-chart">
           <div class="org-level">
             <div class="org-node" style="border-color:var(--warning)" onclick="showAgent(null)">
@@ -546,7 +546,7 @@
 
     function renderAgentFlow(snapshot) {
       const phases = NexusOrchestration.getPhases();
-      document.getElementById('tab-flow').innerHTML = `
+      document.getElementById('tab-flow-section').innerHTML = `
         <div class="flow-route-strip">
           <strong>Flow:</strong>
           <span>BA</span><span>-></span>
@@ -605,7 +605,7 @@
         .map(key => snapshot.agents[key])
         .filter(Boolean);
 
-      document.getElementById('tab-live').innerHTML = `
+      document.getElementById('tab-live-section').innerHTML = `
         <div class="grid grid-3">
           ${runtimeAgents.map(agent => {
             const hasWorkspace = !!NexusStore.getAgent(agent.agentId);
@@ -640,7 +640,7 @@
     }
 
     function renderAgentList(agents, snapshot) {
-      document.getElementById('tab-list').innerHTML = `
+      document.getElementById('tab-list-section').innerHTML = `
         <div class="table-container">
           <table>
             <thead><tr><th>Agent</th><th>Role</th><th>Module</th><th>Model</th><th>Lifecycle</th><th>Runtime</th><th>Task</th><th>Timer</th><th>Tokens</th><th>Actions</th></tr></thead>
@@ -676,7 +676,7 @@
     }
 
     function renderPerformance(agents, snapshot) {
-      document.getElementById('tab-performance').innerHTML = `
+      document.getElementById('tab-performance-section').innerHTML = `
         <div class="grid grid-2">
           ${agents.map(a => {
               const runtime = getRuntimeAgent(snapshot, a.agent_id);

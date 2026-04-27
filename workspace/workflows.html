@@ -19,14 +19,14 @@
     </div>
 
     <div class="tabs" data-tab-group="workflows">
-      <button class="tab active" data-tab="wfLibrary" onclick="switchTab('workflows','wfLibrary')">📚 Library</button>
-      <button class="tab" data-tab="wfBuilder" onclick="switchTab('workflows','wfBuilder')">🔧 Builder</button>
-      <button class="tab" data-tab="wfMonitor" onclick="switchTab('workflows','wfMonitor')">📊 Monitor</button>
-      <button class="tab" data-tab="wfRecovery" onclick="switchTab('workflows','wfRecovery')">🔄 Recovery</button>
+      <a href="#wfLibrary-section" class="tab nav-link active">📚 Library</a>
+      <a href="#wfBuilder-section" class="tab nav-link">🔧 Builder</a>
+      <a href="#wfMonitor-section" class="tab nav-link">📊 Monitor</a>
+      <a href="#wfRecovery-section" class="tab nav-link">🔄 Recovery</a>
     </div>
 
     <!-- Workflow Library -->
-    <div class="tab-content active" id="wfLibrary">
+    <div class="tab-content active" id="wfLibrary-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Total Workflows</span><span class="stat-value" id="wfTotal">8</span></div>
         <div class="stat-card"><span class="stat-label">Active</span><span class="stat-value" style="color:var(--success)" id="wfActive">5</span></div>
@@ -37,7 +37,7 @@
     </div>
 
     <!-- Workflow Builder -->
-    <div class="tab-content" id="wfBuilder">
+    <div class="tab-content" id="wfBuilder-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔧 Workflow Builder</h3>
           <div class="page-actions">
@@ -71,7 +71,7 @@
     </div>
 
     <!-- Workflow Monitor -->
-    <div class="tab-content" id="wfMonitor">
+    <div class="tab-content" id="wfMonitor-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📊 Execution Monitor</h3></div>
         <div class="table-container">
@@ -84,7 +84,7 @@
     </div>
 
     <!-- Workflow Recovery -->
-    <div class="tab-content" id="wfRecovery">
+    <div class="tab-content" id="wfRecovery-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔄 Failed Workflow Recovery</h3></div>
         <div id="failedWorkflows"></div>

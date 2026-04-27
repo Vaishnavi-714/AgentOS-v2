@@ -19,18 +19,30 @@
       </div>
     </div>
 
+    <div class="tabs">
+      <a href="#stats-section" class="tab nav-link active">📊 Stats</a>
+      <a href="#projects-section" class="tab nav-link">📂 Projects</a>
+      <a href="#activity-section" class="tab nav-link">📜 Activity</a>
+    </div>
+
     <!-- Stats -->
-    <div class="grid grid-4" id="statsGrid" style="margin-bottom: 24px;"></div>
+    <div id="stats-section" class="tab-content active">
+      <div class="grid grid-4" id="statsGrid" style="margin-bottom: 24px;"></div>
+    </div>
 
     <!-- Projects -->
-    <div id="projectsList"></div>
+    <div id="projects-section" class="tab-content">
+      <div id="projectsList"></div>
+    </div>
 
     <!-- Recent Activity -->
-    <div class="card" style="margin-top: 24px;">
-      <div class="card-header">
-        <h3 class="card-title">Recent Activity</h3>
+    <div id="activity-section" class="tab-content">
+      <div class="card" style="margin-top: 24px;">
+        <div class="card-header">
+          <h3 class="card-title">Recent Activity</h3>
+        </div>
+        <div id="activityLog" class="timeline"></div>
       </div>
-      <div id="activityLog" class="timeline"></div>
     </div>
   </div>
 

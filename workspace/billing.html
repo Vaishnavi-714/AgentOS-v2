@@ -17,20 +17,20 @@
     </div>
 
     <div class="tabs" data-tab-group="billing">
-      <button class="tab active" data-tab="billOverview" onclick="switchTab('billing','billOverview')">📊 Overview</button>
-      <button class="tab" data-tab="usageDetails" onclick="switchTab('billing','usageDetails')">📈 Usage</button>
-      <button class="tab" data-tab="invoicesTab" onclick="switchTab('billing','invoicesTab')">📄 Invoices</button>
-      <button class="tab" data-tab="quotaTab" onclick="switchTab('billing','quotaTab')">📏 Quotas</button>
+      <a href="#billOverview-section" class="tab nav-link active">📊 Overview</a>
+      <a href="#usageDetails-section" class="tab nav-link">📈 Usage</a>
+      <a href="#invoicesTab-section" class="tab nav-link">📄 Invoices</a>
+      <a href="#quotaTab-section" class="tab nav-link">📏 Quotas</a>
     </div>
 
     <!-- Overview -->
-    <div class="tab-content active" id="billOverview">
+    <div class="tab-content active" id="billOverview-section">
       <div class="grid grid-4" style="margin-bottom:20px" id="billingStats"></div>
       <div class="grid grid-3" id="planCards"></div>
     </div>
 
     <!-- Usage -->
-    <div class="tab-content" id="usageDetails">
+    <div class="tab-content" id="usageDetails-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📈 Usage Breakdown</h3></div>
         <div id="usageBreakdown"></div>
@@ -42,7 +42,7 @@
     </div>
 
     <!-- Invoices -->
-    <div class="tab-content" id="invoicesTab">
+    <div class="tab-content" id="invoicesTab-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📄 Invoice History</h3></div>
         <div class="table-container">
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Quotas -->
-    <div class="tab-content" id="quotaTab">
+    <div class="tab-content" id="quotaTab-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📏 Resource Quotas</h3></div>
         <div id="quotaList"></div>

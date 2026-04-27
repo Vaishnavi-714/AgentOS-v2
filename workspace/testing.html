@@ -20,15 +20,15 @@
     </div>
 
     <div class="tabs" data-tab-group="testing">
-      <button class="tab active" data-tab="testDashboard" onclick="switchTab('testing','testDashboard')">📊 Dashboard</button>
-      <button class="tab" data-tab="testGenerator" onclick="switchTab('testing','testGenerator')">🤖 Generator</button>
-      <button class="tab" data-tab="testExecution" onclick="switchTab('testing','testExecution')">▶ Execution</button>
-      <button class="tab" data-tab="qualityGates" onclick="switchTab('testing','qualityGates')">🛡️ Quality Gates</button>
-      <button class="tab" data-tab="defectAnalytics" onclick="switchTab('testing','defectAnalytics')">🐛 Defects</button>
+      <a href="#testDashboard-section" class="tab nav-link active">📊 Dashboard</a>
+      <a href="#testGenerator-section" class="tab nav-link">🤖 Generator</a>
+      <a href="#testExecution-section" class="tab nav-link">▶ Execution</a>
+      <a href="#qualityGates-section" class="tab nav-link">🛡️ Quality Gates</a>
+      <a href="#defectAnalytics-section" class="tab nav-link">🐛 Defects</a>
     </div>
 
     <!-- Test Dashboard -->
-    <div class="tab-content active" id="testDashboard">
+    <div class="tab-content active" id="testDashboard-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Total Tests</span><span class="stat-value" id="totalTests">0</span></div>
         <div class="stat-card"><span class="stat-label">Passed</span><span class="stat-value" style="color:var(--success)" id="passedTests">0</span></div>
@@ -42,7 +42,7 @@
     </div>
 
     <!-- Test Generator -->
-    <div class="tab-content" id="testGenerator">
+    <div class="tab-content" id="testGenerator-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🤖 AI Test Case Generator</h3></div>
         <div class="grid grid-2">
@@ -67,7 +67,7 @@
     </div>
 
     <!-- Test Execution -->
-    <div class="tab-content" id="testExecution">
+    <div class="tab-content" id="testExecution-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">▶ Test Execution</h3>
           <div class="page-actions"><button class="btn btn-success btn-sm" onclick="runAllTests()">▶ Run All</button><button class="btn btn-outline btn-sm" onclick="runFailedTests()">🔄 Re-run Failed</button></div>
@@ -80,7 +80,7 @@
     </div>
 
     <!-- Quality Gates -->
-    <div class="tab-content" id="qualityGates">
+    <div class="tab-content" id="qualityGates-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🛡️ Quality Gate Reviews</h3></div>
         <div class="table-container">
@@ -91,7 +91,7 @@
     </div>
 
     <!-- Defect Analytics -->
-    <div class="tab-content" id="defectAnalytics">
+    <div class="tab-content" id="defectAnalytics-section">
       <div class="grid grid-3" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Open Defects</span><span class="stat-value" style="color:var(--danger)">7</span></div>
         <div class="stat-card"><span class="stat-label">Fixed This Week</span><span class="stat-value" style="color:var(--success)">12</span></div>

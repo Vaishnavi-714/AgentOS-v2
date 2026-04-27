@@ -20,14 +20,14 @@
     </div>
 
     <div class="tabs" data-tab-group="deployments">
-      <button class="tab active" data-tab="cicdPipeline" onclick="switchTab('deployments','cicdPipeline')">⚙️ CI/CD Pipeline</button>
-      <button class="tab" data-tab="deployApproval" onclick="switchTab('deployments','deployApproval')">✅ Approvals</button>
-      <button class="tab" data-tab="releaseCenter" onclick="switchTab('deployments','releaseCenter')">🏷️ Releases</button>
-      <button class="tab" data-tab="envMgmt" onclick="switchTab('deployments','envMgmt')">🌍 Environments</button>
+      <a href="#cicdPipeline-section" class="tab nav-link active">⚙️ CI/CD Pipeline</a>
+      <a href="#deployApproval-section" class="tab nav-link">✅ Approvals</a>
+      <a href="#releaseCenter-section" class="tab nav-link">🏷️ Releases</a>
+      <a href="#envMgmt-section" class="tab nav-link">🌍 Environments</a>
     </div>
 
     <!-- CI/CD Pipeline -->
-    <div class="tab-content active" id="cicdPipeline">
+    <div class="tab-content active" id="cicdPipeline-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Builds Today</span><span class="stat-value">12</span></div>
         <div class="stat-card"><span class="stat-label">Success Rate</span><span class="stat-value" style="color:var(--success)">92%</span></div>
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Deployment Approvals -->
-    <div class="tab-content" id="deployApproval">
+    <div class="tab-content" id="deployApproval-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">✅ Pending Approvals</h3></div>
         <div id="approvalList"></div>
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Release Center -->
-    <div class="tab-content" id="releaseCenter">
+    <div class="tab-content" id="releaseCenter-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🏷️ Release Center</h3><button class="btn btn-primary btn-sm">+ Create Release</button></div>
         <div id="releaseList"></div>
@@ -60,7 +60,7 @@
     </div>
 
     <!-- Environment Management -->
-    <div class="tab-content" id="envMgmt">
+    <div class="tab-content" id="envMgmt-section">
       <div class="grid grid-3" id="envCards"></div>
     </div>
   </div>

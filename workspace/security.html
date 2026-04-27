@@ -17,15 +17,15 @@
     </div>
 
     <div class="tabs" data-tab-group="security">
-      <button class="tab active" data-tab="secCenter" onclick="switchTab('security','secCenter')">🛡️ Security Center</button>
-      <button class="tab" data-tab="aiSafety" onclick="switchTab('security','aiSafety')">🧠 AI Safety</button>
-      <button class="tab" data-tab="complianceTab" onclick="switchTab('security','complianceTab')">📑 Compliance</button>
-      <button class="tab" data-tab="secrets" onclick="switchTab('security','secrets')">🔐 Secrets</button>
-      <button class="tab" data-tab="privacy" onclick="switchTab('security','privacy')">🔏 Data Privacy</button>
+      <a href="#secCenter-section" class="tab nav-link active">🛡️ Security Center</a>
+      <a href="#aiSafety-section" class="tab nav-link">🧠 AI Safety</a>
+      <a href="#complianceTab-section" class="tab nav-link">📑 Compliance</a>
+      <a href="#secrets-section" class="tab nav-link">🔐 Secrets</a>
+      <a href="#privacy-section" class="tab nav-link">🔏 Data Privacy</a>
     </div>
 
     <!-- Security Center -->
-    <div class="tab-content active" id="secCenter">
+    <div class="tab-content active" id="secCenter-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Security Score</span><span class="stat-value" style="color:var(--success)">92</span></div>
         <div class="stat-card"><span class="stat-label">Vulnerabilities</span><span class="stat-value">3</span><span class="stat-change down">2 critical</span></div>
@@ -45,7 +45,7 @@
     </div>
 
     <!-- AI Safety -->
-    <div class="tab-content" id="aiSafety">
+    <div class="tab-content" id="aiSafety-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Safety Alerts</span><span class="stat-value" id="safetyAlertCount">0</span></div>
         <div class="stat-card"><span class="stat-label">Hallucination Checks</span><span class="stat-value">1,247</span><span class="stat-change up">99.2% accurate</span></div>
@@ -76,7 +76,7 @@
     </div>
 
     <!-- Compliance -->
-    <div class="tab-content" id="complianceTab">
+    <div class="tab-content" id="complianceTab-section">
       <div class="grid grid-3" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">SOC 2 Status</span><span class="stat-value" style="color:var(--success)">Compliant</span></div>
         <div class="stat-card"><span class="stat-label">GDPR Status</span><span class="stat-value" style="color:var(--success)">Compliant</span></div>
@@ -92,7 +92,7 @@
     </div>
 
     <!-- Secrets Management -->
-    <div class="tab-content" id="secrets">
+    <div class="tab-content" id="secrets-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔐 Secrets Vault</h3><button class="btn btn-primary btn-sm">+ Add Secret</button></div>
         <div class="table-container">
@@ -103,7 +103,7 @@
     </div>
 
     <!-- Data Privacy -->
-    <div class="tab-content" id="privacy">
+    <div class="tab-content" id="privacy-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔏 Data Privacy Settings</h3></div>
         <div id="privacySettings"></div>

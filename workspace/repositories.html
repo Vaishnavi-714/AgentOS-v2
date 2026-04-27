@@ -19,15 +19,15 @@
     </div>
 
     <div class="tabs" data-tab-group="repos">
-      <button class="tab active" data-tab="repoExplorer" onclick="switchTab('repos','repoExplorer')">📦 Explorer</button>
-      <button class="tab" data-tab="aiCoding" onclick="switchTab('repos','aiCoding')">💻 AI Coding</button>
-      <button class="tab" data-tab="pullRequests" onclick="switchTab('repos','pullRequests')">🔀 Pull Requests</button>
-      <button class="tab" data-tab="codeReview" onclick="switchTab('repos','codeReview')">🔍 Code Review</button>
-      <button class="tab" data-tab="branchRelease" onclick="switchTab('repos','branchRelease')">🌿 Branch & Release</button>
+      <a href="#repoExplorer-section" class="tab nav-link active">📦 Explorer</a>
+      <a href="#aiCoding-section" class="tab nav-link">💻 AI Coding</a>
+      <a href="#pullRequests-section" class="tab nav-link">🔀 Pull Requests</a>
+      <a href="#codeReview-section" class="tab nav-link">🔍 Code Review</a>
+      <a href="#branchRelease-section" class="tab nav-link">🌿 Branch & Release</a>
     </div>
 
     <!-- Repo Explorer -->
-    <div class="tab-content active" id="repoExplorer">
+    <div class="tab-content active" id="repoExplorer-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Files</span><span class="stat-value">47</span></div>
         <div class="stat-card"><span class="stat-label">Commits</span><span class="stat-value">128</span></div>
@@ -49,7 +49,7 @@
     </div>
 
     <!-- AI Coding Workspace -->
-    <div class="tab-content" id="aiCoding">
+    <div class="tab-content" id="aiCoding-section">
       <div id="codingGateMessage"></div>
       <div class="grid grid-2">
         <div class="card">
@@ -68,7 +68,7 @@
     </div>
 
     <!-- Pull Requests -->
-    <div class="tab-content" id="pullRequests">
+    <div class="tab-content" id="pullRequests-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔀 Pull Request Center</h3><button class="btn btn-primary btn-sm">+ New PR</button></div>
         <div class="table-container">
@@ -81,7 +81,7 @@
     </div>
 
     <!-- Code Review -->
-    <div class="tab-content" id="codeReview">
+    <div class="tab-content" id="codeReview-section">
       <div id="reviewGateMessage"></div>
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔍 Code Review Dashboard</h3></div>
@@ -101,7 +101,7 @@
     </div>
 
     <!-- Branch & Release -->
-    <div class="tab-content" id="branchRelease">
+    <div class="tab-content" id="branchRelease-section">
       <div class="grid grid-2">
         <div class="card">
           <div class="card-header"><h3 class="card-title">🌿 Branches</h3><button class="btn btn-outline btn-sm">+ New Branch</button></div>

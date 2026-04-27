@@ -17,15 +17,15 @@
     </div>
 
     <div class="tabs" data-tab-group="support">
-      <button class="tab active" data-tab="incidentCenter" onclick="switchTab('support','incidentCenter')">🚨 Incidents</button>
-      <button class="tab" data-tab="escalationsTab" onclick="switchTab('support','escalationsTab')">⚠️ Escalations</button>
-      <button class="tab" data-tab="rcaScreen" onclick="switchTab('support','rcaScreen')">🔍 RCA</button>
-      <button class="tab" data-tab="logsExplorer" onclick="switchTab('support','logsExplorer')">📋 Logs</button>
-      <button class="tab" data-tab="monitoringTab" onclick="switchTab('support','monitoringTab')">📈 Monitoring</button>
+      <a href="#incidentCenter-section" class="tab nav-link active">🚨 Incidents</a>
+      <a href="#escalationsTab-section" class="tab nav-link">⚠️ Escalations</a>
+      <a href="#rcaScreen-section" class="tab nav-link">🔍 RCA</a>
+      <a href="#logsExplorer-section" class="tab nav-link">📋 Logs</a>
+      <a href="#monitoringTab-section" class="tab nav-link">📈 Monitoring</a>
     </div>
 
     <!-- Incidents -->
-    <div class="tab-content active" id="incidentCenter">
+    <div class="tab-content active" id="incidentCenter-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Open Incidents</span><span class="stat-value" id="openIncidents">0</span></div>
         <div class="stat-card"><span class="stat-label">Critical</span><span class="stat-value" style="color:var(--danger)" id="critIncidents">0</span></div>
@@ -42,7 +42,7 @@
     </div>
 
     <!-- Escalations -->
-    <div class="tab-content" id="escalationsTab">
+    <div class="tab-content" id="escalationsTab-section">
       <div class="grid grid-3" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Pending</span><span class="stat-value" id="pendingEsc">0</span></div>
         <div class="stat-card"><span class="stat-label">Resolved Today</span><span class="stat-value" style="color:var(--success)" id="resolvedEsc">0</span></div>
@@ -52,7 +52,7 @@
     </div>
 
     <!-- RCA -->
-    <div class="tab-content" id="rcaScreen">
+    <div class="tab-content" id="rcaScreen-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">🔍 Root Cause Analysis</h3></div>
         <div id="rcaList"></div>
@@ -60,7 +60,7 @@
     </div>
 
     <!-- Logs Explorer -->
-    <div class="tab-content" id="logsExplorer">
+    <div class="tab-content" id="logsExplorer-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📋 System Logs</h3>
           <div class="page-actions">
@@ -75,7 +75,7 @@
     </div>
 
     <!-- Monitoring -->
-    <div class="tab-content" id="monitoringTab">
+    <div class="tab-content" id="monitoringTab-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">CPU Usage</span><span class="stat-value">34%</span></div>
         <div class="stat-card"><span class="stat-label">Memory</span><span class="stat-value">67%</span></div>

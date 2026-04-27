@@ -17,15 +17,15 @@
     </div>
 
     <div class="tabs" data-tab-group="analytics">
-      <button class="tab active" data-tab="productivity" onclick="switchTab('analytics','productivity')">📊 Productivity</button>
-      <button class="tab" data-tab="costDash" onclick="switchTab('analytics','costDash')">💰 Cost</button>
-      <button class="tab" data-tab="roiDash" onclick="switchTab('analytics','roiDash')">📈 ROI</button>
-      <button class="tab" data-tab="forecast" onclick="switchTab('analytics','forecast')">🔮 Forecasting</button>
-      <button class="tab" data-tab="auditTrail" onclick="switchTab('analytics','auditTrail')">📜 Audit Trail</button>
+      <a href="#productivity-section" class="tab nav-link active">📊 Productivity</a>
+      <a href="#costDash-section" class="tab nav-link">💰 Cost</a>
+      <a href="#roiDash-section" class="tab nav-link">📈 ROI</a>
+      <a href="#forecast-section" class="tab nav-link">🔮 Forecasting</a>
+      <a href="#auditTrail-section" class="tab nav-link">📜 Audit Trail</a>
     </div>
 
     <!-- Productivity -->
-    <div class="tab-content active" id="productivity">
+    <div class="tab-content active" id="productivity-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Tasks Completed</span><span class="stat-value">87</span><span class="stat-change up">↑ 23% this week</span></div>
         <div class="stat-card"><span class="stat-label">Agent Efficiency</span><span class="stat-value">94%</span><span class="stat-change up">↑ 5%</span></div>
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Cost -->
-    <div class="tab-content" id="costDash">
+    <div class="tab-content" id="costDash-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Total Cost (MTD)</span><span class="stat-value">$1,247</span></div>
         <div class="stat-card"><span class="stat-label">API Costs</span><span class="stat-value">$890</span></div>
@@ -73,7 +73,7 @@
     </div>
 
     <!-- ROI -->
-    <div class="tab-content" id="roiDash">
+    <div class="tab-content" id="roiDash-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">ROI</span><span class="stat-value" style="color:var(--success)">340%</span></div>
         <div class="stat-card"><span class="stat-label">Time Saved</span><span class="stat-value">480h</span></div>
@@ -93,7 +93,7 @@
     </div>
 
     <!-- Forecasting -->
-    <div class="tab-content" id="forecast">
+    <div class="tab-content" id="forecast-section">
       <div class="grid grid-3" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Projected Completion</span><span class="stat-value">Mar 15</span></div>
         <div class="stat-card"><span class="stat-label">Confidence</span><span class="stat-value">78%</span></div>
@@ -106,7 +106,7 @@
     </div>
 
     <!-- Audit Trail -->
-    <div class="tab-content" id="auditTrail">
+    <div class="tab-content" id="auditTrail-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📜 Audit Trail</h3>
           <div class="page-actions">

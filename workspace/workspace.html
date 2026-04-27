@@ -20,14 +20,14 @@
 
     <!-- Tabs -->
     <div class="tabs" data-tab-group="workspace">
-      <button class="tab active" data-tab="commandCenter" onclick="switchTab('workspace','commandCenter')">💬 Command Center</button>
-      <button class="tab" data-tab="liveConsole" onclick="switchTab('workspace','liveConsole')">🖥️ Live Console</button>
-      <button class="tab" data-tab="collaboration" onclick="switchTab('workspace','collaboration')">👥 Collaboration</button>
-      <button class="tab" data-tab="llmGateway" onclick="switchTab('workspace','llmGateway')">🧠 LLM Gateway</button>
+      <a href="#commandCenter-section" class="tab nav-link active">💬 Command Center</a>
+      <a href="#liveConsole-section" class="tab nav-link">🖥️ Live Console</a>
+      <a href="#collaboration-section" class="tab nav-link">👥 Collaboration</a>
+      <a href="#llmGateway-section" class="tab nav-link">🧠 LLM Gateway</a>
     </div>
 
     <!-- Command Center Tab -->
-    <div class="tab-content active" id="commandCenter">
+    <div class="tab-content active" id="commandCenter-section">
       <div class="grid grid-3" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Active Agents</span><span class="stat-value" id="ccActiveAgents">0</span></div>
         <div class="stat-card"><span class="stat-label">Messages Today</span><span class="stat-value" id="ccMessages">0</span></div>
@@ -51,7 +51,7 @@
     </div>
 
     <!-- Live Console Tab -->
-    <div class="tab-content" id="liveConsole">
+    <div class="tab-content" id="liveConsole-section">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">🖥️ Multi-Agent Live Console</h3>
@@ -79,7 +79,7 @@
     </div>
 
     <!-- Collaboration Tab -->
-    <div class="tab-content" id="collaboration">
+    <div class="tab-content" id="collaboration-section">
       <div class="grid grid-2">
         <div class="card">
           <div class="card-header">
@@ -107,7 +107,7 @@
     </div>
 
     <!-- LLM Gateway Tab -->
-    <div class="tab-content" id="llmGateway">
+    <div class="tab-content" id="llmGateway-section">
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Model Calls</span><span class="stat-value" id="llmCalls">1,247</span></div>
         <div class="stat-card"><span class="stat-label">Avg Latency</span><span class="stat-value" id="llmLatency">340ms</span></div>

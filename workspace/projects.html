@@ -21,23 +21,23 @@
 
     <!-- Tabs -->
     <div class="tabs" data-tab-group="projects">
-      <button class="tab active" data-tab="projectListing" onclick="switchTab('projects','projectListing')">📂 Projects</button>
-      <button class="tab" data-tab="projectOverview" onclick="switchTab('projects','projectOverview')">📋 Overview</button>
-      <button class="tab" data-tab="requirements" onclick="switchTab('projects','requirements')">📄 Requirements</button>
-      <button class="tab" data-tab="backlog" onclick="switchTab('projects','backlog')">📝 Backlog</button>
-      <button class="tab" data-tab="tasks" onclick="switchTab('projects','tasks')">✅ Tasks</button>
-      <button class="tab" data-tab="timeline" onclick="switchTab('projects','timeline')">📅 Timeline</button>
-      <button class="tab" data-tab="pipeline" onclick="switchTab('projects','pipeline')">⚙️ Pipeline</button>
+      <a href="#projectListing-section" class="tab nav-link active">📂 Projects</a>
+      <a href="#projectOverview-section" class="tab nav-link">📋 Overview</a>
+      <a href="#requirements-section" class="tab nav-link">📄 Requirements</a>
+      <a href="#backlog-section" class="tab nav-link">📝 Backlog</a>
+      <a href="#tasks-section" class="tab nav-link">✅ Tasks</a>
+      <a href="#timeline-section" class="tab nav-link">📅 Timeline</a>
+      <a href="#pipeline-section" class="tab nav-link">⚙️ Pipeline</a>
     </div>
 
     <!-- Projects Listing -->
-    <div class="tab-content active" id="projectListing">
+    <div class="tab-content active" id="projectListing-section">
       <div class="grid grid-4" id="projStatsGrid" style="margin-bottom:20px"></div>
       <div id="projectCards"></div>
     </div>
 
     <!-- Project Overview -->
-    <div class="tab-content" id="projectOverview">
+    <div class="tab-content" id="projectOverview-section">
       <div class="grid grid-4" id="overviewStats" style="margin-bottom:20px"></div>
       <div class="grid grid-2">
         <div class="card"><div class="card-header"><h3 class="card-title">📊 Progress</h3></div><div id="overviewProgress"></div></div>
@@ -47,7 +47,7 @@
     </div>
 
     <!-- Requirements -->
-    <div class="tab-content" id="requirements">
+    <div class="tab-content" id="requirements-section">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">📄 Requirements</h3>
@@ -73,7 +73,7 @@
     </div>
 
     <!-- Backlog (Kanban) -->
-    <div class="tab-content" id="backlog">
+    <div class="tab-content" id="backlog-section">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">📝 Backlog Board</h3>
@@ -88,7 +88,7 @@
     </div>
 
     <!-- Tasks -->
-    <div class="tab-content" id="tasks">
+    <div class="tab-content" id="tasks-section">
       <div class="grid grid-4" id="taskStats" style="margin-bottom:20px"></div>
       <div class="card">
         <div class="card-header">
@@ -107,7 +107,7 @@
     </div>
 
     <!-- Timeline / Roadmap -->
-    <div class="tab-content" id="timeline">
+    <div class="tab-content" id="timeline-section">
       <div class="card">
         <div class="card-header"><h3 class="card-title">📅 Project Timeline & Roadmap</h3></div>
         <div id="timelineView" style="padding:16px"></div>
@@ -115,7 +115,7 @@
     </div>
 
     <!-- Pipeline -->
-    <div class="tab-content" id="pipeline">
+    <div class="tab-content" id="pipeline-section">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">⚙️ Requirements Pipeline</h3>
