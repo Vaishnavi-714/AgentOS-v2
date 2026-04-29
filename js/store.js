@@ -248,5 +248,31 @@ const NexusStore = {
 
   // ─── Active Project Selection ───
   getActiveProject() { return this.get('active_project_id') || null; },
-  setActiveProject(projectId) { this.set('active_project_id', projectId); }
+  setActiveProject(projectId) { this.set('active_project_id', projectId); },
+
+  // ─── Agent Builder Skills State ───
+  getBuilderSkills() { return this.get('builder_selected_skills') || []; },
+  setBuilderSkills(skills) { this.set('builder_selected_skills', skills); },
+  addBuilderSkill(skill) {
+    const skills = this.getBuilderSkills();
+    if (!skills.find(s => s.name === skill.name)) {
+      skills.push(skill);
+      this.setBuilderSkills(skills);
+    }
+  },
+  removeBuilderSkill(skillName) {
+    const skills = this.getBuilderSkills().filter(s => s.name !== skillName);
+    this.setBuilderSkills(skills);
+  },
+  clearBuilderSkills() { this.remove('builder_selected_skills'); },
+
+  // ─── Favorite Skills ───
+  getFavoriteSkills() { return this.get('favorite_skills') || []; },
+  toggleFavoriteSkill(skillName) {
+    const favs = this.getFavoriteSkills();
+    const idx = favs.indexOf(skillName);
+    if (idx >= 0) favs.splice(idx, 1);
+    else favs.push(skillName);
+    this.set('favorite_skills', favs);
+  }
 };

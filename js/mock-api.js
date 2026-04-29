@@ -143,7 +143,7 @@ const MockAPI = {
       model_variant: data.model_variant,
       status: 'ACTIVE',
       lifecycle: 'CONFIGURED',
-      capabilities: data.capabilities || [],
+      skills: data.skills || [],
       ceiling_profile: data.ceiling_profile || { can_autonomously: [], must_escalate: [], strictly_forbidden: [], risk_sensitivity: 'MEDIUM' },
       metrics: { tasks_completed: 0, escalations_raised: 0, gate_pass_rate: 100 },
       createdAt: new Date().toISOString()
@@ -151,7 +151,7 @@ const MockAPI = {
     NexusStore.saveAgent(agent);
 
     // Generate workspace files
-    NexusStore.setWorkspaceFile(agent.agent_id, 'skills', `# SKILLS\n\n## Core Responsibilities\n${agent.capabilities.map(c => '- ' + c.replace(/_/g, ' ')).join('\n')}\n\n## Constraints\n- Must follow governance rules\n- Cannot exceed ceiling limits\n\n## Escalation Awareness\n- Ceiling violations trigger immediate escalation`);
+    NexusStore.setWorkspaceFile(agent.agent_id, 'skills', `# SKILLS\n\n## Core Responsibilities\n${agent.skills.map(c => '- ' + c.replace(/_/g, ' ')).join('\n')}\n\n## Constraints\n- Must follow governance rules\n- Cannot exceed ceiling limits\n\n## Escalation Awareness\n- Ceiling violations trigger immediate escalation`);
     NexusStore.setWorkspaceFile(agent.agent_id, 'tools', `# TOOLS\n\n## Available Tools\n- Standard ${agent.role} toolkit\n\n## Tool Usage Rules\n- Cannot deploy to production\n- Must log all tool usage`);
     NexusStore.setWorkspaceFile(agent.agent_id, 'heartbeat', `# HEARTBEAT\n\n## Current Tasks\n- No tasks assigned yet\n\n## Status\nACTIVE\n\n## Performance Metrics\n- Tasks completed: 0\n- Escalations raised: 0\n- Gate pass rate: N/A`);
     NexusStore.setWorkspaceFile(agent.agent_id, 'souls', `# SOUL\n\n## Decision References\n- None yet\n\n## Behavioral Traits\n- Newly created agent — learning patterns\n\n## Learned Patterns\n- Following system-wide governance rules\n\n## Collaboration Style\n- Awaiting first interactions to establish style`);

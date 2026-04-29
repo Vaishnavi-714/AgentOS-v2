@@ -128,6 +128,160 @@
       .org-builder-wrap { flex-direction: column; }
       .org-agent-pool { width: 100%; }
     }
+
+    /* ─── Skills Chip/Tag System ─── */
+    .skills-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .skills-section-header h4 { margin: 0; }
+    .skills-section-actions { display: flex; gap: 8px; }
+    .skills-chip-container {
+      display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px;
+      padding: 12px; border: 1px dashed var(--border); border-radius: var(--radius);
+      background: var(--bg-tertiary); margin-bottom: 12px;
+      transition: all 0.3s ease;
+    }
+    .skills-chip-container:empty::after {
+      content: 'No skills selected. Click "Add Skill" or "Explore Skills" to begin.';
+      color: var(--text-muted); font-size: 12px; font-style: italic;
+    }
+    .skill-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      cursor: default; position: relative;
+      transition: all 0.25s ease; animation: chipIn 0.3s ease;
+    }
+    @keyframes chipIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .skill-chip.predefined {
+      background: var(--accent)15; color: var(--accent);
+      border: 1px solid var(--accent)40;
+    }
+    .skill-chip.custom {
+      background: var(--success)15; color: var(--success);
+      border: 1px solid var(--success)40;
+    }
+    .skill-chip .chip-badge {
+      font-size: 8px; padding: 1px 5px; border-radius: 6px;
+      text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700;
+    }
+    .skill-chip.predefined .chip-badge { background: var(--accent)25; color: var(--accent); }
+    .skill-chip.custom .chip-badge { background: var(--success)25; color: var(--success); }
+    .skill-chip .chip-remove {
+      width: 18px; height: 18px; border-radius: 50%; border: none;
+      background: transparent; color: inherit; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; opacity: 0.6; transition: all 0.2s ease;
+    }
+    .skill-chip .chip-remove:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+    .skill-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+    /* Skill tooltip */
+    .skill-chip[data-tooltip] { position: relative; }
+    .skill-chip[data-tooltip]:hover::after {
+      content: attr(data-tooltip); position: absolute; bottom: calc(100% + 6px);
+      left: 50%; transform: translateX(-50%);
+      background: var(--bg-primary); color: var(--text-primary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 6px 10px; font-size: 11px; font-weight: 400;
+      white-space: nowrap; max-width: 260px; white-space: normal;
+      z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      pointer-events: none; animation: tooltipFadeIn 0.2s ease;
+    }
+    @keyframes tooltipFadeIn {
+      from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    /* Add Skill Modal */
+    .add-skill-form { display: flex; gap: 8px; margin-top: 8px; }
+    .add-skill-form input { flex: 1; }
+
+    /* ─── Skill Library (Explore) Page ─── */
+    .skill-library-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      background: var(--bg-primary); overflow-y: auto;
+      animation: slideInRight 0.35s ease;
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .skill-library-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 28px; border-bottom: 1px solid var(--border);
+      background: var(--bg-card); position: sticky; top: 0; z-index: 10;
+    }
+    .skill-library-header h2 { margin: 0; font-size: 20px; color: var(--text-primary); }
+    .skill-library-toolbar {
+      display: flex; gap: 12px; padding: 16px 28px; flex-wrap: wrap;
+      align-items: center; background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+    .skill-library-toolbar .search-box { flex: 1; min-width: 220px; position: relative; }
+    .skill-library-toolbar .search-box input {
+      width: 100%; padding: 10px 14px 10px 36px;
+      border-radius: var(--radius); border: 1px solid var(--border);
+      background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px;
+    }
+    .skill-library-toolbar .search-box::before {
+      content: '🔍'; position: absolute; left: 12px; top: 50%;
+      transform: translateY(-50%); font-size: 14px;
+    }
+    .skill-library-body { padding: 24px 28px; }
+    .skill-library-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .skill-card {
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      background: var(--bg-card); padding: 18px; position: relative;
+      transition: all 0.25s ease; overflow: hidden;
+    }
+    .skill-card:hover {
+      border-color: var(--accent)55; box-shadow: 0 4px 20px var(--accent)12;
+      transform: translateY(-2px);
+    }
+    .skill-card.already-added { border-color: var(--success)50; }
+    .skill-card.already-added::after {
+      content: '✓ Added'; position: absolute; top: 10px; right: 10px;
+      font-size: 10px; padding: 2px 8px; border-radius: 8px;
+      background: var(--success)18; color: var(--success);
+      border: 1px solid var(--success)35; font-weight: 600;
+    }
+    .skill-card .sc-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .skill-card .sc-name .sc-icon { font-size: 16px; }
+    .skill-card .sc-category {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+      color: var(--accent); margin-bottom: 8px; font-weight: 600;
+    }
+    .skill-card .sc-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; min-height: 36px; }
+    .skill-card .sc-io { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .skill-card .sc-io-block { font-size: 11px; }
+    .skill-card .sc-io-block .sc-io-label {
+      font-weight: 600; color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.4px; font-size: 9px; margin-bottom: 4px;
+    }
+    .skill-card .sc-io-block .sc-io-val { color: var(--text-secondary); line-height: 1.4; }
+    .skill-card .sc-actions { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+    .skill-card .sc-fav-btn {
+      background: none; border: none; font-size: 18px; cursor: pointer;
+      opacity: 0.4; transition: all 0.2s;
+    }
+    .skill-card .sc-fav-btn:hover, .skill-card .sc-fav-btn.active { opacity: 1; }
+    .skill-library-count {
+      font-size: 12px; color: var(--text-muted); padding: 0 28px 12px;
+    }
+
+    /* Recommended badge */
+    .skill-recommended {
+      position: absolute; top: 0; left: 0;
+      font-size: 8px; padding: 3px 10px; border-radius: 0 0 8px 0;
+      background: var(--warning)20; color: var(--warning);
+      border-right: 1px solid var(--warning)35;
+      border-bottom: 1px solid var(--warning)35;
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -173,7 +327,7 @@
       <div id="tab-marketplace-section" class="tab-content active">
         <div class="marketplace-toolbar">
           <div class="search-box">
-            <input type="text" id="marketplaceSearch" placeholder="Search agents by name, role, or capability..." oninput="filterMarketplace()">
+            <input type="text" id="marketplaceSearch" placeholder="Search agents by name, role, or skill..." oninput="filterMarketplace()">
           </div>
           <div class="filter-chips">
             <span class="filter-chip active" onclick="setMarketFilter('all', this)">All</span>
@@ -243,23 +397,21 @@
             </div>
             <div>
               <div class="config-section">
-                <h4>⚙️ Capabilities</h4>
-                <div class="checkbox-group" id="customCapsGroup" style="margin-bottom:12px">
-                  <label class="checkbox-label"><input type="checkbox" value="write_code"> Write Code</label>
-                  <label class="checkbox-label"><input type="checkbox" value="run_unit_tests"> Run Tests</label>
-                  <label class="checkbox-label"><input type="checkbox" value="create_mock_apis"> Mock APIs</label>
-                  <label class="checkbox-label"><input type="checkbox" value="design_module_architecture"> Design Architecture</label>
-                  <label class="checkbox-label"><input type="checkbox" value="create_task_breakdown"> Task Breakdown</label>
-                  <label class="checkbox-label"><input type="checkbox" value="review_dev_output"> Code Review</label>
-                  <label class="checkbox-label"><input type="checkbox" value="generate_tests"> Generate Tests</label>
-                  <label class="checkbox-label"><input type="checkbox" value="vulnerability_scanning"> Security Scan</label>
-                  <label class="checkbox-label"><input type="checkbox" value="analyze_requirements"> Analyze Requirements</label>
-                  <label class="checkbox-label"><input type="checkbox" value="backlog_management"> Backlog Management</label>
-                  <label class="checkbox-label"><input type="checkbox" value="sprint_planning"> Sprint Planning</label>
-                  <label class="checkbox-label"><input type="checkbox" value="documentation"> Documentation</label>
-                  <label class="checkbox-label"><input type="checkbox" value="performance_profiling"> Performance Profiling</label>
+                <div class="skills-section-header">
+                  <h4>⚙️ Skills</h4>
+                  <div class="skills-section-actions">
+                    <button class="btn btn-outline btn-sm" onclick="openAddSkillModal()">➕ Add Skill</button>
+                    <button class="btn btn-primary btn-sm" onclick="openSkillLibrary()">🔍 Explore Skills</button>
+                  </div>
                 </div>
-                <div class="form-group"><label class="form-label">Additional Capabilities (comma-separated)</label><input type="text" id="customExtraCaps" class="form-input" placeholder="e.g., schema_validation, data_cleaning"></div>
+                <div class="skills-chip-container" id="selectedSkillsContainer"></div>
+                <div id="addSkillInline" style="display:none;">
+                  <div class="add-skill-form">
+                    <input type="text" id="customSkillInput" class="form-input" placeholder="Enter custom skill name (e.g., schema_validation)">
+                    <button class="btn btn-primary btn-sm" onclick="addCustomSkillFromInput()">Add</button>
+                    <button class="btn btn-outline btn-sm" onclick="closeAddSkillModal()">Cancel</button>
+                  </div>
+                </div>
               </div>
               <div class="config-section">
                 <h4>🛡️ Governance Ceiling</h4>
@@ -358,6 +510,35 @@
     </div>
   </div>
 
+  <!-- Skill Library Overlay -->
+  <div class="skill-library-overlay" id="skillLibraryOverlay" style="display:none;">
+    <div class="skill-library-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn btn-outline btn-sm" onclick="closeSkillLibrary()">← Back to Builder</button>
+        <h2>🧠 Skill Library</h2>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="skillLibrarySelectedCount" style="font-size:12px;color:var(--text-muted)"></span>
+        <button class="btn btn-primary btn-sm" onclick="closeSkillLibrary()">Done</button>
+      </div>
+    </div>
+    <div class="skill-library-toolbar">
+      <div class="search-box">
+        <input type="text" id="skillLibrarySearch" placeholder="Search skills by name or description..." oninput="filterSkillLibrary()">
+      </div>
+      <select id="skillCategoryFilter" class="form-select" style="width:auto;min-width:180px" onchange="filterSkillLibrary()">
+        <option value="all">🏷 All Categories</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-muted);cursor:pointer;">
+        <input type="checkbox" id="skillFavFilter" onchange="filterSkillLibrary()"> ⭐ Favorites only
+      </label>
+    </div>
+    <div class="skill-library-count" id="skillLibraryCount"></div>
+    <div class="skill-library-body">
+      <div class="skill-library-grid" id="skillLibraryGrid"></div>
+    </div>
+  </div>
+
   <script src="../js/store.js"></script>
   <script src="../js/data.js"></script>
   <script src="../js/mock-api.js"></script>
@@ -387,19 +568,244 @@
 
     // ─── Predefined Agent Templates ───
     const PREDEFINED_AGENTS = [
-      { templateId:'tpl_ba', name:'Business Analyst', icon:'📊', category:'management', role:'business_analyst', desc:'Analyzes requirements, maps stakeholders, detects ambiguities, and performs domain analysis.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['analyze_requirements','stakeholder_mapping','ambiguity_detection','domain_analysis'], ceiling:{can_autonomously:['analyze_requirements','flag_ambiguities','create_requirement_docs'],must_escalate:['scope_changes','conflicting_requirements'],strictly_forbidden:['modify_backlog','assign_tasks'],risk_sensitivity:'MEDIUM'}, popularity:94, deployCount:1250 },
-      { templateId:'tpl_pm', name:'Product Manager', icon:'📋', category:'management', role:'product_manager', desc:'Manages backlog, plans sprints, assigns priorities, and handles stakeholder communication.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['backlog_management','sprint_planning','priority_assignment','stakeholder_communication'], ceiling:{can_autonomously:['prioritize_stories','plan_sprints','update_backlog'],must_escalate:['scope_changes','resource_reallocation'],strictly_forbidden:['architecture_decisions','code_changes'],risk_sensitivity:'MEDIUM'}, popularity:91, deployCount:1180 },
-      { templateId:'tpl_po', name:'Product Owner', icon:'✅', category:'management', role:'product_owner', desc:'Accepts or rejects user stories, makes priority decisions, and ensures product-market alignment.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['story_acceptance','story_rejection','priority_decisions'], ceiling:{can_autonomously:['accept_stories','reject_stories','reprioritize'],must_escalate:['epic_cancellation','major_scope_change'],strictly_forbidden:['code_changes','architecture_decisions'],risk_sensitivity:'LOW'}, popularity:87, deployCount:980 },
-      { templateId:'tpl_sm', name:'Scrum Master', icon:'🏃', category:'management', role:'scrum_master', desc:'Monitors sprint health, tracks velocity, identifies impediments, and facilitates agile ceremonies.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['sprint_health_monitoring','velocity_tracking','impediment_escalation'], ceiling:{can_autonomously:['track_velocity','report_health','flag_blockers'],must_escalate:['sprint_cancellation','team_changes'],strictly_forbidden:['code_changes','backlog_changes'],risk_sensitivity:'LOW'}, popularity:85, deployCount:870 },
-      { templateId:'tpl_ca', name:'Chief / Solution Architect', icon:'🏛️', category:'architecture', role:'chief_architect', desc:'Designs system architecture, defines modules, selects tech stack, designs API contracts.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['system_architecture','module_design','tech_stack_decisions','api_contract_design','release_decisions'], ceiling:{can_autonomously:['design_architecture','define_modules','select_tech_stack','define_api_contracts'],must_escalate:['infrastructure_changes','security_architecture','budget_impacting_decisions'],strictly_forbidden:['production_deployment','data_deletion'],risk_sensitivity:'HIGH'}, popularity:96, deployCount:1400 },
-      { templateId:'tpl_ma', name:'Module Architect', icon:'🧩', category:'architecture', role:'module_architect', desc:'Designs module-level architecture, breaks down tasks, reviews developer output.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['design_module_architecture','create_task_breakdown','review_dev_output','mock_api_specs'], ceiling:{can_autonomously:['design_module','break_down_tasks','review_code','create_mocks'],must_escalate:['modify_data_model','change_api_contract','add_dependency'],strictly_forbidden:['cross_module_writes','production_db_access'],risk_sensitivity:'HIGH'}, popularity:92, deployCount:1100 },
-      { templateId:'tpl_ia', name:'Integration Architect', icon:'🔗', category:'architecture', role:'integration_architect', desc:'Handles cross-module integration, dependency resolution, and contract validation.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['cross_module_integration','dependency_resolution','integration_testing','contract_validation'], ceiling:{can_autonomously:['integrate_modules','resolve_dependencies','run_integration_tests'],must_escalate:['contract_violations','incompatible_changes'],strictly_forbidden:['production_deployment','security_config_changes'],risk_sensitivity:'HIGH'}, popularity:88, deployCount:760 },
-      { templateId:'tpl_dev', name:'Developer Agent', icon:'💻', category:'development', role:'developer', desc:'Writes code, runs unit tests, creates mock APIs, and reports task completion.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['write_code','run_unit_tests','create_mock_apis','task_reports'], ceiling:{can_autonomously:['write_code','run_unit_tests','create_mock_apis'],must_escalate:['modify_data_model','change_api_contract','add_dependency'],strictly_forbidden:['cross_module_writes','production_db_access'],risk_sensitivity:'HIGH'}, popularity:98, deployCount:2400 },
-      { templateId:'tpl_tcg', name:'Test Case Generator', icon:'🧪', category:'quality', role:'test_case_generator', desc:'Extracts acceptance criteria and auto-generates positive, negative, and edge-case tests.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['extract_acceptance_criteria','generate_positive_tests','generate_negative_tests','generate_edge_tests'], ceiling:{can_autonomously:['create_test_cases','structure_test_data'],must_escalate:['acceptance_criteria_conflicts'],strictly_forbidden:['modify_implementation','change_backlog_priority'],risk_sensitivity:'LOW'}, popularity:90, deployCount:1050 },
-      { templateId:'tpl_qa', name:'QA Agent', icon:'🔍', category:'quality', role:'qa', desc:'Generates test cases, executes tests, reports coverage, and files defects.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['test_case_generation','test_execution','coverage_reporting','defect_reporting'], ceiling:{can_autonomously:['generate_tests','execute_tests','report_coverage','file_defects'],must_escalate:['test_environment_changes'],strictly_forbidden:['modify_implementation'],risk_sensitivity:'MEDIUM'}, popularity:93, deployCount:1300 },
-      { templateId:'tpl_sec', name:'Security / DevOps Agent', icon:'🛡️', category:'quality', role:'security_devops', desc:'Performs vulnerability scanning, manages CI/CD pipelines, packages deployments.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['vulnerability_scanning','cicd_pipeline','deployment_packaging','compliance_checking'], ceiling:{can_autonomously:['scan_vulnerabilities','build_pipeline','package_deployment'],must_escalate:['security_impacting_changes','compliance_failures'],strictly_forbidden:['production_deployment_without_approval','disable_security_controls'],risk_sensitivity:'CRITICAL'}, popularity:95, deployCount:1350 },
-      { templateId:'tpl_doc', name:'Documentation Agent', icon:'📝', category:'development', role:'documentation_specialist', desc:'Auto-generates API docs, README files, architecture diagrams.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['api_documentation','readme_generation','architecture_diagrams','knowledge_base'], ceiling:{can_autonomously:['generate_docs','update_readme','create_diagrams'],must_escalate:['architecture_changes'],strictly_forbidden:['code_changes','deployment'],risk_sensitivity:'LOW'}, popularity:82, deployCount:650 }
+      { templateId:'tpl_ba', name:'Business Analyst', icon:'📊', category:'management', role:'business_analyst', desc:'Analyzes requirements, maps stakeholders, detects ambiguities, and performs domain analysis.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', skills:['analyze_requirements','stakeholder_mapping','ambiguity_detection','domain_analysis'], ceiling:{can_autonomously:['analyze_requirements','flag_ambiguities','create_requirement_docs'],must_escalate:['scope_changes','conflicting_requirements'],strictly_forbidden:['modify_backlog','assign_tasks'],risk_sensitivity:'MEDIUM'}, popularity:94, deployCount:1250 },
+      { templateId:'tpl_pm', name:'Product Manager', icon:'📋', category:'management', role:'product_manager', desc:'Manages backlog, plans sprints, assigns priorities, and handles stakeholder communication.', model_provider:'openai_gpt', model_variant:'gpt-4o', skills:['backlog_management','sprint_planning','priority_assignment','stakeholder_communication'], ceiling:{can_autonomously:['prioritize_stories','plan_sprints','update_backlog'],must_escalate:['scope_changes','resource_reallocation'],strictly_forbidden:['architecture_decisions','code_changes'],risk_sensitivity:'MEDIUM'}, popularity:91, deployCount:1180 },
+      { templateId:'tpl_po', name:'Product Owner', icon:'✅', category:'management', role:'product_owner', desc:'Accepts or rejects user stories, makes priority decisions, and ensures product-market alignment.', model_provider:'openai_gpt', model_variant:'gpt-4o', skills:['story_acceptance','story_rejection','priority_decisions'], ceiling:{can_autonomously:['accept_stories','reject_stories','reprioritize'],must_escalate:['epic_cancellation','major_scope_change'],strictly_forbidden:['code_changes','architecture_decisions'],risk_sensitivity:'LOW'}, popularity:87, deployCount:980 },
+      { templateId:'tpl_sm', name:'Scrum Master', icon:'🏃', category:'management', role:'scrum_master', desc:'Monitors sprint health, tracks velocity, identifies impediments, and facilitates agile ceremonies.', model_provider:'openai_gpt', model_variant:'gpt-4o', skills:['sprint_health_monitoring','velocity_tracking','impediment_escalation'], ceiling:{can_autonomously:['track_velocity','report_health','flag_blockers'],must_escalate:['sprint_cancellation','team_changes'],strictly_forbidden:['code_changes','backlog_changes'],risk_sensitivity:'LOW'}, popularity:85, deployCount:870 },
+      { templateId:'tpl_ca', name:'Chief / Solution Architect', icon:'🏛️', category:'architecture', role:'chief_architect', desc:'Designs system architecture, defines modules, selects tech stack, designs API contracts.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', skills:['system_architecture','module_design','tech_stack_decisions','api_contract_design','release_decisions'], ceiling:{can_autonomously:['design_architecture','define_modules','select_tech_stack','define_api_contracts'],must_escalate:['infrastructure_changes','security_architecture','budget_impacting_decisions'],strictly_forbidden:['production_deployment','data_deletion'],risk_sensitivity:'HIGH'}, popularity:96, deployCount:1400 },
+      { templateId:'tpl_ma', name:'Module Architect', icon:'🧩', category:'architecture', role:'module_architect', desc:'Designs module-level architecture, breaks down tasks, reviews developer output.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', skills:['design_module_architecture','create_task_breakdown','review_dev_output','mock_api_specs'], ceiling:{can_autonomously:['design_module','break_down_tasks','review_code','create_mocks'],must_escalate:['modify_data_model','change_api_contract','add_dependency'],strictly_forbidden:['cross_module_writes','production_db_access'],risk_sensitivity:'HIGH'}, popularity:92, deployCount:1100 },
+      { templateId:'tpl_ia', name:'Integration Architect', icon:'🔗', category:'architecture', role:'integration_architect', desc:'Handles cross-module integration, dependency resolution, and contract validation.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', skills:['cross_module_integration','dependency_resolution','integration_testing','contract_validation'], ceiling:{can_autonomously:['integrate_modules','resolve_dependencies','run_integration_tests'],must_escalate:['contract_violations','incompatible_changes'],strictly_forbidden:['production_deployment','security_config_changes'],risk_sensitivity:'HIGH'}, popularity:88, deployCount:760 },
+      { templateId:'tpl_dev', name:'Developer Agent', icon:'💻', category:'development', role:'developer', desc:'Writes code, runs unit tests, creates mock APIs, and reports task completion.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', skills:['write_code','run_unit_tests','create_mock_apis','task_reports'], ceiling:{can_autonomously:['write_code','run_unit_tests','create_mock_apis'],must_escalate:['modify_data_model','change_api_contract','add_dependency'],strictly_forbidden:['cross_module_writes','production_db_access'],risk_sensitivity:'HIGH'}, popularity:98, deployCount:2400 },
+      { templateId:'tpl_tcg', name:'Test Case Generator', icon:'🧪', category:'quality', role:'test_case_generator', desc:'Extracts acceptance criteria and auto-generates positive, negative, and edge-case tests.', model_provider:'openai_gpt', model_variant:'gpt-4o', skills:['extract_acceptance_criteria','generate_positive_tests','generate_negative_tests','generate_edge_tests'], ceiling:{can_autonomously:['create_test_cases','structure_test_data'],must_escalate:['acceptance_criteria_conflicts'],strictly_forbidden:['modify_implementation','change_backlog_priority'],risk_sensitivity:'LOW'}, popularity:90, deployCount:1050 },
+      { templateId:'tpl_qa', name:'QA Agent', icon:'🔍', category:'quality', role:'qa', desc:'Generates test cases, executes tests, reports coverage, and files defects.', model_provider:'openai_gpt', model_variant:'gpt-4o', skills:['test_case_generation','test_execution','coverage_reporting','defect_reporting'], ceiling:{can_autonomously:['generate_tests','execute_tests','report_coverage','file_defects'],must_escalate:['test_environment_changes'],strictly_forbidden:['modify_implementation'],risk_sensitivity:'MEDIUM'}, popularity:93, deployCount:1300 },
+      { templateId:'tpl_sec', name:'Security / DevOps Agent', icon:'🛡️', category:'quality', role:'security_devops', desc:'Performs vulnerability scanning, manages CI/CD pipelines, packages deployments.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', skills:['vulnerability_scanning','cicd_pipeline','deployment_packaging','compliance_checking'], ceiling:{can_autonomously:['scan_vulnerabilities','build_pipeline','package_deployment'],must_escalate:['security_impacting_changes','compliance_failures'],strictly_forbidden:['production_deployment_without_approval','disable_security_controls'],risk_sensitivity:'CRITICAL'}, popularity:95, deployCount:1350 },
+      { templateId:'tpl_doc', name:'Documentation Agent', icon:'📝', category:'development', role:'documentation_specialist', desc:'Auto-generates API docs, README files, architecture diagrams.', model_provider:'openai_gpt', model_variant:'gpt-4o', skills:['api_documentation','readme_generation','architecture_diagrams','knowledge_base'], ceiling:{can_autonomously:['generate_docs','update_readme','create_diagrams'],must_escalate:['architecture_changes'],strictly_forbidden:['code_changes','deployment'],risk_sensitivity:'LOW'}, popularity:82, deployCount:650 }
     ];
+
+    // ─── Skill Library Data (parsed from skills.md) ───
+    const SKILL_LIBRARY = [
+      { name:'analyze_requirements', description:'Parse, classify, and validate project requirements from raw documents, transcripts, and stakeholder inputs.', category:'Requirements & Analysis', inputs:'Raw documents, meeting transcripts, stakeholder notes', outputs:'Structured requirement list, classification tags, confidence scores' },
+      { name:'stakeholder_mapping', description:'Identify and map stakeholders, their interests, influence levels, and communication preferences.', category:'Requirements & Analysis', inputs:'Organization data, project context, communication logs', outputs:'Stakeholder map, influence matrix, RACI chart' },
+      { name:'ambiguity_detection', description:'Detect vague, conflicting, or incomplete requirements and flag them for human review.', category:'Requirements & Analysis', inputs:'Requirement documents, acceptance criteria', outputs:'Ambiguity report, conflict list, clarification requests' },
+      { name:'domain_analysis', description:'Analyze business domain context, terminology, and constraints to ensure alignment.', category:'Requirements & Analysis', inputs:'Domain documents, glossary, business rules', outputs:'Domain model, terminology map, constraint list' },
+      { name:'backlog_management', description:'Create, prioritize, and maintain product backlog items including epics, features, and user stories.', category:'Project Management', inputs:'Requirements, stakeholder priorities, team capacity', outputs:'Prioritized backlog, sprint candidates, dependency map' },
+      { name:'sprint_planning', description:'Plan sprint scope, assign story points, balance workload, and set sprint goals.', category:'Project Management', inputs:'Backlog items, team velocity, capacity data', outputs:'Sprint plan, task assignments, velocity forecast' },
+      { name:'priority_assignment', description:'Apply MoSCoW, WSJF, or custom prioritization frameworks to backlog items.', category:'Project Management', inputs:'Backlog items, business value data, risk assessments', outputs:'Prioritized list, priority rationale, impact analysis' },
+      { name:'stakeholder_communication', description:'Generate status reports, meeting summaries, and stakeholder updates automatically.', category:'Project Management', inputs:'Project metrics, sprint data, decision logs', outputs:'Status reports, executive summaries, stakeholder emails' },
+      { name:'story_acceptance', description:'Review completed user stories against acceptance criteria and approve or request changes.', category:'Project Management', inputs:'Completed stories, acceptance criteria, test results', outputs:'Acceptance decisions, feedback notes, quality scores' },
+      { name:'story_rejection', description:'Formally reject user stories that don\'t meet acceptance criteria with detailed feedback.', category:'Project Management', inputs:'Story deliverables, acceptance criteria, test results', outputs:'Rejection report, required changes list, remediation steps' },
+      { name:'priority_decisions', description:'Make real-time priority decisions based on changing business context and dependencies.', category:'Project Management', inputs:'Current priorities, new information, dependency changes', outputs:'Updated priority list, decision rationale, impact assessment' },
+      { name:'sprint_health_monitoring', description:'Track sprint progress, burndown, and health metrics in real-time.', category:'Project Management', inputs:'Task statuses, time tracking, blocker reports', outputs:'Health dashboard, burndown chart, risk indicators' },
+      { name:'velocity_tracking', description:'Calculate and forecast team velocity across sprints for capacity planning.', category:'Project Management', inputs:'Sprint history, completed story points, team changes', outputs:'Velocity trends, capacity forecast, reliability index' },
+      { name:'impediment_escalation', description:'Detect, classify, and escalate blockers that impede team progress.', category:'Project Management', inputs:'Task statuses, blocker reports, dependency data', outputs:'Escalation tickets, blocker analysis, resolution suggestions' },
+      { name:'system_architecture', description:'Design high-level system architecture including components, services, and infrastructure.', category:'Architecture & Design', inputs:'Requirements, tech constraints, scalability needs', outputs:'Architecture diagrams, component specs, infrastructure plan' },
+      { name:'module_design', description:'Design individual module boundaries, interfaces, and internal structure.', category:'Architecture & Design', inputs:'System architecture, module requirements, API contracts', outputs:'Module specs, interface definitions, data models' },
+      { name:'tech_stack_decisions', description:'Evaluate and recommend technology choices based on project requirements and constraints.', category:'Architecture & Design', inputs:'Requirements, team skills, performance needs, budget', outputs:'Tech stack recommendation, comparison matrix, migration plan' },
+      { name:'api_contract_design', description:'Design RESTful or GraphQL API contracts with schemas, endpoints, and versioning.', category:'Architecture & Design', inputs:'Module interfaces, data models, consumer requirements', outputs:'API specs (OpenAPI), schema definitions, versioning strategy' },
+      { name:'release_decisions', description:'Plan release scope, timing, and rollout strategy based on readiness and risk.', category:'Architecture & Design', inputs:'Feature readiness, test results, risk assessments', outputs:'Release plan, rollout strategy, rollback procedures' },
+      { name:'design_module_architecture', description:'Create detailed module-level architecture with patterns, layers, and dependencies.', category:'Architecture & Design', inputs:'System architecture, module scope, tech stack', outputs:'Module architecture doc, layer diagram, dependency graph' },
+      { name:'create_task_breakdown', description:'Break down features and stories into implementable developer tasks with estimates.', category:'Architecture & Design', inputs:'User stories, module architecture, acceptance criteria', outputs:'Task list, effort estimates, dependency order' },
+      { name:'review_dev_output', description:'Review code submissions, architecture compliance, and quality standards adherence.', category:'Architecture & Design', inputs:'Code submissions, architecture specs, quality standards', outputs:'Review comments, approval/rejection, improvement suggestions' },
+      { name:'mock_api_specs', description:'Generate mock API specifications and sample data for parallel development.', category:'Architecture & Design', inputs:'API contracts, data models, use cases', outputs:'Mock server config, sample responses, test fixtures' },
+      { name:'write_code', description:'Generate production-quality code following architecture specs and coding standards.', category:'Development', inputs:'Task specs, module architecture, coding standards', outputs:'Source code, unit tests, code documentation' },
+      { name:'run_unit_tests', description:'Execute unit test suites, analyze results, and report coverage metrics.', category:'Development', inputs:'Test suites, source code, coverage thresholds', outputs:'Test results, coverage report, failure analysis' },
+      { name:'create_mock_apis', description:'Build mock API endpoints for development and testing isolation.', category:'Development', inputs:'API contracts, mock data requirements', outputs:'Mock server, endpoint stubs, sample data' },
+      { name:'task_reports', description:'Generate detailed task completion reports with metrics and deliverables summary.', category:'Development', inputs:'Completed tasks, code metrics, test results', outputs:'Task report, metrics summary, deliverable inventory' },
+      { name:'api_documentation', description:'Auto-generate comprehensive API documentation from code and specifications.', category:'Development', inputs:'Source code, API specs, usage examples', outputs:'API docs, endpoint reference, code samples' },
+      { name:'readme_generation', description:'Generate and maintain README files with setup, usage, and contribution guides.', category:'Development', inputs:'Project structure, dependencies, configuration', outputs:'README.md, setup guide, contribution guide' },
+      { name:'architecture_diagrams', description:'Generate visual architecture and sequence diagrams from code and specs.', category:'Development', inputs:'Architecture specs, code structure, API flows', outputs:'System diagrams, sequence diagrams, component maps' },
+      { name:'knowledge_base', description:'Build and maintain searchable knowledge base from project artifacts and decisions.', category:'Development', inputs:'Decision logs, architecture docs, meeting notes', outputs:'Knowledge articles, search index, FAQ documents' },
+      { name:'extract_acceptance_criteria', description:'Extract and structure acceptance criteria from user stories and requirements.', category:'Quality Assurance', inputs:'User stories, requirement documents', outputs:'Structured acceptance criteria, test scenarios, edge cases' },
+      { name:'generate_positive_tests', description:'Generate test cases that verify expected happy-path behavior.', category:'Quality Assurance', inputs:'Acceptance criteria, API specs, data models', outputs:'Positive test cases, test data, expected results' },
+      { name:'generate_negative_tests', description:'Generate test cases for error handling, invalid inputs, and boundary conditions.', category:'Quality Assurance', inputs:'Acceptance criteria, validation rules, error specs', outputs:'Negative test cases, error scenarios, boundary tests' },
+      { name:'generate_edge_tests', description:'Generate test cases for edge cases, race conditions, and unusual scenarios.', category:'Quality Assurance', inputs:'System constraints, concurrency specs, data limits', outputs:'Edge case tests, stress scenarios, concurrency tests' },
+      { name:'test_case_generation', description:'Comprehensive test case generation combining positive, negative, and edge cases.', category:'Quality Assurance', inputs:'Requirements, acceptance criteria, system constraints', outputs:'Complete test suite, test matrix, coverage map' },
+      { name:'test_execution', description:'Execute test suites across environments and collect detailed results.', category:'Quality Assurance', inputs:'Test suites, test environment, test data', outputs:'Execution results, pass/fail report, performance data' },
+      { name:'coverage_reporting', description:'Analyze and report code coverage metrics with gap identification.', category:'Quality Assurance', inputs:'Test results, source code, coverage thresholds', outputs:'Coverage report, uncovered areas, improvement recommendations' },
+      { name:'defect_reporting', description:'Classify, document, and report software defects with reproduction steps.', category:'Quality Assurance', inputs:'Test failures, error logs, system behavior', outputs:'Defect tickets, severity classification, reproduction steps' },
+      { name:'vulnerability_scanning', description:'Scan code and dependencies for known vulnerabilities and security issues.', category:'Security & DevOps', inputs:'Source code, dependency manifest, security policies', outputs:'Vulnerability report, severity ratings, remediation advice' },
+      { name:'cicd_pipeline', description:'Configure and manage CI/CD pipelines for automated build, test, and deployment.', category:'Security & DevOps', inputs:'Project config, build specs, deployment targets', outputs:'Pipeline config, build scripts, deployment manifests' },
+      { name:'deployment_packaging', description:'Package applications for deployment with proper configuration and versioning.', category:'Security & DevOps', inputs:'Build artifacts, environment configs, version info', outputs:'Deployment package, release notes, rollback script' },
+      { name:'compliance_checking', description:'Verify code and processes against regulatory and organizational compliance standards.', category:'Security & DevOps', inputs:'Compliance rules, audit requirements, code artifacts', outputs:'Compliance report, violation list, remediation plan' },
+      { name:'performance_profiling', description:'Profile application performance, identify bottlenecks, and suggest optimizations.', category:'Security & DevOps', inputs:'Application runtime, load test data, performance baselines', outputs:'Performance report, bottleneck analysis, optimization recommendations' },
+      { name:'cross_module_integration', description:'Coordinate and implement integration between independent modules and services.', category:'Integration', inputs:'Module interfaces, API contracts, data flows', outputs:'Integration code, adapter layers, data transformers' },
+      { name:'dependency_resolution', description:'Analyze and resolve dependency conflicts between modules and packages.', category:'Integration', inputs:'Dependency trees, version constraints, compatibility data', outputs:'Resolved dependency graph, version recommendations, conflict report' },
+      { name:'integration_testing', description:'Design and execute tests that verify cross-module integration behavior.', category:'Integration', inputs:'Integration specs, API contracts, test scenarios', outputs:'Integration test suite, results report, compatibility matrix' },
+      { name:'contract_validation', description:'Validate that module implementations comply with agreed API contracts.', category:'Integration', inputs:'API contracts, implementation code, test results', outputs:'Validation report, contract violations, compliance score' }
+    ];
+
+    // Recommended skills by agent role
+    const ROLE_SKILL_RECOMMENDATIONS = {
+      'business_analyst': ['analyze_requirements','stakeholder_mapping','ambiguity_detection','domain_analysis'],
+      'product_manager': ['backlog_management','sprint_planning','priority_assignment','stakeholder_communication'],
+      'developer': ['write_code','run_unit_tests','create_mock_apis','task_reports'],
+      'module_architect': ['design_module_architecture','create_task_breakdown','review_dev_output','mock_api_specs'],
+      'chief_architect': ['system_architecture','module_design','tech_stack_decisions','api_contract_design'],
+      'qa': ['test_case_generation','test_execution','coverage_reporting','defect_reporting'],
+      'security_devops': ['vulnerability_scanning','cicd_pipeline','deployment_packaging','compliance_checking'],
+      'documentation_specialist': ['api_documentation','readme_generation','architecture_diagrams','knowledge_base']
+    };
+
+    // ─── Skills Management ───
+    function getSelectedSkills() { return NexusStore.getBuilderSkills(); }
+
+    function addSkillToBuilder(skillName, type) {
+      const libSkill = SKILL_LIBRARY.find(s => s.name === skillName);
+      const skill = {
+        name: skillName,
+        type: type || (libSkill ? 'predefined' : 'custom'),
+        description: libSkill ? libSkill.description : 'Custom skill'
+      };
+      NexusStore.addBuilderSkill(skill);
+      renderSelectedSkills();
+      updateSkillLibraryCount();
+    }
+
+    function removeSkillFromBuilder(skillName) {
+      NexusStore.removeBuilderSkill(skillName);
+      renderSelectedSkills();
+      updateSkillLibraryCount();
+    }
+
+    function renderSelectedSkills() {
+      const container = document.getElementById('selectedSkillsContainer');
+      if (!container) return;
+      const skills = getSelectedSkills();
+      container.innerHTML = skills.map(s => {
+        const desc = s.description || '';
+        return `<div class="skill-chip ${s.type}" data-tooltip="${escapeHtml(desc)}">
+          <span class="chip-badge">${s.type === 'predefined' ? 'LIB' : 'USR'}</span>
+          ${escapeHtml(s.name.replace(/_/g, ' '))}
+          <button class="chip-remove" onclick="removeSkillFromBuilder('${s.name}')" title="Remove skill">✖</button>
+        </div>`;
+      }).join('');
+    }
+
+    function openAddSkillModal() {
+      document.getElementById('addSkillInline').style.display = 'block';
+      document.getElementById('customSkillInput').focus();
+    }
+
+    function closeAddSkillModal() {
+      document.getElementById('addSkillInline').style.display = 'none';
+      document.getElementById('customSkillInput').value = '';
+    }
+
+    function addCustomSkillFromInput() {
+      const input = document.getElementById('customSkillInput');
+      const val = input.value.trim();
+      if (!val) return;
+      const skills = val.split(',').map(s => s.trim().replace(/\s+/g, '_').toLowerCase()).filter(Boolean);
+      skills.forEach(s => addSkillToBuilder(s, SKILL_LIBRARY.find(l => l.name === s) ? 'predefined' : 'custom'));
+      input.value = '';
+      closeAddSkillModal();
+      showToast(`${skills.length} skill(s) added`, 'success');
+    }
+
+    // ─── Skill Library (Explore) ───
+    function openSkillLibrary() {
+      document.getElementById('skillLibraryOverlay').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      populateCategoryFilter();
+      filterSkillLibrary();
+    }
+
+    function closeSkillLibrary() {
+      document.getElementById('skillLibraryOverlay').style.display = 'none';
+      document.body.style.overflow = '';
+      renderSelectedSkills();
+      switchToTab('tab-custom-section');
+    }
+
+    function populateCategoryFilter() {
+      const cats = [...new Set(SKILL_LIBRARY.map(s => s.category))];
+      const sel = document.getElementById('skillCategoryFilter');
+      sel.innerHTML = '<option value="all">🏷 All Categories</option>' +
+        cats.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function updateSkillLibraryCount() {
+      const el = document.getElementById('skillLibrarySelectedCount');
+      if (el) el.textContent = `${getSelectedSkills().length} skills selected`;
+    }
+
+    function filterSkillLibrary() {
+      const search = (document.getElementById('skillLibrarySearch')?.value || '').toLowerCase();
+      const category = document.getElementById('skillCategoryFilter')?.value || 'all';
+      const favOnly = document.getElementById('skillFavFilter')?.checked || false;
+      const favs = NexusStore.getFavoriteSkills();
+      const selectedNames = getSelectedSkills().map(s => s.name);
+      const currentRole = (document.getElementById('customAgentRole')?.value || '').trim();
+      const recommended = ROLE_SKILL_RECOMMENDATIONS[currentRole] || [];
+
+      let filtered = SKILL_LIBRARY.filter(s => {
+        if (category !== 'all' && s.category !== category) return false;
+        if (search && !(s.name + ' ' + s.description).toLowerCase().includes(search)) return false;
+        if (favOnly && !favs.includes(s.name)) return false;
+        return true;
+      });
+
+      const catIcons = {
+        'Requirements & Analysis': '📋',
+        'Project Management': '📊',
+        'Architecture & Design': '🏛️',
+        'Development': '💻',
+        'Quality Assurance': '🧪',
+        'Security & DevOps': '🛡️',
+        'Integration': '🔗'
+      };
+
+      document.getElementById('skillLibraryCount').textContent =
+        `Showing ${filtered.length} of ${SKILL_LIBRARY.length} skills`;
+      updateSkillLibraryCount();
+
+      document.getElementById('skillLibraryGrid').innerHTML = filtered.map(s => {
+        const isAdded = selectedNames.includes(s.name);
+        const isFav = favs.includes(s.name);
+        const isRecommended = recommended.includes(s.name);
+        const icon = catIcons[s.category] || '🧠';
+        return `
+          <div class="skill-card ${isAdded ? 'already-added' : ''}">
+            ${isRecommended ? '<div class="skill-recommended">📌 Recommended</div>' : ''}
+            <div class="sc-name"><span class="sc-icon">${icon}</span> ${s.name.replace(/_/g, ' ')}</div>
+            <div class="sc-category">${s.category}</div>
+            <div class="sc-desc">${escapeHtml(s.description)}</div>
+            <div class="sc-io">
+              <div class="sc-io-block">
+                <div class="sc-io-label">📥 Inputs</div>
+                <div class="sc-io-val">${escapeHtml(s.inputs)}</div>
+              </div>
+              <div class="sc-io-block">
+                <div class="sc-io-label">📤 Outputs</div>
+                <div class="sc-io-val">${escapeHtml(s.outputs)}</div>
+              </div>
+            </div>
+            <div class="sc-actions">
+              <button class="sc-fav-btn ${isFav ? 'active' : ''}" onclick="toggleSkillFavorite('${s.name}', this)" title="Toggle favorite">${isFav ? '⭐' : '☆'}</button>
+              ${isAdded
+                ? `<button class="btn btn-outline btn-sm" onclick="removeSkillFromLibrary('${s.name}')">✕ Remove</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="addSkillFromLibrary('${s.name}')">➕ Add to Agent</button>`}
+            </div>
+          </div>`;
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3 class="empty-state-title">No skills match your search</h3></div>';
+    }
+
+    function addSkillFromLibrary(skillName) {
+      addSkillToBuilder(skillName, 'predefined');
+      filterSkillLibrary();
+      showToast(`"${skillName.replace(/_/g, ' ')}" added to agent`, 'success');
+    }
+
+    function removeSkillFromLibrary(skillName) {
+      removeSkillFromBuilder(skillName);
+      filterSkillLibrary();
+      showToast(`"${skillName.replace(/_/g, ' ')}" removed`, 'info');
+    }
+
+    function toggleSkillFavorite(skillName, btn) {
+      NexusStore.toggleFavoriteSkill(skillName);
+      filterSkillLibrary();
+    }
 
     // ─── Project Selector ───
     function initProjectSelector() {
@@ -486,7 +892,7 @@
       let filtered = PREDEFINED_AGENTS.filter(t => {
         if (currentMarketFilter !== 'all' && t.category !== currentMarketFilter) return false;
         if (search) {
-          const haystack = (t.name + ' ' + t.role + ' ' + t.desc + ' ' + t.capabilities.join(' ')).toLowerCase();
+          const haystack = (t.name + ' ' + t.role + ' ' + t.desc + ' ' + t.skills.join(' ')).toLowerCase();
           if (!haystack.includes(search)) return false;
         }
         return true;
@@ -503,7 +909,7 @@
             <div class="mc-title">${t.name}</div>
             <div class="mc-role">${t.role.replace(/_/g, ' ')}</div>
             <div class="mc-desc">${t.desc}</div>
-            <div class="mc-caps">${t.capabilities.slice(0,4).map(c=>`<span class="cap-tag">${c.replace(/_/g,' ')}</span>`).join('')}${t.capabilities.length>4?`<span class="cap-tag">+${t.capabilities.length-4}</span>`:''}</div>
+            <div class="mc-caps">${t.skills.slice(0,4).map(c=>`<span class="cap-tag">${c.replace(/_/g,' ')}</span>`).join('')}${t.skills.length>4?`<span class="cap-tag">+${t.skills.length-4}</span>`:''}</div>
             <div class="mc-meta">
               <span>⭐ ${t.popularity}%</span>
               <span>🚀 ${t.deployCount.toLocaleString()}</span>
@@ -554,7 +960,7 @@
         </div>
         <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:12px">
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">Deploying to: <strong style="color:var(--accent)">${proj?.name || 'Project'}</strong></div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">${t.capabilities.map(c=>`<span class="tag">${c.replace(/_/g,' ')}</span>`).join('')}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${t.skills.map(c=>`<span class="tag">${c.replace(/_/g,' ')}</span>`).join('')}</div>
         </div>`;
       document.getElementById('deployAgentModal').classList.add('show');
     }
@@ -574,7 +980,7 @@
         model_provider: modelOverride ? (modelOverride.includes('claude')?'anthropic_claude':modelOverride.includes('gpt')?'openai_gpt':'google_gemini') : t.model_provider,
         model_variant: modelOverride || t.model_variant,
         status: 'ACTIVE', lifecycle: 'ACTIVE',
-        capabilities: [...t.capabilities],
+        skills: [...t.skills],
         ceiling_profile: JSON.parse(JSON.stringify(t.ceiling)),
         metrics: { tasks_completed:0, escalations_raised:0, gate_pass_rate:100 },
         createdAt: new Date().toISOString(),
@@ -600,7 +1006,7 @@
             <p style="color:var(--accent);font-size:12px;text-transform:uppercase">${t.role.replace(/_/g,' ')}</p>
             <p style="color:var(--text-secondary);font-size:13px;margin-top:4px">${t.desc}</p></div></div>
         <div class="grid grid-2" style="gap:16px">
-          <div class="config-section"><h4>Capabilities</h4><div style="display:flex;flex-wrap:wrap;gap:6px">${t.capabilities.map(c=>`<span class="tag">${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
+          <div class="config-section"><h4>Skills</h4><div style="display:flex;flex-wrap:wrap;gap:6px">${t.skills.map(c=>`<span class="tag">${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
           <div class="config-section"><h4>Model</h4><p style="font-size:13px;color:var(--text-secondary)">${t.model_provider.replace(/_/g,' ')} — <strong>${t.model_variant}</strong></p></div>
           <div class="config-section"><h4>Can Autonomously</h4><div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.can_autonomously.map(c=>`<span class="tag" style="background:var(--success)15;color:var(--success)">✓ ${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
           <div class="config-section"><h4>Must Escalate</h4><div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.must_escalate.map(c=>`<span class="tag" style="background:var(--warning)15;color:var(--warning)">⚠ ${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
@@ -684,8 +1090,9 @@
     }
 
     function resetCustomBuilder() {
-      ['customAgentName','customAgentRole','customAgentDesc','customExtraCaps','customEscalate','customForbidden'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-      document.querySelectorAll('#customCapsGroup input').forEach(c=>c.checked=false);
+      ['customAgentName','customAgentRole','customAgentDesc','customEscalate','customForbidden'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      NexusStore.clearBuilderSkills();
+      renderSelectedSkills();
       showToast('Builder reset', 'info');
     }
 
@@ -693,9 +1100,8 @@
       const name = document.getElementById('customAgentName').value.trim();
       const role = document.getElementById('customAgentRole').value.trim();
       if (!name||!role) { showToast('Agent name and role required','error'); return; }
-      const caps = Array.from(document.querySelectorAll('#customCapsGroup input:checked')).map(c=>c.value);
-      const extra = document.getElementById('customExtraCaps').value.split(',').map(s=>s.trim()).filter(Boolean);
-      const allCaps = [...caps,...extra];
+      const allSkills = getSelectedSkills().map(s => s.name);
+      if (!allSkills.length) { showToast('Please add at least one skill','error'); return; }
       showLoading('Creating custom agent...');
       const agentId = 'agent_custom_' + Date.now();
       const newAgent = {
@@ -703,9 +1109,9 @@
         role, module_scope: document.getElementById('customScope').value,
         model_provider: document.getElementById('customProvider').value,
         model_variant: document.getElementById('customVariant').value,
-        status: 'ACTIVE', lifecycle: 'ACTIVE', capabilities: allCaps,
+        status: 'ACTIVE', lifecycle: 'ACTIVE', skills: allSkills,
         ceiling_profile: {
-          can_autonomously: allCaps,
+          can_autonomously: allSkills,
           must_escalate: document.getElementById('customEscalate').value.split(',').map(s=>s.trim()).filter(Boolean),
           strictly_forbidden: document.getElementById('customForbidden').value.split(',').map(s=>s.trim()).filter(Boolean),
           risk_sensitivity: document.getElementById('customRisk').value
@@ -970,6 +1376,7 @@
 
     // ─── Init ───
     initProjectSelector();
+    renderSelectedSkills();
     if (selectedProjectId) render();
   </script>
 </body>

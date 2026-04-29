@@ -113,105 +113,105 @@ function seedNexusData() {
     {
       agent_id: 'agent_ba_001', agent_name: 'Business Analyst', created_by: 'human_orchestrator', role: 'business_analyst', module_scope: 'global',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['analyze_requirements', 'stakeholder_mapping', 'ambiguity_detection', 'domain_analysis'],
+      skills: ['analyze_requirements', 'stakeholder_mapping', 'ambiguity_detection', 'domain_analysis'],
       ceiling_profile: { can_autonomously: ['analyze_requirements', 'flag_ambiguities', 'create_requirement_docs'], must_escalate: ['scope_changes', 'conflicting_requirements'], strictly_forbidden: ['modify_backlog', 'assign_tasks'], risk_sensitivity: 'MEDIUM' },
       metrics: { tasks_completed: 24, escalations_raised: 5, gate_pass_rate: 94 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_pm_001', agent_name: 'Product Manager', created_by: 'human_orchestrator', role: 'product_manager', module_scope: 'global',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['backlog_management', 'sprint_planning', 'priority_assignment', 'stakeholder_communication'],
+      skills: ['backlog_management', 'sprint_planning', 'priority_assignment', 'stakeholder_communication'],
       ceiling_profile: { can_autonomously: ['prioritize_stories', 'plan_sprints', 'update_backlog'], must_escalate: ['scope_changes', 'resource_reallocation'], strictly_forbidden: ['architecture_decisions', 'code_changes'], risk_sensitivity: 'MEDIUM' },
       metrics: { tasks_completed: 31, escalations_raised: 3, gate_pass_rate: 97 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_po_001', agent_name: 'Product Owner', created_by: 'human_orchestrator', role: 'product_owner', module_scope: 'global',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['story_acceptance', 'story_rejection', 'priority_decisions'],
+      skills: ['story_acceptance', 'story_rejection', 'priority_decisions'],
       ceiling_profile: { can_autonomously: ['accept_stories', 'reject_stories', 'reprioritize'], must_escalate: ['epic_cancellation', 'major_scope_change'], strictly_forbidden: ['code_changes', 'architecture_decisions'], risk_sensitivity: 'LOW' },
       metrics: { tasks_completed: 18, escalations_raised: 2, gate_pass_rate: 100 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_tcg_001', agent_name: 'Test Case Generator Agent', created_by: 'human_orchestrator', role: 'test_case_generator', module_scope: 'global',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['extract_acceptance_criteria', 'generate_positive_tests', 'generate_negative_tests', 'generate_edge_tests'],
+      skills: ['extract_acceptance_criteria', 'generate_positive_tests', 'generate_negative_tests', 'generate_edge_tests'],
       ceiling_profile: { can_autonomously: ['create_test_cases', 'structure_test_data', 'update_test_case_status'], must_escalate: ['acceptance_criteria_conflicts'], strictly_forbidden: ['modify_implementation', 'change_backlog_priority'], risk_sensitivity: 'LOW' },
       metrics: { tasks_completed: 14, escalations_raised: 1, gate_pass_rate: 100 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_sm_001', agent_name: 'Scrum Master', created_by: 'human_orchestrator', role: 'scrum_master', module_scope: 'global',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['sprint_health_monitoring', 'velocity_tracking', 'impediment_escalation'],
+      skills: ['sprint_health_monitoring', 'velocity_tracking', 'impediment_escalation'],
       ceiling_profile: { can_autonomously: ['track_velocity', 'report_health', 'flag_blockers'], must_escalate: ['sprint_cancellation', 'team_changes'], strictly_forbidden: ['code_changes', 'backlog_changes'], risk_sensitivity: 'LOW' },
       metrics: { tasks_completed: 15, escalations_raised: 4, gate_pass_rate: 100 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_chief_arch_001', agent_name: 'Chief / Solution Architect', created_by: 'human_orchestrator', role: 'chief_architect', module_scope: 'global',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['system_architecture', 'module_design', 'tech_stack_decisions', 'api_contract_design', 'release_decisions'],
+      skills: ['system_architecture', 'module_design', 'tech_stack_decisions', 'api_contract_design', 'release_decisions'],
       ceiling_profile: { can_autonomously: ['design_architecture', 'define_modules', 'select_tech_stack', 'define_api_contracts'], must_escalate: ['infrastructure_changes', 'security_architecture', 'budget_impacting_decisions'], strictly_forbidden: ['production_deployment', 'data_deletion'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 12, escalations_raised: 2, gate_pass_rate: 92 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_mod_arch_auth', agent_name: 'Module Architect - Auth', created_by: 'human_orchestrator', role: 'module_architect', module_scope: 'auth',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'EXECUTING',
-      capabilities: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output', 'mock_api_specs'],
+      skills: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output', 'mock_api_specs'],
       ceiling_profile: { can_autonomously: ['design_module', 'break_down_tasks', 'review_code', 'create_mocks'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access', 'security_config_changes'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 8, escalations_raised: 3, gate_pass_rate: 91 }, createdAt: '2024-01-10T10:00:00Z'
     },
     {
       agent_id: 'agent_mod_arch_payments', agent_name: 'Module Architect - Payments', created_by: 'human_orchestrator', role: 'module_architect', module_scope: 'payments',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output'],
+      skills: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output'],
       ceiling_profile: { can_autonomously: ['design_module', 'break_down_tasks', 'review_code'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 4, escalations_raised: 1, gate_pass_rate: 100 }, createdAt: '2024-01-10T10:00:00Z'
     },
     {
       agent_id: 'agent_mod_arch_orders', agent_name: 'Module Architect - Orders', created_by: 'human_orchestrator', role: 'module_architect', module_scope: 'orders',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output'],
+      skills: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output'],
       ceiling_profile: { can_autonomously: ['design_module', 'break_down_tasks', 'review_code'], must_escalate: ['modify_data_model', 'change_api_contract'], strictly_forbidden: ['cross_module_writes', 'production_db_access'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 3, escalations_raised: 0, gate_pass_rate: 100 }, createdAt: '2024-01-10T10:00:00Z'
     },
     {
       agent_id: 'agent_dev_auth_01', agent_name: 'Developer Agent - Auth 01', created_by: 'agent_mod_arch_auth', role: 'developer', module_scope: 'auth',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'EXECUTING',
-      capabilities: ['write_code', 'run_unit_tests', 'create_mock_apis', 'task_reports'],
+      skills: ['write_code', 'run_unit_tests', 'create_mock_apis', 'task_reports'],
       ceiling_profile: { can_autonomously: ['write_code', 'run_unit_tests', 'create_mock_apis'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access', 'security_config_changes'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 6, escalations_raised: 2, gate_pass_rate: 88 }, createdAt: '2024-01-11T09:00:00Z'
     },
     {
       agent_id: 'agent_dev_auth_02', agent_name: 'Developer Agent - Auth 02', created_by: 'agent_mod_arch_auth', role: 'developer', module_scope: 'auth',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'EXECUTING',
-      capabilities: ['write_code', 'run_unit_tests', 'create_mock_apis'],
+      skills: ['write_code', 'run_unit_tests', 'create_mock_apis'],
       ceiling_profile: { can_autonomously: ['write_code', 'run_unit_tests', 'create_mock_apis'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access', 'security_config_changes'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 5, escalations_raised: 1, gate_pass_rate: 90 }, createdAt: '2024-01-11T09:00:00Z'
     },
     {
       agent_id: 'agent_dev_auth_03', agent_name: 'Developer Agent - Auth 03', created_by: 'agent_mod_arch_auth', role: 'developer', module_scope: 'auth',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'BLOCKED', lifecycle: 'EXECUTING',
-      capabilities: ['write_code', 'run_unit_tests', 'create_mock_apis'],
+      skills: ['write_code', 'run_unit_tests', 'create_mock_apis'],
       ceiling_profile: { can_autonomously: ['write_code', 'run_unit_tests', 'create_mock_apis'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access', 'security_config_changes'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 4, escalations_raised: 3, gate_pass_rate: 85 }, createdAt: '2024-01-11T09:00:00Z'
     },
     {
       agent_id: 'agent_int_arch_001', agent_name: 'Integration Architect', created_by: 'human_orchestrator', role: 'integration_architect', module_scope: 'global',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['cross_module_integration', 'dependency_resolution', 'integration_testing', 'contract_validation'],
+      skills: ['cross_module_integration', 'dependency_resolution', 'integration_testing', 'contract_validation'],
       ceiling_profile: { can_autonomously: ['integrate_modules', 'resolve_dependencies', 'run_integration_tests'], must_escalate: ['contract_violations', 'incompatible_changes'], strictly_forbidden: ['production_deployment', 'security_config_changes'], risk_sensitivity: 'HIGH' },
       metrics: { tasks_completed: 7, escalations_raised: 2, gate_pass_rate: 95 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_qa_001', agent_name: 'QA Agent', created_by: 'human_orchestrator', role: 'qa', module_scope: 'global',
       model_provider: 'openai_gpt', model_variant: 'gpt-4o', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['test_case_generation', 'test_execution', 'coverage_reporting', 'defect_reporting'],
+      skills: ['test_case_generation', 'test_execution', 'coverage_reporting', 'defect_reporting'],
       ceiling_profile: { can_autonomously: ['generate_tests', 'execute_tests', 'report_coverage', 'file_defects'], must_escalate: ['test_environment_changes', 'acceptance_criteria_disputes'], strictly_forbidden: ['modify_implementation', 'access_code_artifacts'], risk_sensitivity: 'MEDIUM' },
       metrics: { tasks_completed: 20, escalations_raised: 1, gate_pass_rate: 98 }, createdAt: '2024-01-09T08:00:00Z'
     },
     {
       agent_id: 'agent_secdevops_001', agent_name: 'Security / DevOps Agent', created_by: 'human_orchestrator', role: 'security_devops', module_scope: 'global',
       model_provider: 'anthropic_claude', model_variant: 'claude-3-opus', status: 'ACTIVE', lifecycle: 'ACTIVE',
-      capabilities: ['vulnerability_scanning', 'cicd_pipeline', 'deployment_packaging', 'compliance_checking'],
+      skills: ['vulnerability_scanning', 'cicd_pipeline', 'deployment_packaging', 'compliance_checking'],
       ceiling_profile: { can_autonomously: ['scan_vulnerabilities', 'build_pipeline', 'package_deployment'], must_escalate: ['security_impacting_changes', 'infrastructure_violations', 'compliance_failures'], strictly_forbidden: ['production_deployment_without_approval', 'disable_security_controls'], risk_sensitivity: 'CRITICAL' },
       metrics: { tasks_completed: 9, escalations_raised: 4, gate_pass_rate: 100 }, createdAt: '2024-01-09T08:00:00Z'
     }
