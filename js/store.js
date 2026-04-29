@@ -209,5 +209,44 @@ const NexusStore = {
   // Settings & Configuration
   getSettings() { return this.get('workspace_settings') || null; },
   setSettings(s) { this.set('workspace_settings', s); },
-  clearSettings() { this.remove('workspace_settings'); }
+  clearSettings() { this.remove('workspace_settings'); },
+
+  // ─── Project-Scoped Agents ───
+  getProjectAgents(projectId) { return this.get('project_agents_' + projectId) || []; },
+  setProjectAgents(projectId, agents) { this.set('project_agents_' + projectId, agents); },
+  getProjectAgent(projectId, agentId) { return this.getProjectAgents(projectId).find(a => a.agent_id === agentId); },
+  saveProjectAgent(projectId, agent) {
+    const agents = this.getProjectAgents(projectId);
+    const idx = agents.findIndex(a => a.agent_id === agent.agent_id);
+    if (idx >= 0) agents[idx] = agent;
+    else agents.push(agent);
+    this.setProjectAgents(projectId, agents);
+  },
+  removeProjectAgent(projectId, agentId) {
+    const agents = this.getProjectAgents(projectId).filter(a => a.agent_id !== agentId);
+    this.setProjectAgents(projectId, agents);
+  },
+
+  // ─── Project-Scoped Org Structure ───
+  getProjectOrgStructure(projectId) { return this.get('project_org_' + projectId) || null; },
+  setProjectOrgStructure(projectId, org) { this.set('project_org_' + projectId, org); },
+
+  // ─── Project-Scoped Workflows ───
+  getProjectWorkflows(projectId) { return this.get('project_workflows_' + projectId) || []; },
+  setProjectWorkflows(projectId, wfs) { this.set('project_workflows_' + projectId, wfs); },
+  saveProjectWorkflow(projectId, wf) {
+    const wfs = this.getProjectWorkflows(projectId);
+    const idx = wfs.findIndex(w => w.id === wf.id);
+    if (idx >= 0) wfs[idx] = wf;
+    else wfs.push(wf);
+    this.setProjectWorkflows(projectId, wfs);
+  },
+  removeProjectWorkflow(projectId, wfId) {
+    const wfs = this.getProjectWorkflows(projectId).filter(w => w.id !== wfId);
+    this.setProjectWorkflows(projectId, wfs);
+  },
+
+  // ─── Active Project Selection ───
+  getActiveProject() { return this.get('active_project_id') || null; },
+  setActiveProject(projectId) { this.set('active_project_id', projectId); }
 };

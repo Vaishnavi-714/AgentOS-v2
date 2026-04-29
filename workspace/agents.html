@@ -6,218 +6,127 @@
   <title>NEXUS — Agent Management</title>
   <link rel="stylesheet" href="../css/common.css">
   <style>
+    /* Project Selector Bar */
+    .project-selector-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; margin-bottom: 20px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .project-selector-bar label {
+      font-size: 13px; font-weight: 600; color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .project-selector-bar select { flex: 1; max-width: 400px; }
+    .project-selector-bar .project-meta {
+      font-size: 12px; color: var(--text-muted); margin-left: auto;
+      display: flex; gap: 12px;
+    }
+    .project-selector-bar .project-meta span { display: flex; align-items: center; gap: 4px; }
+    .no-project-state { text-align: center; padding: 60px 24px; color: var(--text-muted); }
+    .no-project-state .nps-icon { font-size: 56px; margin-bottom: 16px; }
+    .no-project-state h3 { color: var(--text-primary); margin-bottom: 8px; }
+
     /* Marketplace Cards */
     .marketplace-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--bg-card);
-      padding: 20px;
-      transition: all 0.25s ease;
-      position: relative;
-      overflow: hidden;
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      background: var(--bg-card); padding: 20px;
+      transition: all 0.25s ease; position: relative; overflow: hidden;
     }
     .marketplace-card:hover {
       border-color: var(--accent)60;
-      box-shadow: 0 4px 24px var(--accent)15;
-      transform: translateY(-2px);
+      box-shadow: 0 4px 24px var(--accent)15; transform: translateY(-2px);
     }
     .marketplace-card .mc-icon {
-      width: 48px; height: 48px;
-      border-radius: 12px;
+      width: 48px; height: 48px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 24px;
-      margin-bottom: 12px;
+      font-size: 24px; margin-bottom: 12px;
     }
-    .marketplace-card .mc-title {
-      font-size: 15px; font-weight: 700; color: var(--text-primary);
-      margin-bottom: 4px;
+    .marketplace-card .mc-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .marketplace-card .mc-role { font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent); margin-bottom: 8px; }
+    .marketplace-card .mc-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; min-height: 40px; }
+    .marketplace-card .mc-caps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }
+    .marketplace-card .mc-caps .cap-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border); }
+    .marketplace-card .mc-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .marketplace-card .mc-actions { display: flex; gap: 8px; }
+    .mc-badge-predefined { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--accent)18; color: var(--accent); border: 1px solid var(--accent)35; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
+    .mc-badge-custom { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--success)18; color: var(--success); border: 1px solid var(--success)35; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
+
+    .marketplace-toolbar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .marketplace-toolbar .search-box { flex: 1; min-width: 200px; position: relative; }
+    .marketplace-toolbar .search-box input { width: 100%; padding: 10px 14px 10px 36px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px; }
+    .marketplace-toolbar .search-box::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+    .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); transition: all 0.2s ease; }
+    .filter-chip:hover, .filter-chip.active { background: var(--accent)18; color: var(--accent); border-color: var(--accent)50; }
+
+    .deployed-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); padding: 16px; position: relative; overflow: hidden; transition: all 0.2s ease; }
+    .deployed-card:hover { border-color: var(--accent)40; }
+    .deployed-card.active-agent { border-color: var(--success)55; box-shadow: 0 0 0 1px var(--success)22; }
+    .deployed-card .dc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .deployed-card .dc-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .deployed-card .dc-role-tag { font-size: 11px; color: var(--text-muted); }
+    .deployed-card .dc-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+    .deployed-card .dc-metric { text-align: center; font-size: 11px; color: var(--text-muted); }
+    .deployed-card .dc-metric .val { display: block; font-size: 16px; font-weight: 700; color: var(--text-primary); }
+
+    .config-section { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; background: var(--bg-tertiary); }
+    .config-section h4 { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ─── Org Builder ─── */
+    .org-builder-wrap { display: flex; gap: 20px; }
+    .org-agent-pool { width: 280px; flex-shrink: 0; }
+    .org-canvas-area { flex: 1; min-height: 500px; }
+    .org-pool-item {
+      padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); margin-bottom: 6px; cursor: grab;
+      display: flex; align-items: center; gap: 8px; font-size: 13px;
+      transition: all 0.15s ease;
     }
-    .marketplace-card .mc-role {
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
-      color: var(--accent); margin-bottom: 8px;
+    .org-pool-item:hover { border-color: var(--accent)50; background: var(--accent)08; }
+    .org-pool-item .opi-icon { font-size: 18px; }
+    .org-pool-item .opi-name { font-weight: 600; color: var(--text-primary); }
+    .org-pool-item .opi-role { font-size: 10px; color: var(--text-muted); }
+
+    .org-canvas {
+      min-height: 500px; padding: 24px;
+      background: var(--bg-tertiary); border: 2px dashed var(--border);
+      border-radius: var(--radius-lg); position: relative;
     }
-    .marketplace-card .mc-desc {
-      font-size: 13px; color: var(--text-secondary); line-height: 1.5;
-      margin-bottom: 12px; min-height: 40px;
+    .org-canvas.drag-over { border-color: var(--accent); background: var(--accent)05; }
+
+    .org-level-row {
+      display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 8px; padding: 12px;
+      min-height: 60px;
+      border: 1px dashed transparent; border-radius: var(--radius);
+      transition: all 0.15s ease;
     }
-    .marketplace-card .mc-caps {
-      display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px;
-    }
-    .marketplace-card .mc-caps .cap-tag {
-      font-size: 10px; padding: 2px 8px; border-radius: 10px;
-      background: var(--bg-tertiary); color: var(--text-muted);
-      border: 1px solid var(--border);
-    }
-    .marketplace-card .mc-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 11px; color: var(--text-muted); margin-bottom: 14px;
-      padding-top: 10px; border-top: 1px solid var(--border);
-    }
-    .marketplace-card .mc-actions {
-      display: flex; gap: 8px;
-    }
-    .mc-badge-predefined {
-      position: absolute; top: 12px; right: 12px;
-      font-size: 9px; padding: 2px 8px; border-radius: 8px;
-      background: var(--accent)18; color: var(--accent);
-      border: 1px solid var(--accent)35; text-transform: uppercase;
-      letter-spacing: 0.6px; font-weight: 600;
-    }
-    .mc-badge-custom {
-      position: absolute; top: 12px; right: 12px;
-      font-size: 9px; padding: 2px 8px; border-radius: 8px;
-      background: var(--success)18; color: var(--success);
-      border: 1px solid var(--success)35; text-transform: uppercase;
-      letter-spacing: 0.6px; font-weight: 600;
+    .org-level-row.drop-target { border-color: var(--accent)60; background: var(--accent)05; }
+    .org-level-label {
+      width: 100%; text-align: center; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 4px;
     }
 
-    /* Search & Filters */
-    .marketplace-toolbar {
-      display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;
+    .org-placed-node {
+      padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); display: inline-flex; align-items: center; gap: 8px;
+      font-size: 12px; position: relative; cursor: default;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
-    .marketplace-toolbar .search-box {
-      flex: 1; min-width: 200px; position: relative;
+    .org-placed-node .opn-remove {
+      position: absolute; top: -6px; right: -6px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--danger); color: #fff; border: none;
+      font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s;
     }
-    .marketplace-toolbar .search-box input {
-      width: 100%; padding: 10px 14px 10px 36px;
-      border-radius: var(--radius); border: 1px solid var(--border);
-      background: var(--bg-tertiary); color: var(--text-primary);
-      font-size: 13px;
-    }
-    .marketplace-toolbar .search-box::before {
-      content: '🔍'; position: absolute; left: 12px; top: 50%;
-      transform: translateY(-50%); font-size: 14px;
-    }
-    .filter-chips {
-      display: flex; gap: 6px; flex-wrap: wrap;
-    }
-    .filter-chip {
-      padding: 6px 14px; border-radius: 20px; font-size: 12px;
-      cursor: pointer; border: 1px solid var(--border);
-      background: var(--bg-tertiary); color: var(--text-secondary);
-      transition: all 0.2s ease;
-    }
-    .filter-chip:hover, .filter-chip.active {
-      background: var(--accent)18; color: var(--accent);
-      border-color: var(--accent)50;
-    }
+    .org-placed-node:hover .opn-remove { opacity: 1; }
+    .org-connector-line { text-align: center; color: var(--text-muted); font-size: 14px; margin: 2px 0; }
 
-    /* Deployed agent card */
-    .deployed-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--bg-card);
-      padding: 16px;
-      transition: all 0.2s ease;
-    }
-    .deployed-card:hover {
-      border-color: var(--accent)40;
-    }
-    .deployed-card.active-agent {
-      border-color: var(--success)55;
-      box-shadow: 0 0 0 1px var(--success)22;
-    }
-    .deployed-card .dc-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      margin-bottom: 10px;
-    }
-    .deployed-card .dc-name {
-      font-size: 14px; font-weight: 600; color: var(--text-primary);
-    }
-    .deployed-card .dc-role-tag {
-      font-size: 11px; color: var(--text-muted);
-    }
-    .deployed-card .dc-metrics {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
-      margin: 10px 0;
-    }
-    .deployed-card .dc-metric {
-      text-align: center; font-size: 11px; color: var(--text-muted);
-    }
-    .deployed-card .dc-metric .val {
-      display: block; font-size: 16px; font-weight: 700;
-      color: var(--text-primary);
-    }
-
-    /* Config Panel in Custom Builder */
-    .config-section {
-      border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 16px; margin-bottom: 16px; background: var(--bg-tertiary);
-    }
-    .config-section h4 {
-      font-size: 13px; font-weight: 600; color: var(--accent);
-      margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;
-    }
-
-    /* Runtime styles */
-    .runtime-org-node.active {
-      border-color: var(--success)70;
-      box-shadow: 0 0 0 1px var(--success)35, 0 0 18px var(--success)18;
-    }
-    .runtime-org-node.inactive {
-      opacity: 0.68; border-style: dashed; filter: grayscale(0.25);
-    }
-    .org-flow-note {
-      margin-top: 8px; text-align: center; font-size: 12px; color: var(--text-muted);
-    }
-    .flow-route-strip {
-      border: 1px solid var(--border); border-radius: var(--radius);
-      background: var(--bg-tertiary); padding: 10px; margin-bottom: 12px;
-      font-size: 12px; color: var(--text-secondary);
-      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-    }
-    .flow-route-strip strong { color: var(--accent); margin-right: 4px; }
-    .flow-status-completed { border-left: 3px solid var(--success); }
-    .flow-status-active { border-left: 3px solid var(--info); box-shadow: 0 0 0 1px var(--info)25; }
-    .flow-status-pending { border-left: 3px solid var(--border); }
-    .runtime-agent-chip {
-      border: 1px solid var(--border); border-radius: var(--radius);
-      background: var(--bg-tertiary); padding: 8px; margin-top: 8px;
-      font-size: 12px; color: var(--text-secondary);
-    }
-    .ai-task-list {
-      margin-top: 8px; display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
-    }
-    .ai-task-item {
-      border: 1px solid var(--border); border-radius: var(--radius);
-      background: var(--bg-tertiary); padding: 8px; font-size: 12px;
-      color: var(--text-secondary);
-    }
-    .activity-card.active {
-      border-color: var(--success)55; box-shadow: 0 0 0 1px var(--success)22;
-    }
-    .activity-card.inactive { opacity: 0.72; border-style: dashed; }
-    .orchestration-popup-stack {
-      position: fixed; top: 18px; right: 18px; z-index: 2400;
-      display: flex; flex-direction: column; gap: 8px;
-      width: min(420px, calc(100vw - 24px)); pointer-events: none;
-    }
-    .orchestration-popup {
-      border: 1px solid var(--border); border-radius: var(--radius);
-      background: var(--bg-card); box-shadow: var(--shadow);
-      padding: 10px 12px; animation: popupSlideIn 0.25s ease;
-    }
-    .orchestration-popup .label {
-      font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;
-      color: var(--text-muted); margin-bottom: 4px;
-    }
-    .orchestration-popup .message {
-      font-size: 12px; color: var(--text-primary); line-height: 1.45;
-    }
-    .orchestration-popup .time {
-      margin-top: 6px; font-size: 11px; color: var(--text-muted);
-    }
-    .popup-task_start { border-left: 3px solid var(--info); }
-    .popup-task_complete { border-left: 3px solid var(--success); }
-    .popup-handoff { border-left: 3px solid var(--accent); }
-    .popup-escalation { border-left: 3px solid var(--warning); }
-    @keyframes popupSlideIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @media (max-width: 1100px) {
-      .ai-task-list { grid-template-columns: 1fr; }
+    @media (max-width: 900px) {
+      .org-builder-wrap { flex-direction: column; }
+      .org-agent-pool { width: 100%; }
     }
   </style>
 </head>
@@ -226,7 +135,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Agent Management</h1>
-        <p class="page-subtitle">Deploy predefined agents or build your own custom AI agents</p>
+        <p class="page-subtitle">Deploy agents per project and build your org hierarchy</p>
       </div>
       <div class="page-actions">
         <button class="btn btn-outline" onclick="switchToTab('tab-custom-section')">🛠️ Build Custom Agent</button>
@@ -234,190 +143,189 @@
       </div>
     </div>
 
-    <!-- Stats -->
-    <div class="grid grid-4" id="agentStats" style="margin-bottom:24px;"></div>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <a href="#tab-marketplace-section" class="tab nav-link active">🏪 Marketplace</a>
-      <a href="#tab-myagents-section" class="tab nav-link">🤖 My Agents</a>
-      <a href="#tab-custom-section" class="tab nav-link">🛠️ Custom Builder</a>
-      <a href="#tab-orgchart-section" class="tab nav-link">Org Structure</a>
-      <a href="#tab-flow-section" class="tab nav-link">Agent Flow</a>
-      <a href="#tab-live-section" class="tab nav-link">Live Activity</a>
+    <!-- Project Selector -->
+    <div class="project-selector-bar">
+      <label>📁 Project:</label>
+      <select id="projectSelector" class="form-select" onchange="onProjectChange()"></select>
+      <div class="project-meta" id="projectMeta"></div>
     </div>
 
-    <!-- Agent Marketplace -->
-    <div id="tab-marketplace-section" class="tab-content active">
-      <div class="marketplace-toolbar">
-        <div class="search-box">
-          <input type="text" id="marketplaceSearch" placeholder="Search agents by name, role, or capability..." oninput="filterMarketplace()">
-        </div>
-        <div class="filter-chips">
-          <span class="filter-chip active" onclick="setMarketFilter('all', this)">All</span>
-          <span class="filter-chip" onclick="setMarketFilter('management', this)">Management</span>
-          <span class="filter-chip" onclick="setMarketFilter('architecture', this)">Architecture</span>
-          <span class="filter-chip" onclick="setMarketFilter('development', this)">Development</span>
-          <span class="filter-chip" onclick="setMarketFilter('quality', this)">Quality & Security</span>
-        </div>
+    <!-- No Project State -->
+    <div id="noProjectState" class="no-project-state" style="display:none">
+      <div class="nps-icon">📁</div>
+      <h3>No Projects Found</h3>
+      <p>Create a project first to manage agents and org structures.</p>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainAgentContent">
+      <div class="grid grid-4" id="agentStats" style="margin-bottom:24px;"></div>
+
+      <div class="tabs">
+        <a href="#tab-marketplace-section" class="tab nav-link active">🏪 Marketplace</a>
+        <a href="#tab-myagents-section" class="tab nav-link">🤖 My Agents</a>
+        <a href="#tab-custom-section" class="tab nav-link">🛠️ Custom Builder</a>
+        <a href="#tab-orgchart-section" class="tab nav-link">🏗️ Org Builder</a>
+        <a href="#tab-live-section" class="tab nav-link">⚡ Live Activity</a>
       </div>
-      <div class="grid grid-3" id="marketplaceGrid"></div>
-    </div>
 
-    <!-- My Agents -->
-    <div id="tab-myagents-section" class="tab-content">
-      <div class="marketplace-toolbar">
-        <div class="search-box">
-          <input type="text" id="myAgentsSearch" placeholder="Search your deployed agents..." oninput="filterMyAgents()">
+      <!-- Marketplace -->
+      <div id="tab-marketplace-section" class="tab-content active">
+        <div class="marketplace-toolbar">
+          <div class="search-box">
+            <input type="text" id="marketplaceSearch" placeholder="Search agents by name, role, or capability..." oninput="filterMarketplace()">
+          </div>
+          <div class="filter-chips">
+            <span class="filter-chip active" onclick="setMarketFilter('all', this)">All</span>
+            <span class="filter-chip" onclick="setMarketFilter('management', this)">Management</span>
+            <span class="filter-chip" onclick="setMarketFilter('architecture', this)">Architecture</span>
+            <span class="filter-chip" onclick="setMarketFilter('development', this)">Development</span>
+            <span class="filter-chip" onclick="setMarketFilter('quality', this)">Quality & Security</span>
+          </div>
         </div>
-        <div class="filter-chips">
-          <span class="filter-chip active" onclick="setMyAgentFilter('all', this)">All</span>
-          <span class="filter-chip" onclick="setMyAgentFilter('predefined', this)">Predefined</span>
-          <span class="filter-chip" onclick="setMyAgentFilter('custom', this)">Custom</span>
-          <span class="filter-chip" onclick="setMyAgentFilter('ACTIVE', this)">Active</span>
-          <span class="filter-chip" onclick="setMyAgentFilter('INACTIVE', this)">Inactive</span>
-        </div>
+        <div class="grid grid-3" id="marketplaceGrid"></div>
       </div>
-      <div class="grid grid-3" id="myAgentsGrid"></div>
-    </div>
 
-    <!-- Custom Agent Builder -->
-    <div id="tab-custom-section" class="tab-content">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">🛠️ Custom Agent Builder</h3>
-          <p style="font-size:12px;color:var(--text-muted)">Design your own AI agent with custom role, capabilities, and governance ceiling</p>
+      <!-- My Agents -->
+      <div id="tab-myagents-section" class="tab-content">
+        <div class="marketplace-toolbar">
+          <div class="search-box">
+            <input type="text" id="myAgentsSearch" placeholder="Search your deployed agents..." oninput="filterMyAgents()">
+          </div>
+          <div class="filter-chips">
+            <span class="filter-chip active" onclick="setMyAgentFilter('all', this)">All</span>
+            <span class="filter-chip" onclick="setMyAgentFilter('predefined', this)">Predefined</span>
+            <span class="filter-chip" onclick="setMyAgentFilter('custom', this)">Custom</span>
+            <span class="filter-chip" onclick="setMyAgentFilter('ACTIVE', this)">Active</span>
+          </div>
         </div>
-        <div class="grid grid-2" style="gap:24px">
-          <!-- Left Column: Identity & Model -->
-          <div>
-            <div class="config-section">
-              <h4>🎭 Identity</h4>
-              <div class="form-group">
-                <label class="form-label">Agent Name *</label>
-                <input type="text" id="customAgentName" class="form-input" placeholder="e.g., Data Migration Specialist">
+        <div class="grid grid-3" id="myAgentsGrid"></div>
+      </div>
+
+      <!-- Custom Builder -->
+      <div id="tab-custom-section" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🛠️ Custom Agent Builder</h3>
+            <p style="font-size:12px;color:var(--text-muted)">Agent will be deployed to the selected project</p>
+          </div>
+          <div class="grid grid-2" style="gap:24px">
+            <div>
+              <div class="config-section">
+                <h4>🎭 Identity</h4>
+                <div class="form-group"><label class="form-label">Agent Name *</label><input type="text" id="customAgentName" class="form-input" placeholder="e.g., Data Migration Specialist"></div>
+                <div class="form-group"><label class="form-label">Custom Role Title *</label><input type="text" id="customAgentRole" class="form-input" placeholder="e.g., data_migration_specialist"></div>
+                <div class="form-group"><label class="form-label">Description</label><textarea id="customAgentDesc" class="form-textarea" rows="3" placeholder="What does this agent do?"></textarea></div>
+                <div class="form-group"><label class="form-label">Agent Icon</label>
+                  <select id="customAgentIcon" class="form-select">
+                    <option value="🤖">🤖 Robot</option><option value="🧠">🧠 Brain</option><option value="⚡">⚡ Lightning</option>
+                    <option value="🔬">🔬 Research</option><option value="📊">📊 Analytics</option><option value="🛡️">🛡️ Shield</option>
+                    <option value="🔧">🔧 Wrench</option><option value="📝">📝 Document</option><option value="🎯">🎯 Target</option>
+                  </select>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Custom Role Title *</label>
-                <input type="text" id="customAgentRole" class="form-input" placeholder="e.g., data_migration_specialist">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea id="customAgentDesc" class="form-textarea" rows="3" placeholder="What does this agent do? Describe its primary responsibilities..."></textarea>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Agent Icon</label>
-                <select id="customAgentIcon" class="form-select">
-                  <option value="🤖">🤖 Robot</option>
-                  <option value="🧠">🧠 Brain</option>
-                  <option value="⚡">⚡ Lightning</option>
-                  <option value="🔬">🔬 Research</option>
-                  <option value="📊">📊 Analytics</option>
-                  <option value="🛡️">🛡️ Shield</option>
-                  <option value="🔧">🔧 Wrench</option>
-                  <option value="📝">📝 Document</option>
-                  <option value="🎯">🎯 Target</option>
-                  <option value="🔄">🔄 Sync</option>
-                </select>
+              <div class="config-section">
+                <h4>🧪 Model Configuration</h4>
+                <div class="form-group"><label class="form-label">Model Provider</label>
+                  <select id="customProvider" class="form-select" onchange="updateCustomVariants()">
+                    <option value="anthropic_claude">Anthropic Claude</option><option value="openai_gpt">OpenAI GPT</option><option value="google_gemini">Google Gemini</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">Model Variant</label>
+                  <select id="customVariant" class="form-select">
+                    <option value="claude-3-opus">claude-3-opus</option><option value="claude-3-sonnet">claude-3-sonnet</option><option value="claude-3-haiku">claude-3-haiku</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">Module Scope</label>
+                  <select id="customScope" class="form-select"><option value="global">Global</option></select>
+                </div>
               </div>
             </div>
-
-            <div class="config-section">
-              <h4>🧪 Model Configuration</h4>
-              <div class="form-group">
-                <label class="form-label">Model Provider</label>
-                <select id="customProvider" class="form-select" onchange="updateCustomVariants()">
-                  <option value="anthropic_claude">Anthropic Claude</option>
-                  <option value="openai_gpt">OpenAI GPT</option>
-                  <option value="google_gemini">Google Gemini</option>
-                </select>
+            <div>
+              <div class="config-section">
+                <h4>⚙️ Capabilities</h4>
+                <div class="checkbox-group" id="customCapsGroup" style="margin-bottom:12px">
+                  <label class="checkbox-label"><input type="checkbox" value="write_code"> Write Code</label>
+                  <label class="checkbox-label"><input type="checkbox" value="run_unit_tests"> Run Tests</label>
+                  <label class="checkbox-label"><input type="checkbox" value="create_mock_apis"> Mock APIs</label>
+                  <label class="checkbox-label"><input type="checkbox" value="design_module_architecture"> Design Architecture</label>
+                  <label class="checkbox-label"><input type="checkbox" value="create_task_breakdown"> Task Breakdown</label>
+                  <label class="checkbox-label"><input type="checkbox" value="review_dev_output"> Code Review</label>
+                  <label class="checkbox-label"><input type="checkbox" value="generate_tests"> Generate Tests</label>
+                  <label class="checkbox-label"><input type="checkbox" value="vulnerability_scanning"> Security Scan</label>
+                  <label class="checkbox-label"><input type="checkbox" value="analyze_requirements"> Analyze Requirements</label>
+                  <label class="checkbox-label"><input type="checkbox" value="backlog_management"> Backlog Management</label>
+                  <label class="checkbox-label"><input type="checkbox" value="sprint_planning"> Sprint Planning</label>
+                  <label class="checkbox-label"><input type="checkbox" value="documentation"> Documentation</label>
+                  <label class="checkbox-label"><input type="checkbox" value="performance_profiling"> Performance Profiling</label>
+                </div>
+                <div class="form-group"><label class="form-label">Additional Capabilities (comma-separated)</label><input type="text" id="customExtraCaps" class="form-input" placeholder="e.g., schema_validation, data_cleaning"></div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Model Variant</label>
-                <select id="customVariant" class="form-select">
-                  <option value="claude-3-opus">claude-3-opus</option>
-                  <option value="claude-3-sonnet">claude-3-sonnet</option>
-                  <option value="claude-3-haiku">claude-3-haiku</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Module Scope</label>
-                <select id="customScope" class="form-select">
-                  <option value="global">Global (all modules)</option>
-                  <option value="auth">Auth</option>
-                  <option value="payments">Payments</option>
-                  <option value="orders">Orders</option>
-                  <option value="inventory">Inventory</option>
-                  <option value="notifications">Notifications</option>
-                  <option value="custom">Custom Module...</option>
-                </select>
+              <div class="config-section">
+                <h4>🛡️ Governance Ceiling</h4>
+                <div class="form-group"><label class="form-label">Risk Sensitivity</label>
+                  <select id="customRisk" class="form-select">
+                    <option value="LOW">Low</option><option value="MEDIUM" selected>Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">Must Escalate (comma-separated)</label><input type="text" id="customEscalate" class="form-input" placeholder="e.g., modify_data_model"></div>
+                <div class="form-group"><label class="form-label">Strictly Forbidden (comma-separated)</label><input type="text" id="customForbidden" class="form-input" placeholder="e.g., production_deployment"></div>
               </div>
             </div>
           </div>
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+            <button class="btn btn-outline" onclick="resetCustomBuilder()">Reset</button>
+            <button class="btn btn-primary" onclick="createCustomAgent()">🚀 Create & Deploy Agent</button>
+          </div>
+        </div>
+      </div>
 
-          <!-- Right Column: Capabilities & Governance -->
-          <div>
-            <div class="config-section">
-              <h4>⚙️ Capabilities</h4>
-              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Select what this agent can do. You can also type custom capabilities below.</p>
-              <div class="checkbox-group" id="customCapsGroup" style="margin-bottom:12px">
-                <label class="checkbox-label"><input type="checkbox" value="write_code"> Write Code</label>
-                <label class="checkbox-label"><input type="checkbox" value="run_unit_tests"> Run Tests</label>
-                <label class="checkbox-label"><input type="checkbox" value="create_mock_apis"> Mock APIs</label>
-                <label class="checkbox-label"><input type="checkbox" value="design_module_architecture"> Design Architecture</label>
-                <label class="checkbox-label"><input type="checkbox" value="create_task_breakdown"> Task Breakdown</label>
-                <label class="checkbox-label"><input type="checkbox" value="review_dev_output"> Code Review</label>
-                <label class="checkbox-label"><input type="checkbox" value="generate_tests"> Generate Tests</label>
-                <label class="checkbox-label"><input type="checkbox" value="vulnerability_scanning"> Security Scan</label>
-                <label class="checkbox-label"><input type="checkbox" value="analyze_requirements"> Analyze Requirements</label>
-                <label class="checkbox-label"><input type="checkbox" value="backlog_management"> Backlog Management</label>
-                <label class="checkbox-label"><input type="checkbox" value="sprint_planning"> Sprint Planning</label>
-                <label class="checkbox-label"><input type="checkbox" value="data_migration"> Data Migration</label>
-                <label class="checkbox-label"><input type="checkbox" value="documentation"> Documentation</label>
-                <label class="checkbox-label"><input type="checkbox" value="performance_profiling"> Performance Profiling</label>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Additional Capabilities (comma-separated)</label>
-                <input type="text" id="customExtraCaps" class="form-input" placeholder="e.g., schema_validation, data_cleaning">
+      <!-- Org Builder -->
+      <div id="tab-orgchart-section" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🏗️ Org Structure Builder</h3>
+            <div class="page-actions">
+              <button class="btn btn-outline btn-sm" onclick="addOrgLevel()">+ Add Level</button>
+              <button class="btn btn-primary btn-sm" onclick="saveOrgStructure()">💾 Save Structure</button>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Drag agents from the pool into levels to build your project's org hierarchy. Top = highest authority, bottom = execution layer.</p>
+          <div class="org-builder-wrap">
+            <div class="org-agent-pool">
+              <div class="config-section">
+                <h4>🤖 Agent Pool</h4>
+                <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Drag agents into org levels →</p>
+                <div id="orgAgentPool"></div>
               </div>
             </div>
-
-            <div class="config-section">
-              <h4>🛡️ Governance Ceiling</h4>
-              <div class="form-group">
-                <label class="form-label">Risk Sensitivity</label>
-                <select id="customRisk" class="form-select">
-                  <option value="LOW">Low — Autonomous with minimal oversight</option>
-                  <option value="MEDIUM" selected>Medium — Standard escalation rules</option>
-                  <option value="HIGH">High — Strict approval requirements</option>
-                  <option value="CRITICAL">Critical — Human approval for all actions</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Must Escalate (comma-separated)</label>
-                <input type="text" id="customEscalate" class="form-input" placeholder="e.g., modify_data_model, change_api_contract">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Strictly Forbidden (comma-separated)</label>
-                <input type="text" id="customForbidden" class="form-input" placeholder="e.g., production_deployment, delete_data">
-              </div>
+            <div class="org-canvas-area">
+              <div class="org-canvas" id="orgCanvas"></div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-          <button class="btn btn-outline" onclick="resetCustomBuilder()">Reset</button>
-          <button class="btn btn-primary" onclick="createCustomAgent()">🚀 Create & Deploy Agent</button>
-        </div>
+      <!-- Live Activity -->
+      <div id="tab-live-section" class="tab-content">
+        <div id="liveActivityContent"></div>
       </div>
     </div>
+  </div>
 
-    <!-- Org Structure -->
-    <div id="tab-orgchart-section" class="tab-content"></div>
-    <!-- Agent Flow -->
-    <div id="tab-flow-section" class="tab-content"></div>
-    <!-- Live Activity -->
-    <div id="tab-live-section" class="tab-content"></div>
+  <!-- Deploy Agent Modal -->
+  <div class="modal-overlay" id="deployAgentModal">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="deployTitle">Deploy Agent</h3>
+        <button class="modal-close" onclick="closeModal('deployAgentModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="deployBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('deployAgentModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmDeploy()">🚀 Deploy to Project</button>
+      </div>
+    </div>
   </div>
 
   <!-- Agent Detail Modal -->
@@ -428,27 +336,11 @@
         <button class="modal-close" onclick="closeModal('agentDetailModal')">&times;</button>
       </div>
       <div class="modal-body" id="detailBody"></div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('agentDetailModal')">Close</button>
-      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('agentDetailModal')">Close</button></div>
     </div>
   </div>
 
-  <!-- Predefined Agent Deploy Modal -->
-  <div class="modal-overlay" id="deployAgentModal">
-    <div class="modal" style="max-width:600px;">
-      <div class="modal-header">
-        <h3 class="modal-title" id="deployTitle">Deploy Agent</h3>
-        <button class="modal-close" onclick="closeModal('deployAgentModal')">&times;</button>
-      </div>
-      <div class="modal-body" id="deployBody"></div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('deployAgentModal')">Cancel</button>
-        <button class="btn btn-primary" id="deployConfirmBtn" onclick="confirmDeploy()">🚀 Deploy Agent</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- Workspace Panel -->
   <div class="modal-overlay side" id="workspacePanel">
     <div class="modal side-modal">
       <div class="modal-header">
@@ -461,7 +353,6 @@
         <div class="workspace-pane" id="workspacePanelContent"></div>
       </div>
       <div class="modal-footer">
-        <a id="workspacePanelOpenFull" class="btn btn-primary" href="#">Open Full Workspace →</a>
         <button class="btn btn-outline" onclick="closeModal('workspacePanel')">Close</button>
       </div>
     </div>
@@ -481,116 +372,96 @@
     seedNexusData();
     createNavigation('agents');
 
-    const WORKSPACE_FILES = ['skills', 'tools', 'heartbeat', 'souls'];
-    const WORKSPACE_LABELS = { skills: 'skills.md', tools: 'tools.md', heartbeat: 'heartbeat.md', souls: 'souls.md' };
-    let activeWorkspaceAgentId = null;
-    let activeWorkspaceFile = 'heartbeat';
-    let liveTicker = null;
+    // ─── State ───
+    let selectedProjectId = null;
     let currentMarketFilter = 'all';
     let currentMyAgentFilter = 'all';
     let pendingDeployTemplate = null;
+    let activeWorkspaceAgentId = null;
+    let activeWorkspaceFile = 'heartbeat';
+    let orgLevels = [];
+    let dragData = null;
+
+    const WORKSPACE_FILES = ['skills', 'tools', 'heartbeat', 'souls'];
+    const WORKSPACE_LABELS = { skills: 'skills.md', tools: 'tools.md', heartbeat: 'heartbeat.md', souls: 'souls.md' };
 
     // ─── Predefined Agent Templates ───
     const PREDEFINED_AGENTS = [
-      {
-        templateId: 'tpl_ba', name: 'Business Analyst', icon: '📊', category: 'management',
-        role: 'business_analyst', desc: 'Analyzes requirements, maps stakeholders, detects ambiguities, and performs domain analysis for project scoping.',
-        model_provider: 'anthropic_claude', model_variant: 'claude-3-opus',
-        capabilities: ['analyze_requirements', 'stakeholder_mapping', 'ambiguity_detection', 'domain_analysis'],
-        ceiling: { can_autonomously: ['analyze_requirements', 'flag_ambiguities', 'create_requirement_docs'], must_escalate: ['scope_changes', 'conflicting_requirements'], strictly_forbidden: ['modify_backlog', 'assign_tasks'], risk_sensitivity: 'MEDIUM' },
-        popularity: 94, deployCount: 1250
-      },
-      {
-        templateId: 'tpl_pm', name: 'Product Manager', icon: '📋', category: 'management',
-        role: 'product_manager', desc: 'Manages backlog, plans sprints, assigns priorities, and handles stakeholder communication.',
-        model_provider: 'openai_gpt', model_variant: 'gpt-4o',
-        capabilities: ['backlog_management', 'sprint_planning', 'priority_assignment', 'stakeholder_communication'],
-        ceiling: { can_autonomously: ['prioritize_stories', 'plan_sprints', 'update_backlog'], must_escalate: ['scope_changes', 'resource_reallocation'], strictly_forbidden: ['architecture_decisions', 'code_changes'], risk_sensitivity: 'MEDIUM' },
-        popularity: 91, deployCount: 1180
-      },
-      {
-        templateId: 'tpl_po', name: 'Product Owner', icon: '✅', category: 'management',
-        role: 'product_owner', desc: 'Accepts or rejects user stories, makes priority decisions, and ensures product-market alignment.',
-        model_provider: 'openai_gpt', model_variant: 'gpt-4o',
-        capabilities: ['story_acceptance', 'story_rejection', 'priority_decisions'],
-        ceiling: { can_autonomously: ['accept_stories', 'reject_stories', 'reprioritize'], must_escalate: ['epic_cancellation', 'major_scope_change'], strictly_forbidden: ['code_changes', 'architecture_decisions'], risk_sensitivity: 'LOW' },
-        popularity: 87, deployCount: 980
-      },
-      {
-        templateId: 'tpl_sm', name: 'Scrum Master', icon: '🏃', category: 'management',
-        role: 'scrum_master', desc: 'Monitors sprint health, tracks velocity, identifies impediments, and facilitates agile ceremonies.',
-        model_provider: 'openai_gpt', model_variant: 'gpt-4o',
-        capabilities: ['sprint_health_monitoring', 'velocity_tracking', 'impediment_escalation'],
-        ceiling: { can_autonomously: ['track_velocity', 'report_health', 'flag_blockers'], must_escalate: ['sprint_cancellation', 'team_changes'], strictly_forbidden: ['code_changes', 'backlog_changes'], risk_sensitivity: 'LOW' },
-        popularity: 85, deployCount: 870
-      },
-      {
-        templateId: 'tpl_ca', name: 'Chief / Solution Architect', icon: '🏛️', category: 'architecture',
-        role: 'chief_architect', desc: 'Designs system architecture, defines modules, selects tech stack, designs API contracts, and makes release decisions.',
-        model_provider: 'anthropic_claude', model_variant: 'claude-3-opus',
-        capabilities: ['system_architecture', 'module_design', 'tech_stack_decisions', 'api_contract_design', 'release_decisions'],
-        ceiling: { can_autonomously: ['design_architecture', 'define_modules', 'select_tech_stack', 'define_api_contracts'], must_escalate: ['infrastructure_changes', 'security_architecture', 'budget_impacting_decisions'], strictly_forbidden: ['production_deployment', 'data_deletion'], risk_sensitivity: 'HIGH' },
-        popularity: 96, deployCount: 1400
-      },
-      {
-        templateId: 'tpl_ma', name: 'Module Architect', icon: '🧩', category: 'architecture',
-        role: 'module_architect', desc: 'Designs module-level architecture, breaks down tasks, reviews developer output, and creates mock API specs.',
-        model_provider: 'anthropic_claude', model_variant: 'claude-3-opus',
-        capabilities: ['design_module_architecture', 'create_task_breakdown', 'review_dev_output', 'mock_api_specs'],
-        ceiling: { can_autonomously: ['design_module', 'break_down_tasks', 'review_code', 'create_mocks'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access', 'security_config_changes'], risk_sensitivity: 'HIGH' },
-        popularity: 92, deployCount: 1100
-      },
-      {
-        templateId: 'tpl_ia', name: 'Integration Architect', icon: '🔗', category: 'architecture',
-        role: 'integration_architect', desc: 'Handles cross-module integration, dependency resolution, integration testing, and contract validation.',
-        model_provider: 'anthropic_claude', model_variant: 'claude-3-opus',
-        capabilities: ['cross_module_integration', 'dependency_resolution', 'integration_testing', 'contract_validation'],
-        ceiling: { can_autonomously: ['integrate_modules', 'resolve_dependencies', 'run_integration_tests'], must_escalate: ['contract_violations', 'incompatible_changes'], strictly_forbidden: ['production_deployment', 'security_config_changes'], risk_sensitivity: 'HIGH' },
-        popularity: 88, deployCount: 760
-      },
-      {
-        templateId: 'tpl_dev', name: 'Developer Agent', icon: '💻', category: 'development',
-        role: 'developer', desc: 'Writes implementation code, runs unit tests, creates mock APIs, and reports task completion with test results.',
-        model_provider: 'anthropic_claude', model_variant: 'claude-3-opus',
-        capabilities: ['write_code', 'run_unit_tests', 'create_mock_apis', 'task_reports'],
-        ceiling: { can_autonomously: ['write_code', 'run_unit_tests', 'create_mock_apis'], must_escalate: ['modify_data_model', 'change_api_contract', 'add_dependency'], strictly_forbidden: ['cross_module_writes', 'production_db_access', 'security_config_changes'], risk_sensitivity: 'HIGH' },
-        popularity: 98, deployCount: 2400
-      },
-      {
-        templateId: 'tpl_tcg', name: 'Test Case Generator', icon: '🧪', category: 'quality',
-        role: 'test_case_generator', desc: 'Extracts acceptance criteria and auto-generates positive, negative, and edge-case test scenarios.',
-        model_provider: 'openai_gpt', model_variant: 'gpt-4o',
-        capabilities: ['extract_acceptance_criteria', 'generate_positive_tests', 'generate_negative_tests', 'generate_edge_tests'],
-        ceiling: { can_autonomously: ['create_test_cases', 'structure_test_data', 'update_test_case_status'], must_escalate: ['acceptance_criteria_conflicts'], strictly_forbidden: ['modify_implementation', 'change_backlog_priority'], risk_sensitivity: 'LOW' },
-        popularity: 90, deployCount: 1050
-      },
-      {
-        templateId: 'tpl_qa', name: 'QA Agent', icon: '🔍', category: 'quality',
-        role: 'qa', desc: 'Generates test cases, executes tests, reports coverage, and files defects for quality assurance.',
-        model_provider: 'openai_gpt', model_variant: 'gpt-4o',
-        capabilities: ['test_case_generation', 'test_execution', 'coverage_reporting', 'defect_reporting'],
-        ceiling: { can_autonomously: ['generate_tests', 'execute_tests', 'report_coverage', 'file_defects'], must_escalate: ['test_environment_changes', 'acceptance_criteria_disputes'], strictly_forbidden: ['modify_implementation', 'access_code_artifacts'], risk_sensitivity: 'MEDIUM' },
-        popularity: 93, deployCount: 1300
-      },
-      {
-        templateId: 'tpl_sec', name: 'Security / DevOps Agent', icon: '🛡️', category: 'quality',
-        role: 'security_devops', desc: 'Performs vulnerability scanning, manages CI/CD pipelines, packages deployments, and checks compliance.',
-        model_provider: 'anthropic_claude', model_variant: 'claude-3-opus',
-        capabilities: ['vulnerability_scanning', 'cicd_pipeline', 'deployment_packaging', 'compliance_checking'],
-        ceiling: { can_autonomously: ['scan_vulnerabilities', 'build_pipeline', 'package_deployment'], must_escalate: ['security_impacting_changes', 'infrastructure_violations', 'compliance_failures'], strictly_forbidden: ['production_deployment_without_approval', 'disable_security_controls'], risk_sensitivity: 'CRITICAL' },
-        popularity: 95, deployCount: 1350
-      },
-      {
-        templateId: 'tpl_doc', name: 'Documentation Agent', icon: '📝', category: 'development',
-        role: 'documentation_specialist', desc: 'Auto-generates API docs, README files, architecture diagrams, and maintains knowledge base.',
-        model_provider: 'openai_gpt', model_variant: 'gpt-4o',
-        capabilities: ['api_documentation', 'readme_generation', 'architecture_diagrams', 'knowledge_base'],
-        ceiling: { can_autonomously: ['generate_docs', 'update_readme', 'create_diagrams'], must_escalate: ['architecture_changes', 'api_contract_changes'], strictly_forbidden: ['code_changes', 'deployment'], risk_sensitivity: 'LOW' },
-        popularity: 82, deployCount: 650
-      }
+      { templateId:'tpl_ba', name:'Business Analyst', icon:'📊', category:'management', role:'business_analyst', desc:'Analyzes requirements, maps stakeholders, detects ambiguities, and performs domain analysis.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['analyze_requirements','stakeholder_mapping','ambiguity_detection','domain_analysis'], ceiling:{can_autonomously:['analyze_requirements','flag_ambiguities','create_requirement_docs'],must_escalate:['scope_changes','conflicting_requirements'],strictly_forbidden:['modify_backlog','assign_tasks'],risk_sensitivity:'MEDIUM'}, popularity:94, deployCount:1250 },
+      { templateId:'tpl_pm', name:'Product Manager', icon:'📋', category:'management', role:'product_manager', desc:'Manages backlog, plans sprints, assigns priorities, and handles stakeholder communication.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['backlog_management','sprint_planning','priority_assignment','stakeholder_communication'], ceiling:{can_autonomously:['prioritize_stories','plan_sprints','update_backlog'],must_escalate:['scope_changes','resource_reallocation'],strictly_forbidden:['architecture_decisions','code_changes'],risk_sensitivity:'MEDIUM'}, popularity:91, deployCount:1180 },
+      { templateId:'tpl_po', name:'Product Owner', icon:'✅', category:'management', role:'product_owner', desc:'Accepts or rejects user stories, makes priority decisions, and ensures product-market alignment.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['story_acceptance','story_rejection','priority_decisions'], ceiling:{can_autonomously:['accept_stories','reject_stories','reprioritize'],must_escalate:['epic_cancellation','major_scope_change'],strictly_forbidden:['code_changes','architecture_decisions'],risk_sensitivity:'LOW'}, popularity:87, deployCount:980 },
+      { templateId:'tpl_sm', name:'Scrum Master', icon:'🏃', category:'management', role:'scrum_master', desc:'Monitors sprint health, tracks velocity, identifies impediments, and facilitates agile ceremonies.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['sprint_health_monitoring','velocity_tracking','impediment_escalation'], ceiling:{can_autonomously:['track_velocity','report_health','flag_blockers'],must_escalate:['sprint_cancellation','team_changes'],strictly_forbidden:['code_changes','backlog_changes'],risk_sensitivity:'LOW'}, popularity:85, deployCount:870 },
+      { templateId:'tpl_ca', name:'Chief / Solution Architect', icon:'🏛️', category:'architecture', role:'chief_architect', desc:'Designs system architecture, defines modules, selects tech stack, designs API contracts.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['system_architecture','module_design','tech_stack_decisions','api_contract_design','release_decisions'], ceiling:{can_autonomously:['design_architecture','define_modules','select_tech_stack','define_api_contracts'],must_escalate:['infrastructure_changes','security_architecture','budget_impacting_decisions'],strictly_forbidden:['production_deployment','data_deletion'],risk_sensitivity:'HIGH'}, popularity:96, deployCount:1400 },
+      { templateId:'tpl_ma', name:'Module Architect', icon:'🧩', category:'architecture', role:'module_architect', desc:'Designs module-level architecture, breaks down tasks, reviews developer output.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['design_module_architecture','create_task_breakdown','review_dev_output','mock_api_specs'], ceiling:{can_autonomously:['design_module','break_down_tasks','review_code','create_mocks'],must_escalate:['modify_data_model','change_api_contract','add_dependency'],strictly_forbidden:['cross_module_writes','production_db_access'],risk_sensitivity:'HIGH'}, popularity:92, deployCount:1100 },
+      { templateId:'tpl_ia', name:'Integration Architect', icon:'🔗', category:'architecture', role:'integration_architect', desc:'Handles cross-module integration, dependency resolution, and contract validation.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['cross_module_integration','dependency_resolution','integration_testing','contract_validation'], ceiling:{can_autonomously:['integrate_modules','resolve_dependencies','run_integration_tests'],must_escalate:['contract_violations','incompatible_changes'],strictly_forbidden:['production_deployment','security_config_changes'],risk_sensitivity:'HIGH'}, popularity:88, deployCount:760 },
+      { templateId:'tpl_dev', name:'Developer Agent', icon:'💻', category:'development', role:'developer', desc:'Writes code, runs unit tests, creates mock APIs, and reports task completion.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['write_code','run_unit_tests','create_mock_apis','task_reports'], ceiling:{can_autonomously:['write_code','run_unit_tests','create_mock_apis'],must_escalate:['modify_data_model','change_api_contract','add_dependency'],strictly_forbidden:['cross_module_writes','production_db_access'],risk_sensitivity:'HIGH'}, popularity:98, deployCount:2400 },
+      { templateId:'tpl_tcg', name:'Test Case Generator', icon:'🧪', category:'quality', role:'test_case_generator', desc:'Extracts acceptance criteria and auto-generates positive, negative, and edge-case tests.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['extract_acceptance_criteria','generate_positive_tests','generate_negative_tests','generate_edge_tests'], ceiling:{can_autonomously:['create_test_cases','structure_test_data'],must_escalate:['acceptance_criteria_conflicts'],strictly_forbidden:['modify_implementation','change_backlog_priority'],risk_sensitivity:'LOW'}, popularity:90, deployCount:1050 },
+      { templateId:'tpl_qa', name:'QA Agent', icon:'🔍', category:'quality', role:'qa', desc:'Generates test cases, executes tests, reports coverage, and files defects.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['test_case_generation','test_execution','coverage_reporting','defect_reporting'], ceiling:{can_autonomously:['generate_tests','execute_tests','report_coverage','file_defects'],must_escalate:['test_environment_changes'],strictly_forbidden:['modify_implementation'],risk_sensitivity:'MEDIUM'}, popularity:93, deployCount:1300 },
+      { templateId:'tpl_sec', name:'Security / DevOps Agent', icon:'🛡️', category:'quality', role:'security_devops', desc:'Performs vulnerability scanning, manages CI/CD pipelines, packages deployments.', model_provider:'anthropic_claude', model_variant:'claude-3-opus', capabilities:['vulnerability_scanning','cicd_pipeline','deployment_packaging','compliance_checking'], ceiling:{can_autonomously:['scan_vulnerabilities','build_pipeline','package_deployment'],must_escalate:['security_impacting_changes','compliance_failures'],strictly_forbidden:['production_deployment_without_approval','disable_security_controls'],risk_sensitivity:'CRITICAL'}, popularity:95, deployCount:1350 },
+      { templateId:'tpl_doc', name:'Documentation Agent', icon:'📝', category:'development', role:'documentation_specialist', desc:'Auto-generates API docs, README files, architecture diagrams.', model_provider:'openai_gpt', model_variant:'gpt-4o', capabilities:['api_documentation','readme_generation','architecture_diagrams','knowledge_base'], ceiling:{can_autonomously:['generate_docs','update_readme','create_diagrams'],must_escalate:['architecture_changes'],strictly_forbidden:['code_changes','deployment'],risk_sensitivity:'LOW'}, popularity:82, deployCount:650 }
     ];
 
-    // ─── Tab switching ───
+    // ─── Project Selector ───
+    function initProjectSelector() {
+      const projects = NexusStore.getProjects() || [];
+      const sel = document.getElementById('projectSelector');
+      if (!projects.length) {
+        document.getElementById('noProjectState').style.display = 'block';
+        document.getElementById('mainAgentContent').style.display = 'none';
+        return;
+      }
+      document.getElementById('noProjectState').style.display = 'none';
+      document.getElementById('mainAgentContent').style.display = '';
+
+      const saved = NexusStore.getActiveProject();
+      selectedProjectId = projects.find(p => p.id === saved) ? saved : projects[0].id;
+      NexusStore.setActiveProject(selectedProjectId);
+
+      sel.innerHTML = projects.map(p =>
+        `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${p.name}</option>`
+      ).join('');
+      updateProjectMeta();
+      populateModuleScope();
+    }
+
+    function onProjectChange() {
+      selectedProjectId = document.getElementById('projectSelector').value;
+      NexusStore.setActiveProject(selectedProjectId);
+      updateProjectMeta();
+      populateModuleScope();
+      render();
+    }
+
+    function updateProjectMeta() {
+      const proj = NexusStore.getProject(selectedProjectId);
+      if (!proj) return;
+      const agents = getProjectAgents();
+      document.getElementById('projectMeta').innerHTML = `
+        <span>🤖 ${agents.length} agents</span>
+        <span>📦 ${(proj.modules || []).length} modules</span>
+        <span>${statusBadge(proj.status)}</span>
+      `;
+    }
+
+    function populateModuleScope() {
+      const proj = NexusStore.getProject(selectedProjectId);
+      const sel = document.getElementById('customScope');
+      if (!proj || !sel) return;
+      sel.innerHTML = `<option value="global">Global</option>` +
+        (proj.modules || []).map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+
+    // ─── Project-Scoped Agent Helpers ───
+    function getProjectAgents() {
+      return NexusStore.getProjectAgents(selectedProjectId);
+    }
+
+    function saveAgentToProject(agent) {
+      NexusStore.saveProjectAgent(selectedProjectId, agent);
+      NexusStore.saveAgent(agent);
+    }
+
+    // ─── Tab Switch ───
     function switchToTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -600,10 +471,7 @@
     }
 
     // ─── Marketplace ───
-    function filterMarketplace() {
-      renderMarketplace();
-    }
-
+    function filterMarketplace() { renderMarketplace(); }
     function setMarketFilter(filter, el) {
       currentMarketFilter = filter;
       document.querySelectorAll('#tab-marketplace-section .filter-chip').forEach(c => c.classList.remove('active'));
@@ -613,7 +481,7 @@
 
     function renderMarketplace() {
       const search = (document.getElementById('marketplaceSearch')?.value || '').toLowerCase();
-      const deployedIds = (NexusStore.getAgents() || []).map(a => a._templateId).filter(Boolean);
+      const deployedIds = getProjectAgents().map(a => a._templateId).filter(Boolean);
 
       let filtered = PREDEFINED_AGENTS.filter(t => {
         if (currentMarketFilter !== 'all' && t.category !== currentMarketFilter) return false;
@@ -624,9 +492,9 @@
         return true;
       });
 
+      const bgColors = { management:'#3b82f6', architecture:'#8b5cf6', development:'#10b981', quality:'#f59e0b' };
       document.getElementById('marketplaceGrid').innerHTML = filtered.map(t => {
         const isDeployed = deployedIds.includes(t.templateId);
-        const bgColors = { management: '#3b82f6', architecture: '#8b5cf6', development: '#10b981', quality: '#f59e0b' };
         const bg = bgColors[t.category] || '#6366f1';
         return `
           <div class="marketplace-card">
@@ -635,70 +503,59 @@
             <div class="mc-title">${t.name}</div>
             <div class="mc-role">${t.role.replace(/_/g, ' ')}</div>
             <div class="mc-desc">${t.desc}</div>
-            <div class="mc-caps">${t.capabilities.slice(0, 4).map(c => `<span class="cap-tag">${c.replace(/_/g, ' ')}</span>`).join('')}${t.capabilities.length > 4 ? `<span class="cap-tag">+${t.capabilities.length - 4} more</span>` : ''}</div>
+            <div class="mc-caps">${t.capabilities.slice(0,4).map(c=>`<span class="cap-tag">${c.replace(/_/g,' ')}</span>`).join('')}${t.capabilities.length>4?`<span class="cap-tag">+${t.capabilities.length-4}</span>`:''}</div>
             <div class="mc-meta">
-              <span>⭐ ${t.popularity}% match</span>
-              <span>🚀 ${t.deployCount.toLocaleString()} deploys</span>
+              <span>⭐ ${t.popularity}%</span>
+              <span>🚀 ${t.deployCount.toLocaleString()}</span>
               <span>🛡️ ${t.ceiling.risk_sensitivity}</span>
             </div>
             <div class="mc-actions">
               ${isDeployed
-                ? `<button class="btn btn-outline btn-sm" disabled>✅ Deployed</button>`
-                : `<button class="btn btn-primary btn-sm" onclick="openDeployModal('${t.templateId}')">🚀 Deploy</button>`
-              }
+                ? `<button class="btn btn-primary btn-sm" onclick="openDeployModal('${t.templateId}')">+ Deploy Another</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="openDeployModal('${t.templateId}')">🚀 Deploy</button>`}
               <button class="btn btn-outline btn-sm" onclick="previewAgent('${t.templateId}')">Details</button>
             </div>
-          </div>
-        `;
-      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3 class="empty-state-title">No agents match your filter</h3></div>';
+          </div>`;
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3 class="empty-state-title">No agents match</h3></div>';
     }
 
     function openDeployModal(templateId) {
       const t = PREDEFINED_AGENTS.find(a => a.templateId === templateId);
       if (!t) return;
       pendingDeployTemplate = t;
-      document.getElementById('deployTitle').textContent = `Deploy "${t.name}"`;
+      const proj = NexusStore.getProject(selectedProjectId);
+      const modules = proj?.modules || [];
+      document.getElementById('deployTitle').textContent = `Deploy "${t.name}" to ${proj?.name || 'Project'}`;
       document.getElementById('deployBody').innerHTML = `
-        <div style="display:flex;gap:16px;margin-bottom:16px;">
+        <div style="display:flex;gap:16px;margin-bottom:16px">
           <div style="font-size:48px">${t.icon}</div>
           <div>
             <h3 style="margin:0;color:var(--text-primary)">${t.name}</h3>
-            <p style="font-size:12px;color:var(--accent);margin:4px 0">${t.role.replace(/_/g, ' ').toUpperCase()}</p>
+            <p style="font-size:12px;color:var(--accent);margin:4px 0">${t.role.replace(/_/g,' ').toUpperCase()}</p>
             <p style="font-size:13px;color:var(--text-secondary)">${t.desc}</p>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Instance Name (optional — customize the name)</label>
-          <input type="text" id="deployInstanceName" class="form-input" placeholder="${t.name}" value="${t.name}">
+        <div class="form-group"><label class="form-label">Instance Name</label>
+          <input type="text" id="deployInstanceName" class="form-input" value="${t.name}">
         </div>
-        <div class="form-group">
-          <label class="form-label">Module Scope</label>
+        <div class="form-group"><label class="form-label">Module Scope</label>
           <select id="deployScope" class="form-select">
             <option value="global">Global</option>
-            <option value="auth">Auth</option>
-            <option value="payments">Payments</option>
-            <option value="orders">Orders</option>
-            <option value="inventory">Inventory</option>
-            <option value="notifications">Notifications</option>
+            ${modules.map(m=>`<option value="${m}">${m}</option>`).join('')}
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Model Override (optional)</label>
+        <div class="form-group"><label class="form-label">Model Override</label>
           <select id="deployModelOverride" class="form-select">
-            <option value="">Use default (${t.model_variant})</option>
-            <option value="claude-3-opus">claude-3-opus</option>
-            <option value="claude-3-sonnet">claude-3-sonnet</option>
-            <option value="gpt-4o">gpt-4o</option>
-            <option value="gpt-4-turbo">gpt-4-turbo</option>
+            <option value="">Default (${t.model_variant})</option>
+            <option value="claude-3-opus">claude-3-opus</option><option value="claude-3-sonnet">claude-3-sonnet</option>
+            <option value="gpt-4o">gpt-4o</option><option value="gpt-4-turbo">gpt-4-turbo</option>
             <option value="gemini-1.5-pro">gemini-1.5-pro</option>
           </select>
         </div>
         <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:12px">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">Included Capabilities</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px">${t.capabilities.map(c => `<span class="tag">${c.replace(/_/g, ' ')}</span>`).join('')}</div>
-          <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">Risk: <strong style="color:var(--accent)">${t.ceiling.risk_sensitivity}</strong></div>
-        </div>
-      `;
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">Deploying to: <strong style="color:var(--accent)">${proj?.name || 'Project'}</strong></div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${t.capabilities.map(c=>`<span class="tag">${c.replace(/_/g,' ')}</span>`).join('')}</div>
+        </div>`;
       document.getElementById('deployAgentModal').classList.add('show');
     }
 
@@ -710,532 +567,377 @@
       const modelOverride = document.getElementById('deployModelOverride').value;
 
       showLoading('Deploying ' + instanceName + '...');
-
       const agentId = 'agent_' + t.role + '_' + Date.now();
       const newAgent = {
-        agent_id: agentId,
-        agent_name: instanceName,
-        created_by: 'human_orchestrator',
-        role: t.role,
-        module_scope: scope,
-        model_provider: modelOverride ? (modelOverride.includes('claude') ? 'anthropic_claude' : modelOverride.includes('gpt') ? 'openai_gpt' : 'google_gemini') : t.model_provider,
+        agent_id: agentId, agent_name: instanceName, created_by: 'human_orchestrator',
+        role: t.role, module_scope: scope,
+        model_provider: modelOverride ? (modelOverride.includes('claude')?'anthropic_claude':modelOverride.includes('gpt')?'openai_gpt':'google_gemini') : t.model_provider,
         model_variant: modelOverride || t.model_variant,
-        status: 'ACTIVE',
-        lifecycle: 'ACTIVE',
+        status: 'ACTIVE', lifecycle: 'ACTIVE',
         capabilities: [...t.capabilities],
         ceiling_profile: JSON.parse(JSON.stringify(t.ceiling)),
-        metrics: { tasks_completed: 0, escalations_raised: 0, gate_pass_rate: 100 },
+        metrics: { tasks_completed:0, escalations_raised:0, gate_pass_rate:100 },
         createdAt: new Date().toISOString(),
-        _templateId: t.templateId,
-        _agentType: 'predefined'
+        _templateId: t.templateId, _agentType: 'predefined',
+        _projectId: selectedProjectId, _icon: t.icon
       };
-
-      NexusStore.saveAgent(newAgent);
-
-      await new Promise(r => setTimeout(r, 800));
+      saveAgentToProject(newAgent);
+      await new Promise(r=>setTimeout(r,600));
       hideLoading();
       closeModal('deployAgentModal');
       pendingDeployTemplate = null;
-      showToast(`"${instanceName}" deployed successfully!`, 'success');
+      showToast(`"${instanceName}" deployed to project!`, 'success');
       render();
     }
 
     function previewAgent(templateId) {
-      const t = PREDEFINED_AGENTS.find(a => a.templateId === templateId);
+      const t = PREDEFINED_AGENTS.find(a=>a.templateId===templateId);
       if (!t) return;
-      document.getElementById('detailTitle').textContent = t.name + ' — Details';
+      document.getElementById('detailTitle').textContent = t.name;
       document.getElementById('detailBody').innerHTML = `
-        <div style="display:flex;gap:16px;margin-bottom:20px;">
-          <div style="font-size:56px">${t.icon}</div>
-          <div>
-            <h2 style="margin:0;color:var(--text-primary)">${t.name}</h2>
-            <p style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:0.6px">${t.role.replace(/_/g, ' ')}</p>
-            <p style="color:var(--text-secondary);font-size:13px;margin-top:4px">${t.desc}</p>
-          </div>
-        </div>
+        <div style="display:flex;gap:16px;margin-bottom:20px"><div style="font-size:56px">${t.icon}</div>
+          <div><h2 style="margin:0;color:var(--text-primary)">${t.name}</h2>
+            <p style="color:var(--accent);font-size:12px;text-transform:uppercase">${t.role.replace(/_/g,' ')}</p>
+            <p style="color:var(--text-secondary);font-size:13px;margin-top:4px">${t.desc}</p></div></div>
         <div class="grid grid-2" style="gap:16px">
-          <div class="config-section">
-            <h4>Capabilities</h4>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">${t.capabilities.map(c => `<span class="tag">${c.replace(/_/g, ' ')}</span>`).join('')}</div>
-          </div>
-          <div class="config-section">
-            <h4>Model</h4>
-            <p style="font-size:13px;color:var(--text-secondary)">${t.model_provider.replace(/_/g, ' ')} — <strong>${t.model_variant}</strong></p>
-          </div>
-          <div class="config-section">
-            <h4>Can Autonomously</h4>
-            <div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.can_autonomously.map(c => `<span class="tag" style="background:var(--success)15;color:var(--success);border-color:var(--success)30">✓ ${c.replace(/_/g, ' ')}</span>`).join('')}</div>
-          </div>
-          <div class="config-section">
-            <h4>Must Escalate</h4>
-            <div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.must_escalate.map(c => `<span class="tag" style="background:var(--warning)15;color:var(--warning);border-color:var(--warning)30">⚠ ${c.replace(/_/g, ' ')}</span>`).join('')}</div>
-          </div>
-          <div class="config-section">
-            <h4>Strictly Forbidden</h4>
-            <div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.strictly_forbidden.map(c => `<span class="tag" style="background:var(--danger)15;color:var(--danger);border-color:var(--danger)30">✕ ${c.replace(/_/g, ' ')}</span>`).join('')}</div>
-          </div>
-          <div class="config-section">
-            <h4>Stats</h4>
-            <p style="font-size:13px;color:var(--text-secondary)">⭐ ${t.popularity}% match · 🚀 ${t.deployCount.toLocaleString()} deployments · 🛡️ ${t.ceiling.risk_sensitivity} risk</p>
-          </div>
-        </div>
-      `;
+          <div class="config-section"><h4>Capabilities</h4><div style="display:flex;flex-wrap:wrap;gap:6px">${t.capabilities.map(c=>`<span class="tag">${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
+          <div class="config-section"><h4>Model</h4><p style="font-size:13px;color:var(--text-secondary)">${t.model_provider.replace(/_/g,' ')} — <strong>${t.model_variant}</strong></p></div>
+          <div class="config-section"><h4>Can Autonomously</h4><div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.can_autonomously.map(c=>`<span class="tag" style="background:var(--success)15;color:var(--success)">✓ ${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
+          <div class="config-section"><h4>Must Escalate</h4><div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.must_escalate.map(c=>`<span class="tag" style="background:var(--warning)15;color:var(--warning)">⚠ ${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
+          <div class="config-section"><h4>Strictly Forbidden</h4><div style="display:flex;flex-wrap:wrap;gap:4px">${t.ceiling.strictly_forbidden.map(c=>`<span class="tag" style="background:var(--danger)15;color:var(--danger)">✕ ${c.replace(/_/g,' ')}</span>`).join('')}</div></div>
+        </div>`;
       document.getElementById('agentDetailModal').classList.add('show');
     }
 
-    // ─── My Agents ───
+    // ─── My Agents (project scoped) ───
     function setMyAgentFilter(filter, el) {
       currentMyAgentFilter = filter;
       document.querySelectorAll('#tab-myagents-section .filter-chip').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
       renderMyAgents();
     }
-
     function filterMyAgents() { renderMyAgents(); }
 
     function renderMyAgents() {
       const search = (document.getElementById('myAgentsSearch')?.value || '').toLowerCase();
-      let agents = NexusStore.getAgents() || [];
-
+      let agents = getProjectAgents();
       agents = agents.filter(a => {
         if (currentMyAgentFilter === 'predefined' && a._agentType !== 'predefined') return false;
         if (currentMyAgentFilter === 'custom' && a._agentType !== 'custom') return false;
         if (currentMyAgentFilter === 'ACTIVE' && a.status !== 'ACTIVE') return false;
-        if (currentMyAgentFilter === 'INACTIVE' && a.status === 'ACTIVE') return false;
-        if (search) {
-          const haystack = (a.agent_name + ' ' + a.role + ' ' + a.module_scope).toLowerCase();
-          if (!haystack.includes(search)) return false;
-        }
+        if (search) { if (!(a.agent_name+' '+a.role+' '+a.module_scope).toLowerCase().includes(search)) return false; }
         return true;
       });
 
       document.getElementById('myAgentsGrid').innerHTML = agents.map(a => {
         const isCustom = a._agentType === 'custom';
-        const tasksDone = a.metrics?.tasks_completed || 0;
-        const escalations = a.metrics?.escalations_raised || 0;
-        const gateRate = a.metrics?.gate_pass_rate || 0;
+        const icon = a._icon || a._customIcon || '🤖';
         return `
-          <div class="deployed-card ${a.status === 'ACTIVE' ? 'active-agent' : ''}">
-            ${isCustom ? '<span class="mc-badge-custom">Custom</span>' : '<span class="mc-badge-predefined">Predefined</span>'}
+          <div class="deployed-card ${a.status==='ACTIVE'?'active-agent':''}">
+            ${isCustom?'<span class="mc-badge-custom">Custom</span>':'<span class="mc-badge-predefined">Predefined</span>'}
             <div class="dc-header">
               <div>
-                <div class="dc-name">${escapeHtml(a.agent_name)}</div>
-                <div class="dc-role-tag">${a.role.replace(/_/g, ' ')} · ${a.module_scope}</div>
+                <div class="dc-name">${icon} ${escapeHtml(a.agent_name)}</div>
+                <div class="dc-role-tag">${a.role.replace(/_/g,' ')} · ${a.module_scope}</div>
               </div>
               ${statusBadge(a.status)}
             </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${a.model_variant} · ${a.ceiling_profile?.risk_sensitivity || 'MEDIUM'} risk</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${a.model_variant} · ${a.ceiling_profile?.risk_sensitivity||'MEDIUM'} risk</div>
             <div class="dc-metrics">
-              <div class="dc-metric"><span class="val">${tasksDone}</span>Tasks</div>
-              <div class="dc-metric"><span class="val">${escalations}</span>Escalations</div>
-              <div class="dc-metric"><span class="val">${gateRate}%</span>Gate Pass</div>
+              <div class="dc-metric"><span class="val">${a.metrics?.tasks_completed||0}</span>Tasks</div>
+              <div class="dc-metric"><span class="val">${a.metrics?.escalations_raised||0}</span>Escalations</div>
+              <div class="dc-metric"><span class="val">${a.metrics?.gate_pass_rate||0}%</span>Gate</div>
             </div>
             <div style="display:flex;gap:6px;margin-top:8px">
               <button class="btn btn-outline btn-sm" onclick="openAgentWorkspacePanel('${a.agent_id}')">Workspace</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleAgentStatus('${a.agent_id}')">${a.status === 'ACTIVE' ? '⏸ Pause' : '▶ Resume'}</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleAgentStatus('${a.agent_id}')">${a.status==='ACTIVE'?'⏸ Pause':'▶ Resume'}</button>
               <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeAgent('${a.agent_id}')">✕</button>
             </div>
-          </div>
-        `;
-      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🤖</div><h3 class="empty-state-title">No agents deployed yet</h3><p class="empty-state-text">Deploy predefined agents from Marketplace or build your own</p></div>';
+          </div>`;
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🤖</div><h3 class="empty-state-title">No agents in this project</h3><p class="empty-state-text">Deploy from Marketplace or build a custom agent</p></div>';
     }
 
     function toggleAgentStatus(agentId) {
-      const agent = NexusStore.getAgent(agentId);
+      const agent = NexusStore.getProjectAgent(selectedProjectId, agentId);
       if (!agent) return;
       agent.status = agent.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
       agent.lifecycle = agent.status;
-      NexusStore.saveAgent(agent);
-      showToast(`${agent.agent_name} ${agent.status === 'ACTIVE' ? 'resumed' : 'paused'}`, 'info');
+      saveAgentToProject(agent);
+      showToast(`${agent.agent_name} ${agent.status==='ACTIVE'?'resumed':'paused'}`, 'info');
       render();
     }
 
     function removeAgent(agentId) {
-      if (!confirm('Remove this agent? This cannot be undone.')) return;
-      const agents = NexusStore.getAgents().filter(a => a.agent_id !== agentId);
-      NexusStore.setAgents(agents);
+      if (!confirm('Remove this agent from the project?')) return;
+      NexusStore.removeProjectAgent(selectedProjectId, agentId);
+      orgLevels.forEach(level => { level.agents = level.agents.filter(a => a.agent_id !== agentId); });
+      saveOrgStructure();
       showToast('Agent removed', 'info');
       render();
     }
 
     // ─── Custom Agent Builder ───
     function updateCustomVariants() {
-      const provider = document.getElementById('customProvider').value;
-      const variants = {
-        anthropic_claude: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-        openai_gpt: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-        google_gemini: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro']
-      };
-      const sel = document.getElementById('customVariant');
-      sel.innerHTML = (variants[provider] || []).map(v => `<option value="${v}">${v}</option>`).join('');
+      const p = document.getElementById('customProvider').value;
+      const v = { anthropic_claude:['claude-3-opus','claude-3-sonnet','claude-3-haiku'], openai_gpt:['gpt-4o','gpt-4-turbo','gpt-3.5-turbo'], google_gemini:['gemini-1.5-pro','gemini-1.5-flash'] };
+      document.getElementById('customVariant').innerHTML = (v[p]||[]).map(x=>`<option value="${x}">${x}</option>`).join('');
     }
 
     function resetCustomBuilder() {
-      document.getElementById('customAgentName').value = '';
-      document.getElementById('customAgentRole').value = '';
-      document.getElementById('customAgentDesc').value = '';
-      document.getElementById('customExtraCaps').value = '';
-      document.getElementById('customEscalate').value = '';
-      document.getElementById('customForbidden').value = '';
-      document.querySelectorAll('#customCapsGroup input').forEach(c => c.checked = false);
+      ['customAgentName','customAgentRole','customAgentDesc','customExtraCaps','customEscalate','customForbidden'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+      document.querySelectorAll('#customCapsGroup input').forEach(c=>c.checked=false);
       showToast('Builder reset', 'info');
     }
 
     async function createCustomAgent() {
       const name = document.getElementById('customAgentName').value.trim();
       const role = document.getElementById('customAgentRole').value.trim();
-      if (!name || !role) { showToast('Agent name and role are required', 'error'); return; }
-
-      const caps = Array.from(document.querySelectorAll('#customCapsGroup input:checked')).map(c => c.value);
-      const extraCaps = document.getElementById('customExtraCaps').value.split(',').map(s => s.trim()).filter(Boolean);
-      const allCaps = [...caps, ...extraCaps];
-
+      if (!name||!role) { showToast('Agent name and role required','error'); return; }
+      const caps = Array.from(document.querySelectorAll('#customCapsGroup input:checked')).map(c=>c.value);
+      const extra = document.getElementById('customExtraCaps').value.split(',').map(s=>s.trim()).filter(Boolean);
+      const allCaps = [...caps,...extra];
       showLoading('Creating custom agent...');
-
       const agentId = 'agent_custom_' + Date.now();
       const newAgent = {
-        agent_id: agentId,
-        agent_name: name,
-        created_by: 'human_orchestrator',
-        role: role,
-        module_scope: document.getElementById('customScope').value,
+        agent_id: agentId, agent_name: name, created_by: 'human_orchestrator',
+        role, module_scope: document.getElementById('customScope').value,
         model_provider: document.getElementById('customProvider').value,
         model_variant: document.getElementById('customVariant').value,
-        status: 'ACTIVE',
-        lifecycle: 'ACTIVE',
-        capabilities: allCaps,
+        status: 'ACTIVE', lifecycle: 'ACTIVE', capabilities: allCaps,
         ceiling_profile: {
           can_autonomously: allCaps,
-          must_escalate: document.getElementById('customEscalate').value.split(',').map(s => s.trim()).filter(Boolean),
-          strictly_forbidden: document.getElementById('customForbidden').value.split(',').map(s => s.trim()).filter(Boolean),
+          must_escalate: document.getElementById('customEscalate').value.split(',').map(s=>s.trim()).filter(Boolean),
+          strictly_forbidden: document.getElementById('customForbidden').value.split(',').map(s=>s.trim()).filter(Boolean),
           risk_sensitivity: document.getElementById('customRisk').value
         },
-        metrics: { tasks_completed: 0, escalations_raised: 0, gate_pass_rate: 100 },
+        metrics: { tasks_completed:0, escalations_raised:0, gate_pass_rate:100 },
         createdAt: new Date().toISOString(),
-        _agentType: 'custom',
-        _customIcon: document.getElementById('customAgentIcon').value,
-        _customDesc: document.getElementById('customAgentDesc').value
+        _agentType: 'custom', _customIcon: document.getElementById('customAgentIcon').value,
+        _customDesc: document.getElementById('customAgentDesc').value,
+        _projectId: selectedProjectId, _icon: document.getElementById('customAgentIcon').value
       };
-
-      NexusStore.saveAgent(newAgent);
-
-      await new Promise(r => setTimeout(r, 800));
+      saveAgentToProject(newAgent);
+      await new Promise(r=>setTimeout(r,600));
       hideLoading();
-      showToast(`Custom agent "${name}" created and deployed!`, 'success');
+      showToast(`Custom agent "${name}" deployed!`,'success');
       resetCustomBuilder();
       switchToTab('tab-myagents-section');
       render();
     }
 
-    // ─── Helper Functions ───
-    function escapeHtml(str) {
-      if (!str) return '';
-      const d = document.createElement('div');
-      d.textContent = str;
-      return d.innerHTML;
-    }
-
-    function formatDuration(ms) {
-      const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      const hours = Math.floor(minutes / 60);
-      if (hours > 0) return String(hours).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-      return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
-    }
-
-    function formatTimer(seconds) { return formatDuration((seconds || 0) * 1000); }
-
-    function runtimePresence(status) {
-      return statusBadge(status === 'ACTIVE' ? 'ACTIVE' : 'IDLE');
-    }
-
-    function getRuntimeAgent(snapshot, agentId) {
-      return NexusOrchestration.getAgentById(snapshot, agentId);
-    }
-
-    function runtimeNode(snapshot, key) {
-      const agent = snapshot.agents[key];
-      if (!agent) return '';
-      const statusClass = agent.status === 'ACTIVE' ? 'active' : 'inactive';
-      const hasWorkspace = !!NexusStore.getAgent(agent.agentId);
-      const click = hasWorkspace
-        ? `openAgentWorkspacePanel('${agent.agentId}')`
-        : `showToast('Runtime-only simulated agent: workspace unavailable', 'info')`;
-      return `
-        <div class="org-node runtime-org-node ${statusClass} ${agent.status === 'ACTIVE' ? 'active-glow' : ''}" data-agent="${key}" onclick="${click}">
-          <div class="org-node-name">${escapeHtml(agent.name)}</div>
-          <div class="org-node-role">${escapeHtml(agent.role.replace(/_/g, ' '))} · ${escapeHtml(agent.module)}</div>
-          <div class="org-node-status status" data-status="${agent.status}">${runtimePresence(agent.status)}</div>
-        </div>
-      `;
-    }
-
-    function flowStatus(snapshot, index) {
-      if (index < snapshot.phaseIndex) return 'COMPLETED';
-      if (index === snapshot.phaseIndex) return 'EXECUTING';
-      return 'PENDING';
-    }
-
-    function flowClass(status) {
-      if (status === 'COMPLETED') return 'flow-status-completed';
-      if (status === 'EXECUTING') return 'flow-status-active';
-      return 'flow-status-pending';
-    }
-
-    function runtimeChip(agent) {
-      return `
-        <div class="runtime-agent-chip">
-          <strong>${escapeHtml(agent.name)}</strong><br>
-          ${runtimePresence(agent.status)} ${statusBadge(agent.stageStatus || 'PENDING')}<br>
-          ${escapeHtml(agent.currentTaskId || 'N/A')} - ${escapeHtml(agent.currentTaskName || 'Awaiting assignment')}<br>
-          Timer ${formatTimer(agent.timerSec)} · Tokens ${agent.tokens}
-        </div>
-      `;
-    }
-
-    function renderFlowStageDetails(snapshot, phase) {
-      if (phase.id === 'ai_pipeline') {
-        return `<div class="ai-task-list">${(snapshot.aiPipelineTasks || []).map(task => `
-          <div class="ai-task-item"><strong>${escapeHtml(task.name)}</strong><br>${statusBadge(task.status)}<br>Timer ${formatTimer(task.timerSec)} · Tokens ${task.tokens}</div>
-        `).join('')}</div>`;
+    // ─── Org Structure Builder ───
+    function loadOrgStructure() {
+      const saved = NexusStore.getProjectOrgStructure(selectedProjectId);
+      if (saved && Array.isArray(saved.levels)) {
+        orgLevels = saved.levels;
+      } else {
+        orgLevels = [
+          { id: 'lvl_1', label: 'Human Orchestrator', agents: [{ agent_id: '_human_', name: '👤 Human Orchestrator', icon: '👤', role: 'Final Authority' }] },
+          { id: 'lvl_2', label: 'Leadership', agents: [] },
+          { id: 'lvl_3', label: 'Architecture', agents: [] },
+          { id: 'lvl_4', label: 'Development', agents: [] },
+          { id: 'lvl_5', label: 'Quality & Release', agents: [] }
+        ];
       }
-      return phase.members.map(memberKey => snapshot.agents[memberKey]).filter(Boolean).map(runtimeChip).join('');
     }
 
-    // ─── Main Render ───
-    function render() {
+    function saveOrgStructure() {
+      NexusStore.setProjectOrgStructure(selectedProjectId, { levels: orgLevels, updatedAt: new Date().toISOString() });
+    }
+
+    function addOrgLevel() {
+      const label = prompt('Enter level name (e.g., "DevOps Layer"):');
+      if (!label || !label.trim()) return;
+      orgLevels.push({ id: 'lvl_' + Date.now(), label: label.trim(), agents: [] });
+      saveOrgStructure();
+      renderOrgBuilder();
+      showToast('Level added', 'success');
+    }
+
+    function removeOrgLevel(levelIdx) {
+      if (orgLevels[levelIdx].agents.length > 0) {
+        if (!confirm('This level has agents. Remove anyway?')) return;
+      }
+      orgLevels.splice(levelIdx, 1);
+      saveOrgStructure();
+      renderOrgBuilder();
+    }
+
+    function removeAgentFromOrg(levelIdx, agentId) {
+      orgLevels[levelIdx].agents = orgLevels[levelIdx].agents.filter(a => a.agent_id !== agentId);
+      saveOrgStructure();
+      renderOrgBuilder();
+    }
+
+    function moveOrgLevel(idx, dir) {
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= orgLevels.length) return;
+      const temp = orgLevels[idx];
+      orgLevels[idx] = orgLevels[newIdx];
+      orgLevels[newIdx] = temp;
+      saveOrgStructure();
+      renderOrgBuilder();
+    }
+
+    function renameOrgLevel(idx) {
+      const current = orgLevels[idx].label;
+      const newLabel = prompt('Rename level:', current);
+      if (!newLabel || !newLabel.trim()) return;
+      orgLevels[idx].label = newLabel.trim();
+      saveOrgStructure();
+      renderOrgBuilder();
+    }
+
+    function renderOrgBuilder() {
+      const agents = getProjectAgents();
+      const placedIds = new Set();
+      orgLevels.forEach(l => l.agents.forEach(a => placedIds.add(a.agent_id)));
+      const availableAgents = agents.filter(a => !placedIds.has(a.agent_id));
+
+      // Agent Pool
+      document.getElementById('orgAgentPool').innerHTML = availableAgents.length ? availableAgents.map(a => `
+        <div class="org-pool-item" draggable="true" ondragstart="onDragStart(event,'${a.agent_id}')">
+          <span class="opi-icon">${a._icon||a._customIcon||'🤖'}</span>
+          <div><div class="opi-name">${escapeHtml(a.agent_name)}</div><div class="opi-role">${a.role.replace(/_/g,' ')}</div></div>
+        </div>
+      `).join('') : '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px">All agents placed or none deployed yet.</div>';
+
+      // Canvas
+      document.getElementById('orgCanvas').innerHTML = orgLevels.map((level, idx) => `
+        <div class="org-level-row" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${idx})" id="orgLevel_${idx}">
+          <div class="org-level-label">
+            <span onclick="renameOrgLevel(${idx})" style="cursor:pointer" title="Click to rename">${escapeHtml(level.label)}</span>
+            ${idx > 0 ? `
+              <button onclick="moveOrgLevel(${idx},-1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;margin-left:4px" title="Move up">▲</button>
+              <button onclick="moveOrgLevel(${idx},1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px" title="Move down">▼</button>
+              <button onclick="removeOrgLevel(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;margin-left:4px" title="Remove level">✕</button>
+            ` : ''}
+          </div>
+          ${level.agents.length ? level.agents.map(a => `
+            <div class="org-placed-node">
+              <span>${a.icon||'🤖'}</span>
+              <div><strong>${escapeHtml(a.name)}</strong><br><span style="font-size:10px;color:var(--text-muted)">${escapeHtml(a.role)}</span></div>
+              ${a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="removeAgentFromOrg(${idx},'${a.agent_id}')">✕</button>` : ''}
+            </div>
+          `).join('') : '<div style="font-size:11px;color:var(--text-muted);padding:8px;border:1px dashed var(--border);border-radius:var(--radius)">Drop agents here...</div>'}
+        </div>
+        ${idx < orgLevels.length - 1 ? '<div class="org-connector-line">↓</div>' : ''}
+      `).join('');
+    }
+
+    // ─── Drag & Drop ───
+    function onDragStart(e, agentId) {
+      dragData = agentId;
+      e.dataTransfer.effectAllowed = 'move';
+    }
+    function onDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      e.currentTarget.classList.add('drop-target');
+    }
+    function onDragLeave(e) {
+      e.currentTarget.classList.remove('drop-target');
+    }
+    function onDrop(e, levelIdx) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drop-target');
+      if (!dragData) return;
+      const agent = NexusStore.getProjectAgent(selectedProjectId, dragData);
+      if (!agent) return;
+      const alreadyPlaced = orgLevels.some(l => l.agents.some(a => a.agent_id === dragData));
+      if (alreadyPlaced) { showToast('Agent already in org','error'); return; }
+      orgLevels[levelIdx].agents.push({
+        agent_id: agent.agent_id,
+        name: agent.agent_name,
+        icon: agent._icon || agent._customIcon || '🤖',
+        role: agent.role.replace(/_/g, ' ')
+      });
+      saveOrgStructure();
+      renderOrgBuilder();
+      dragData = null;
+      showToast(`${agent.agent_name} added to ${orgLevels[levelIdx].label}`, 'success');
+    }
+    document.addEventListener('dragend', () => {
+      document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+    });
+
+    // ─── Live Activity ───
+    function renderLiveActivity() {
+      const agents = getProjectAgents();
       const snapshot = NexusOrchestration.getSnapshot();
-      const agents = NexusStore.getAgents() || [];
-      const runtimeAgents = Object.values(snapshot.agents || {});
-      const active = runtimeAgents.filter(a => a.status === 'ACTIVE').length;
-      const totalTokens = runtimeAgents.reduce((acc, item) => acc + (item.tokens || 0), 0);
-      const customCount = agents.filter(a => a._agentType === 'custom').length;
-      const predefinedCount = agents.filter(a => a._agentType === 'predefined' || !a._agentType).length;
-      const avgGate = agents.length ? (agents.reduce((a, ag) => a + (ag.metrics ? ag.metrics.gate_pass_rate : 0), 0) / agents.length).toFixed(0) : 0;
-
-      document.getElementById('agentStats').innerHTML = `
-        <div class="stat-card"><span class="stat-label">Total Agents</span><span class="stat-value">${agents.length}</span><span class="stat-change up">${active} active runtime</span></div>
-        <div class="stat-card"><span class="stat-label">Predefined</span><span class="stat-value" style="color:var(--accent)">${predefinedCount}</span></div>
-        <div class="stat-card"><span class="stat-label">Custom Built</span><span class="stat-value" style="color:var(--success)">${customCount}</span></div>
-        <div class="stat-card"><span class="stat-label">Avg Gate Pass</span><span class="stat-value">${avgGate}%</span></div>
-      `;
-
-      renderMarketplace();
-      renderMyAgents();
-      renderOrgChart(snapshot);
-      renderAgentFlow(snapshot);
-      renderLiveActivity(snapshot);
-      syncHeartbeatFiles(snapshot, agents);
-      if (activeWorkspaceAgentId) renderWorkspacePanel(snapshot);
-      renderPopups(snapshot);
-    }
-
-    function renderOrgChart(snapshot) {
-      document.getElementById('tab-orgchart-section').innerHTML = `
-        <div class="org-chart">
-          <div class="org-level">
-            <div class="org-node" style="border-color:var(--warning)" onclick="showAgent(null)">
-              <div class="org-node-name">👤 Human Orchestrator</div>
-              <div class="org-node-role">Final Authority</div>
-            </div>
-          </div>
-          <div class="org-connector"></div>
-          <div class="org-level">${runtimeNode(snapshot, 'businessAnalyst')}</div>
-          <div class="org-connector"></div>
-          <div class="org-level">${runtimeNode(snapshot, 'aiPipeline')}</div>
-          <div class="org-connector"></div>
-          <div class="org-level">${runtimeNode(snapshot, 'productOwner')}</div>
-          <div class="org-connector"></div>
-          <div class="org-level">
-            ${runtimeNode(snapshot, 'testCaseGenerator')}
-            ${runtimeNode(snapshot, 'chiefArchitect')}
-            ${runtimeNode(snapshot, 'scrumMaster')}
-          </div>
-          <div class="org-connector"></div>
-          <div class="org-level">
-            <div class="org-branch">
-              ${runtimeNode(snapshot, 'moduleArchitectAuth')}
-              <div class="org-connector"></div>
-              <div class="org-level">${runtimeNode(snapshot, 'devAuth01')} ${runtimeNode(snapshot, 'devAuth02')}</div>
-            </div>
-            <div class="org-branch">
-              ${runtimeNode(snapshot, 'moduleArchitectPayments')}
-              <div class="org-connector"></div>
-              <div class="org-level">${runtimeNode(snapshot, 'devPay01')}</div>
-            </div>
-            <div class="org-branch">
-              ${runtimeNode(snapshot, 'moduleArchitectOrders')}
-              <div class="org-connector"></div>
-              <div class="org-level">
-                <div class="org-node runtime-org-node inactive">
-                  <div class="org-node-name">No developer assigned</div>
-                  <div class="org-node-role">orders</div>
-                  <div class="org-node-status">${statusBadge('PENDING')}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="org-connector"></div>
-          <div class="org-level">${runtimeNode(snapshot, 'qaAgent')}</div>
-          <div class="org-connector"></div>
-          <div class="org-level">${runtimeNode(snapshot, 'releaseAgent')}</div>
-        </div>
-        <div class="org-flow-note">ACTIVE agents glow. INACTIVE agents are dimmed.</div>
-      `;
-    }
-
-    function renderAgentFlow(snapshot) {
-      const phases = NexusOrchestration.getPhases();
-      document.getElementById('tab-flow-section').innerHTML = `
-        <div class="flow-route-strip">
-          <strong>Flow:</strong>
-          <span>BA</span><span>→</span><span>AI Pipeline</span><span>→</span><span>PO</span><span>→</span>
-          <span>TCG</span><span>→</span><span>CA</span><span>→</span><span>Scrum</span><span>→</span>
-          <span>Module</span><span>→</span><span>Dev</span><span>→</span><span>QA</span><span>→</span><span>Release</span>
-        </div>
-        <div class="flow-stack">
-          ${phases.map((phase, idx) => {
-            const status = flowStatus(snapshot, idx);
-            return `
-              <div class="flow-card ${flowClass(status)}">
-                <div class="card-header" style="margin-bottom:8px">
-                  <div><h3 class="card-title">${escapeHtml(phase.title)}</h3><span class="card-subtitle">${phase.parallel ? 'Parallel' : 'Sequential'}</span></div>
-                  ${statusBadge(status)}
-                </div>
-                <div class="flow-route-strip" style="margin-bottom:0"><span><strong>From:</strong> ${escapeHtml(phase.from)}</span><span>→</span><span><strong>To:</strong> ${escapeHtml(phase.to)}</span></div>
-                <div class="flow-io-grid">
-                  <div class="flow-io-box"><div class="flow-io-title">Input</div><div class="flow-io-list">${phase.input.map(i => `<span class="tag">${escapeHtml(i)}</span>`).join('')}</div></div>
-                  <div class="flow-io-box"><div class="flow-io-title">Output</div><div class="flow-io-list">${phase.output.map(o => `<span class="tag">${escapeHtml(o)}</span>`).join('')}</div></div>
-                </div>
-                ${renderFlowStageDetails(snapshot, phase)}
-              </div>
-              ${idx < phases.length - 1 ? '<div class="flow-arrow">↓</div>' : ''}
-            `;
-          }).join('')}
-        </div>
-      `;
-    }
-
-    function renderLiveActivity(snapshot) {
-      const runtimeAgents = NexusOrchestration.getAgentOrder().map(key => snapshot.agents[key]).filter(Boolean);
-      document.getElementById('tab-live-section').innerHTML = `
+      document.getElementById('liveActivityContent').innerHTML = agents.length ? `
         <div class="grid grid-3">
-          ${runtimeAgents.map(agent => {
-            const hasWorkspace = !!NexusStore.getAgent(agent.agentId);
-            const click = hasWorkspace ? `openAgentWorkspacePanel('${agent.agentId}')` : `showToast('Runtime-only simulated agent', 'info')`;
+          ${agents.map(a => {
+            const runtime = NexusOrchestration.getAgentById(snapshot, a.agent_id);
+            const icon = a._icon || a._customIcon || '🤖';
             return `
-              <div class="activity-card ${agent.status === 'ACTIVE' ? 'active' : 'inactive'}" onclick="${click}">
+              <div class="card">
                 <div class="card-header" style="margin-bottom:8px">
-                  <div><h3 class="card-title">${escapeHtml(agent.name)}</h3><span class="tag" style="font-family:var(--mono);margin-top:6px">${escapeHtml(agent.currentTaskId || 'N/A')}</span></div>
-                  ${runtimePresence(agent.status)}
+                  <div><h3 class="card-title">${icon} ${escapeHtml(a.agent_name)}</h3>
+                    <span class="tag" style="font-family:var(--mono);margin-top:4px">${runtime?runtime.currentTaskId||'N/A':'N/A'}</span></div>
+                  ${statusBadge(a.status)}
                 </div>
-                <div style="margin-top:10px;font-size:13px;color:var(--text-secondary)"><span style="color:var(--text-muted)">Action:</span> ${escapeHtml(agent.currentAction || 'Awaiting')}</div>
-                <div class="activity-meta">
-                  <div class="activity-kv"><span>Tokens</span>${agent.tokens}</div>
-                  <div class="activity-kv"><span>Timer</span>${formatTimer(agent.timerSec)}</div>
-                  <div class="activity-kv"><span>Status</span>${escapeHtml(agent.stageStatus || 'PENDING')}</div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">
+                  <span style="color:var(--text-muted)">Action:</span> ${runtime?escapeHtml(runtime.currentAction||'Idle'):'Idle'}
                 </div>
-              </div>
-            `;
+                <div style="display:flex;gap:12px;font-size:12px;color:var(--text-muted)">
+                  <span>Tasks: ${a.metrics?.tasks_completed||0}</span>
+                  <span>Tokens: ${runtime?runtime.tokens:0}</span>
+                  <span>Gate: ${a.metrics?.gate_pass_rate||0}%</span>
+                </div>
+              </div>`;
           }).join('')}
         </div>
-      `;
+      ` : '<div class="empty-state"><div class="empty-state-icon">⚡</div><h3 class="empty-state-title">No agents in this project</h3></div>';
     }
 
-    // ─── Workspace Panel ───
-    function showAgent(id) { if (id) openAgentWorkspacePanel(id); }
+    // ─── Helpers ───
+    function escapeHtml(str) { if(!str)return''; const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
 
     function buildHeartbeatMarkdown(agent, runtime) {
-      return `# HEARTBEAT\n\n## Current Task\n- ${runtime ? runtime.currentTaskId : 'N/A'}\n\n## Current Action\n- ${runtime ? runtime.currentAction : 'Awaiting assignment'}\n\n## Status\n${runtime ? runtime.status : 'INACTIVE'}\n\n## Tokens Used\n${runtime ? runtime.tokens : 0}\n\n## Active Timer\n${runtime ? formatTimer(runtime.timerSec) : '00:00'}\n\n## Agent\n${agent.agent_name}`;
-    }
-
-    function syncHeartbeatFiles(snapshot, agents) {
-      agents.forEach(agent => {
-        const runtime = getRuntimeAgent(snapshot, agent.agent_id);
-        if (!runtime) return;
-        const heartbeat = buildHeartbeatMarkdown(agent, runtime);
-        if (NexusStore.getWorkspaceFile(agent.agent_id, 'heartbeat') !== heartbeat) {
-          NexusStore.setWorkspaceFile(agent.agent_id, 'heartbeat', heartbeat);
-        }
-      });
+      return `# HEARTBEAT\n\n## Current Task\n- ${runtime?runtime.currentTaskId:'N/A'}\n\n## Status\n${runtime?runtime.status:'INACTIVE'}\n\n## Agent\n${agent.agent_name}\n\n## Project\n${selectedProjectId}`;
     }
 
     function ensureWorkspaceDefaults(agentId, agentName) {
       const defaults = {
-        skills: `# SKILLS\n\n## Core Responsibilities\n- Execute ${agentName} role actions\n- Produce structured outputs\n- Follow governance and escalation boundaries\n`,
-        tools: '# TOOLS\n\n## Available Tools\n- code_generator\n- test_runner\n- quality_gate_checker\n\n## Rules\n- No production writes\n- Trace all changes\n',
-        souls: '# SOUL\n\n## Behavioral Traits\n- Quality-first decisions\n- Explicit risk communication\n- Evidence-backed outputs\n'
+        skills: `# SKILLS\n\n## Core Responsibilities\n- Execute ${agentName} role\n- Produce structured outputs\n- Follow governance boundaries\n`,
+        tools: '# TOOLS\n\n## Available\n- code_generator\n- test_runner\n- quality_gate_checker\n',
+        souls: '# SOUL\n\n## Traits\n- Quality-first\n- Transparent escalation\n'
       };
-      ['skills', 'tools', 'souls'].forEach(file => {
-        if (!NexusStore.getWorkspaceFile(agentId, file)) NexusStore.setWorkspaceFile(agentId, file, defaults[file]);
-      });
-      if (!NexusStore.getWorkspaceFile(agentId, 'heartbeat')) {
-        NexusStore.setWorkspaceFile(agentId, 'heartbeat', buildHeartbeatMarkdown({ agent_name: agentName }, null));
-      }
+      ['skills','tools','souls'].forEach(f => { if(!NexusStore.getWorkspaceFile(agentId,f)) NexusStore.setWorkspaceFile(agentId,f,defaults[f]); });
+      if(!NexusStore.getWorkspaceFile(agentId,'heartbeat')) NexusStore.setWorkspaceFile(agentId,'heartbeat',buildHeartbeatMarkdown({agent_name:agentName},null));
     }
 
     function openAgentWorkspacePanel(agentId) {
-      const agent = NexusStore.getAgent(agentId);
+      const agent = NexusStore.getProjectAgent(selectedProjectId, agentId) || NexusStore.getAgent(agentId);
       if (!agent) return;
       activeWorkspaceAgentId = agentId;
       activeWorkspaceFile = 'heartbeat';
       ensureWorkspaceDefaults(agentId, agent.agent_name);
-      renderWorkspacePanel(NexusOrchestration.getSnapshot());
+      renderWorkspacePanel();
       document.getElementById('workspacePanel').classList.add('show');
     }
 
-    function switchWorkspaceFile(fileName) {
-      activeWorkspaceFile = fileName;
-      renderWorkspacePanel(NexusOrchestration.getSnapshot());
-    }
+    function switchWorkspaceFile(fn) { activeWorkspaceFile = fn; renderWorkspacePanel(); }
 
-    function renderWorkspacePanel(snapshot) {
+    function renderWorkspacePanel() {
       if (!activeWorkspaceAgentId) return;
-      const agent = NexusStore.getAgent(activeWorkspaceAgentId);
+      const agent = NexusStore.getProjectAgent(selectedProjectId, activeWorkspaceAgentId) || NexusStore.getAgent(activeWorkspaceAgentId);
       if (!agent) return;
-      const runtime = getRuntimeAgent(snapshot, activeWorkspaceAgentId);
+      const snapshot = NexusOrchestration.getSnapshot();
+      const runtime = NexusOrchestration.getAgentById(snapshot, activeWorkspaceAgentId);
       document.getElementById('workspacePanelTitle').textContent = agent.agent_name + ' Workspace';
-      document.getElementById('workspacePanelOpenFull').href = 'agent-workspace.html?id=' + agent.agent_id;
       document.getElementById('workspaceAgentMeta').innerHTML = `
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <span class="tag">${agent.agent_id}</span>
-          <span class="tag">${agent.role.replace(/_/g, ' ')}</span>
-          ${runtimePresence(runtime ? runtime.status : 'INACTIVE')}
-          ${runtime ? `<span class="tag" style="font-family:var(--mono)">${runtime.currentTaskId}</span>` : ''}
-        </div>
-      `;
-      document.getElementById('workspacePanelTabs').innerHTML = WORKSPACE_FILES.map(file =>
-        `<div class="workspace-tab ${activeWorkspaceFile === file ? 'active' : ''}" onclick="switchWorkspaceFile('${file}')">${WORKSPACE_LABELS[file]}</div>`
+          <span class="tag">${agent.agent_id}</span><span class="tag">${agent.role.replace(/_/g,' ')}</span>
+          ${statusBadge(runtime?runtime.status:'INACTIVE')}
+        </div>`;
+      document.getElementById('workspacePanelTabs').innerHTML = WORKSPACE_FILES.map(f =>
+        `<div class="workspace-tab ${activeWorkspaceFile===f?'active':''}" onclick="switchWorkspaceFile('${f}')">${WORKSPACE_LABELS[f]}</div>`
       ).join('');
       let content = NexusStore.getWorkspaceFile(activeWorkspaceAgentId, activeWorkspaceFile);
       if (activeWorkspaceFile === 'heartbeat') content = buildHeartbeatMarkdown(agent, runtime);
       document.getElementById('workspacePanelContent').innerHTML = `<pre>${escapeHtml(content)}</pre>`;
-    }
-
-    function ensurePopupStack() {
-      let stack = document.getElementById('orchestrationPopupStack');
-      if (!stack) {
-        stack = document.createElement('div');
-        stack.id = 'orchestrationPopupStack';
-        stack.className = 'orchestration-popup-stack';
-        document.body.appendChild(stack);
-      }
-      return stack;
-    }
-
-    function renderPopups(snapshot) {
-      const stack = ensurePopupStack();
-      const notification = snapshot.activeNotification;
-      if (!notification) { stack.innerHTML = ''; return; }
-      const type = String(notification.type || 'TASK_START').toUpperCase();
-      stack.innerHTML = `
-        <div class="orchestration-popup popup-${type.toLowerCase()}">
-          <div class="label">${escapeHtml(type.replace('_', ' '))}</div>
-          <div class="message">${escapeHtml(notification.message)}</div>
-          <div class="time">${formatTime(notification.timestamp)}</div>
-        </div>
-      `;
     }
 
     function closeModal(id) {
@@ -1243,22 +945,32 @@
       if (id === 'workspacePanel') activeWorkspaceAgentId = null;
     }
 
-    function startRuntimeTicker() {
-      if (!liveTicker) {
-        liveTicker = setInterval(() => { render(); }, 1000);
-      }
+    // ─── Main Render ───
+    function render() {
+      if (!selectedProjectId) return;
+      const agents = getProjectAgents();
+      const customCount = agents.filter(a=>a._agentType==='custom').length;
+      const predefinedCount = agents.length - customCount;
+      const activeCount = agents.filter(a=>a.status==='ACTIVE').length;
+      const avgGate = agents.length ? (agents.reduce((s,a)=>s+(a.metrics?.gate_pass_rate||0),0)/agents.length).toFixed(0) : 0;
+
+      document.getElementById('agentStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Agents</span><span class="stat-value">${agents.length}</span><span class="stat-change up">${activeCount} active</span></div>
+        <div class="stat-card"><span class="stat-label">Predefined</span><span class="stat-value" style="color:var(--accent)">${predefinedCount}</span></div>
+        <div class="stat-card"><span class="stat-label">Custom Built</span><span class="stat-value" style="color:var(--success)">${customCount}</span></div>
+        <div class="stat-card"><span class="stat-label">Avg Gate Pass</span><span class="stat-value">${avgGate}%</span></div>`;
+
+      renderMarketplace();
+      renderMyAgents();
+      loadOrgStructure();
+      renderOrgBuilder();
+      renderLiveActivity();
+      updateProjectMeta();
     }
 
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'nexus_orchestration_runtime_v1') render();
-    });
-
-    window.addEventListener('beforeunload', () => {
-      if (liveTicker) clearInterval(liveTicker);
-    });
-
-    render();
-    startRuntimeTicker();
+    // ─── Init ───
+    initProjectSelector();
+    if (selectedProjectId) render();
   </script>
 </body>
 </html>

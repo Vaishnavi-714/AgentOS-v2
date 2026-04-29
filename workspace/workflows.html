@@ -6,130 +6,58 @@
   <title>NEXUS — Workflows</title>
   <link rel="stylesheet" href="../css/common.css">
   <style>
+    /* Project Selector Bar */
+    .project-selector-bar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; margin-bottom: 20px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+    }
+    .project-selector-bar label { font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+    .project-selector-bar select { flex: 1; max-width: 400px; }
+    .project-selector-bar .project-meta { font-size: 12px; color: var(--text-muted); margin-left: auto; display: flex; gap: 12px; }
+    .project-selector-bar .project-meta span { display: flex; align-items: center; gap: 4px; }
+    .no-project-state { text-align: center; padding: 60px 24px; color: var(--text-muted); }
+    .no-project-state .nps-icon { font-size: 56px; margin-bottom: 16px; }
+    .no-project-state h3 { color: var(--text-primary); margin-bottom: 8px; }
+
     /* Template Gallery Cards */
     .template-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--bg-card);
-      padding: 20px;
-      transition: all 0.25s ease;
-      position: relative;
-      overflow: hidden;
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      background: var(--bg-card); padding: 20px;
+      transition: all 0.25s ease; position: relative; overflow: hidden;
     }
-    .template-card:hover {
-      border-color: var(--accent)60;
-      box-shadow: 0 4px 24px var(--accent)15;
-      transform: translateY(-2px);
-    }
-    .template-card .tc-icon {
-      width: 44px; height: 44px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; margin-bottom: 12px;
-    }
-    .template-card .tc-title {
-      font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;
-    }
-    .template-card .tc-category {
-      font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
-      color: var(--accent); margin-bottom: 8px; font-weight: 600;
-    }
-    .template-card .tc-desc {
-      font-size: 13px; color: var(--text-secondary); line-height: 1.5;
-      margin-bottom: 12px; min-height: 40px;
-    }
-    .template-card .tc-steps {
-      display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;
-    }
-    .template-card .tc-steps .step-tag {
-      font-size: 10px; padding: 2px 8px; border-radius: 10px;
-      background: var(--bg-tertiary); color: var(--text-muted);
-      border: 1px solid var(--border);
-    }
-    .template-card .tc-meta {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 11px; color: var(--text-muted);
-      padding-top: 10px; border-top: 1px solid var(--border); margin-bottom: 12px;
-    }
+    .template-card:hover { border-color: var(--accent)60; box-shadow: 0 4px 24px var(--accent)15; transform: translateY(-2px); }
+    .template-card .tc-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 12px; }
+    .template-card .tc-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .template-card .tc-category { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent); margin-bottom: 8px; font-weight: 600; }
+    .template-card .tc-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; min-height: 40px; }
+    .template-card .tc-steps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+    .template-card .tc-steps .step-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border); }
+    .template-card .tc-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); padding-top: 10px; border-top: 1px solid var(--border); margin-bottom: 12px; }
     .template-card .tc-actions { display: flex; gap: 8px; }
-    .tc-badge-template {
-      position: absolute; top: 12px; right: 12px;
-      font-size: 9px; padding: 2px 8px; border-radius: 8px;
-      background: var(--accent)18; color: var(--accent);
-      border: 1px solid var(--accent)35; text-transform: uppercase;
-      letter-spacing: 0.6px; font-weight: 600;
-    }
-    .tc-badge-custom {
-      position: absolute; top: 12px; right: 12px;
-      font-size: 9px; padding: 2px 8px; border-radius: 8px;
-      background: var(--success)18; color: var(--success);
-      border: 1px solid var(--success)35; text-transform: uppercase;
-      letter-spacing: 0.6px; font-weight: 600;
-    }
+    .tc-badge-template { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--accent)18; color: var(--accent); border: 1px solid var(--accent)35; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
+    .tc-badge-custom { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--success)18; color: var(--success); border: 1px solid var(--success)35; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
 
-    /* Search & Filters */
-    .wf-toolbar {
-      display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;
-    }
-    .wf-toolbar .search-box {
-      flex: 1; min-width: 200px; position: relative;
-    }
-    .wf-toolbar .search-box input {
-      width: 100%; padding: 10px 14px 10px 36px;
-      border-radius: var(--radius); border: 1px solid var(--border);
-      background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px;
-    }
-    .wf-toolbar .search-box::before {
-      content: '🔍'; position: absolute; left: 12px; top: 50%;
-      transform: translateY(-50%); font-size: 14px;
-    }
-    .wf-filter-chips {
-      display: flex; gap: 6px; flex-wrap: wrap;
-    }
-    .wf-filter-chip {
-      padding: 6px 14px; border-radius: 20px; font-size: 12px;
-      cursor: pointer; border: 1px solid var(--border);
-      background: var(--bg-tertiary); color: var(--text-secondary);
-      transition: all 0.2s ease;
-    }
-    .wf-filter-chip:hover, .wf-filter-chip.active {
-      background: var(--accent)18; color: var(--accent); border-color: var(--accent)50;
-    }
+    .wf-toolbar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .wf-toolbar .search-box { flex: 1; min-width: 200px; position: relative; }
+    .wf-toolbar .search-box input { width: 100%; padding: 10px 14px 10px 36px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font-size: 13px; }
+    .wf-toolbar .search-box::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+    .wf-filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .wf-filter-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-secondary); transition: all 0.2s ease; }
+    .wf-filter-chip:hover, .wf-filter-chip.active { background: var(--accent)18; color: var(--accent); border-color: var(--accent)50; }
 
-    /* My Workflow Card */
-    .my-wf-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      background: var(--bg-card);
-      padding: 16px; transition: all 0.2s ease;
-    }
+    .my-wf-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); padding: 16px; position: relative; overflow: hidden; transition: all 0.2s ease; }
     .my-wf-card:hover { border-color: var(--accent)40; }
     .my-wf-card.wf-active { border-color: var(--success)55; box-shadow: 0 0 0 1px var(--success)22; }
 
-    /* Builder Step Card */
-    .builder-step {
-      width: 100%; max-width: 500px; margin: 0 auto;
-      padding: 16px; background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center;
-    }
-    .builder-step .step-info .step-name {
-      font-size: 13px; font-weight: 600; color: var(--text-primary);
-    }
-    .builder-step .step-info .step-detail {
-      font-size: 11px; color: var(--text-muted);
-    }
-    .builder-arrow {
-      text-align: center; color: var(--text-muted); font-size: 16px; margin: 4px 0;
-    }
+    .builder-step { width: 100%; max-width: 500px; margin: 0 auto; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; }
+    .builder-step .step-info .step-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .builder-step .step-info .step-detail { font-size: 11px; color: var(--text-muted); }
+    .builder-arrow { text-align: center; color: var(--text-muted); font-size: 16px; margin: 4px 0; }
 
-    /* Config Section */
-    .config-section {
-      border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 16px; margin-bottom: 16px; background: var(--bg-tertiary);
-    }
-    .config-section h4 {
-      font-size: 13px; font-weight: 600; color: var(--accent);
-      margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;
-    }
+    .config-section { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; background: var(--bg-tertiary); }
+    .config-section h4 { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
   </style>
 </head>
 <body>
@@ -137,7 +65,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">Workflows</h1>
-        <p class="page-subtitle">Use predefined templates or build custom automated agent workflows</p>
+        <p class="page-subtitle">Project-scoped workflow templates and custom automation</p>
       </div>
       <div class="page-actions">
         <button class="btn btn-outline" onclick="switchWfTab('wfBuilder-section')">🛠️ Build Custom</button>
@@ -145,147 +73,140 @@
       </div>
     </div>
 
-    <div class="grid grid-4" style="margin-bottom:20px">
-      <div class="stat-card"><span class="stat-label">Total Workflows</span><span class="stat-value" id="wfTotal">0</span></div>
-      <div class="stat-card"><span class="stat-label">From Templates</span><span class="stat-value" style="color:var(--accent)" id="wfTemplateCount">0</span></div>
-      <div class="stat-card"><span class="stat-label">Custom Built</span><span class="stat-value" style="color:var(--success)" id="wfCustomCount">0</span></div>
-      <div class="stat-card"><span class="stat-label">Success Rate</span><span class="stat-value" style="color:var(--success)" id="wfSuccess">0%</span></div>
+    <!-- Project Selector -->
+    <div class="project-selector-bar">
+      <label>📁 Project:</label>
+      <select id="projectSelector" class="form-select" onchange="onProjectChange()"></select>
+      <div class="project-meta" id="projectMeta"></div>
     </div>
 
-    <div class="tabs" data-tab-group="workflows">
-      <a href="#wfTemplates-section" class="tab nav-link active">📚 Template Gallery</a>
-      <a href="#wfMyWorkflows-section" class="tab nav-link">⚡ My Workflows</a>
-      <a href="#wfBuilder-section" class="tab nav-link">🛠️ Custom Builder</a>
-      <a href="#wfMonitor-section" class="tab nav-link">📊 Monitor</a>
-      <a href="#wfRecovery-section" class="tab nav-link">🔄 Recovery</a>
+    <!-- No Project State -->
+    <div id="noProjectState" class="no-project-state" style="display:none">
+      <div class="nps-icon">📁</div>
+      <h3>No Projects Found</h3>
+      <p>Create a project first to manage workflows.</p>
     </div>
 
-    <!-- Template Gallery -->
-    <div class="tab-content active" id="wfTemplates-section">
-      <div class="wf-toolbar">
-        <div class="search-box">
-          <input type="text" id="templateSearch" placeholder="Search workflow templates..." oninput="filterTemplates()">
-        </div>
-        <div class="wf-filter-chips">
-          <span class="wf-filter-chip active" onclick="setTemplateFilter('all', this)">All</span>
-          <span class="wf-filter-chip" onclick="setTemplateFilter('development', this)">Development</span>
-          <span class="wf-filter-chip" onclick="setTemplateFilter('devops', this)">DevOps</span>
-          <span class="wf-filter-chip" onclick="setTemplateFilter('management', this)">Management</span>
-          <span class="wf-filter-chip" onclick="setTemplateFilter('quality', this)">Quality</span>
-          <span class="wf-filter-chip" onclick="setTemplateFilter('security', this)">Security</span>
-        </div>
+    <!-- Main Content -->
+    <div id="mainWfContent">
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Total Workflows</span><span class="stat-value" id="wfTotal">0</span></div>
+        <div class="stat-card"><span class="stat-label">From Templates</span><span class="stat-value" style="color:var(--accent)" id="wfTemplateCount">0</span></div>
+        <div class="stat-card"><span class="stat-label">Custom Built</span><span class="stat-value" style="color:var(--success)" id="wfCustomCount">0</span></div>
+        <div class="stat-card"><span class="stat-label">Success Rate</span><span class="stat-value" style="color:var(--success)" id="wfSuccess">0%</span></div>
       </div>
-      <div class="grid grid-3" id="templateGrid"></div>
-    </div>
 
-    <!-- My Workflows -->
-    <div class="tab-content" id="wfMyWorkflows-section">
-      <div class="wf-toolbar">
-        <div class="search-box">
-          <input type="text" id="myWfSearch" placeholder="Search your workflows..." oninput="filterMyWorkflows()">
-        </div>
-        <div class="wf-filter-chips">
-          <span class="wf-filter-chip active" onclick="setMyWfFilter('all', this)">All</span>
-          <span class="wf-filter-chip" onclick="setMyWfFilter('template', this)">From Template</span>
-          <span class="wf-filter-chip" onclick="setMyWfFilter('custom', this)">Custom</span>
-          <span class="wf-filter-chip" onclick="setMyWfFilter('ACTIVE', this)">Active</span>
-          <span class="wf-filter-chip" onclick="setMyWfFilter('IDLE', this)">Idle</span>
-        </div>
+      <div class="tabs" data-tab-group="workflows">
+        <a href="#wfTemplates-section" class="tab nav-link active">📚 Template Gallery</a>
+        <a href="#wfMyWorkflows-section" class="tab nav-link">⚡ My Workflows</a>
+        <a href="#wfBuilder-section" class="tab nav-link">🛠️ Custom Builder</a>
+        <a href="#wfMonitor-section" class="tab nav-link">📊 Monitor</a>
+        <a href="#wfRecovery-section" class="tab nav-link">🔄 Recovery</a>
       </div>
-      <div class="grid grid-3" id="myWorkflowsGrid"></div>
-    </div>
 
-    <!-- Custom Workflow Builder -->
-    <div class="tab-content" id="wfBuilder-section">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">🛠️ Custom Workflow Builder</h3>
-          <p style="font-size:12px;color:var(--text-muted)">Design your own workflow with custom steps, triggers, and agent assignments</p>
+      <!-- Template Gallery -->
+      <div class="tab-content active" id="wfTemplates-section">
+        <div class="wf-toolbar">
+          <div class="search-box">
+            <input type="text" id="templateSearch" placeholder="Search workflow templates..." oninput="filterTemplates()">
+          </div>
+          <div class="wf-filter-chips">
+            <span class="wf-filter-chip active" onclick="setTemplateFilter('all', this)">All</span>
+            <span class="wf-filter-chip" onclick="setTemplateFilter('development', this)">Development</span>
+            <span class="wf-filter-chip" onclick="setTemplateFilter('devops', this)">DevOps</span>
+            <span class="wf-filter-chip" onclick="setTemplateFilter('management', this)">Management</span>
+            <span class="wf-filter-chip" onclick="setTemplateFilter('quality', this)">Quality</span>
+            <span class="wf-filter-chip" onclick="setTemplateFilter('security', this)">Security</span>
+          </div>
         </div>
-        <div class="grid grid-2" style="gap:24px">
-          <!-- Left: Workflow Config -->
-          <div>
-            <div class="config-section">
-              <h4>📋 Workflow Identity</h4>
-              <div class="form-group">
-                <label class="form-label">Workflow Name *</label>
-                <input type="text" id="cwfName" class="form-input" placeholder="e.g., Data Migration Pipeline">
+        <div class="grid grid-3" id="templateGrid"></div>
+      </div>
+
+      <!-- My Workflows -->
+      <div class="tab-content" id="wfMyWorkflows-section">
+        <div class="wf-toolbar">
+          <div class="search-box">
+            <input type="text" id="myWfSearch" placeholder="Search your workflows..." oninput="filterMyWorkflows()">
+          </div>
+          <div class="wf-filter-chips">
+            <span class="wf-filter-chip active" onclick="setMyWfFilter('all', this)">All</span>
+            <span class="wf-filter-chip" onclick="setMyWfFilter('template', this)">From Template</span>
+            <span class="wf-filter-chip" onclick="setMyWfFilter('custom', this)">Custom</span>
+            <span class="wf-filter-chip" onclick="setMyWfFilter('ACTIVE', this)">Active</span>
+            <span class="wf-filter-chip" onclick="setMyWfFilter('IDLE', this)">Idle</span>
+          </div>
+        </div>
+        <div class="grid grid-3" id="myWorkflowsGrid"></div>
+      </div>
+
+      <!-- Custom Workflow Builder -->
+      <div class="tab-content" id="wfBuilder-section">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">🛠️ Custom Workflow Builder</h3>
+            <p style="font-size:12px;color:var(--text-muted)">Workflow will be created for the selected project</p>
+          </div>
+          <div class="grid grid-2" style="gap:24px">
+            <div>
+              <div class="config-section">
+                <h4>📋 Workflow Identity</h4>
+                <div class="form-group"><label class="form-label">Workflow Name *</label><input type="text" id="cwfName" class="form-input" placeholder="e.g., Data Migration Pipeline"></div>
+                <div class="form-group"><label class="form-label">Description</label><textarea id="cwfDesc" class="form-textarea" rows="3" placeholder="Describe what this workflow does..."></textarea></div>
+                <div class="form-group"><label class="form-label">Trigger</label>
+                  <select id="cwfTrigger" class="form-select">
+                    <option value="manual">Manual</option><option value="on_commit">On Commit</option><option value="on_pr">On Pull Request</option>
+                    <option value="on_merge">On Merge</option><option value="scheduled">Scheduled (Cron)</option><option value="on_escalation">On Escalation</option>
+                    <option value="on_alert">On Alert</option><option value="on_task_complete">On Task Complete</option><option value="webhook">Webhook</option>
+                  </select>
+                </div>
+                <div class="form-group"><label class="form-label">Workflow Icon</label>
+                  <select id="cwfIcon" class="form-select">
+                    <option value="🔄">🔄 Cycle</option><option value="🚀">🚀 Rocket</option><option value="🔧">🔧 Build</option>
+                    <option value="🧪">🧪 Test</option><option value="🛡️">🛡️ Shield</option><option value="📊">📊 Analytics</option>
+                    <option value="📋">📋 Clipboard</option><option value="⚡">⚡ Lightning</option>
+                  </select>
+                </div>
               </div>
-              <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea id="cwfDesc" class="form-textarea" rows="3" placeholder="Describe what this workflow does..."></textarea>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Trigger</label>
-                <select id="cwfTrigger" class="form-select">
-                  <option value="manual">Manual</option>
-                  <option value="on_commit">On Commit</option>
-                  <option value="on_pr">On Pull Request</option>
-                  <option value="on_merge">On Merge</option>
-                  <option value="scheduled">Scheduled (Cron)</option>
-                  <option value="on_escalation">On Escalation</option>
-                  <option value="on_alert">On Alert</option>
-                  <option value="on_task_complete">On Task Complete</option>
-                  <option value="webhook">Webhook</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Workflow Icon</label>
-                <select id="cwfIcon" class="form-select">
-                  <option value="🔄">🔄 Cycle</option>
-                  <option value="🚀">🚀 Rocket</option>
-                  <option value="🔧">🔧 Build</option>
-                  <option value="🧪">🧪 Test</option>
-                  <option value="🛡️">🛡️ Shield</option>
-                  <option value="📊">📊 Analytics</option>
-                  <option value="📋">📋 Clipboard</option>
-                  <option value="⚡">⚡ Lightning</option>
-                </select>
+            </div>
+            <div>
+              <div class="config-section">
+                <h4>⚙️ Workflow Steps</h4>
+                <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Add steps to define the execution order</p>
+                <div id="customBuilderSteps"></div>
+                <div style="margin-top:12px">
+                  <button class="btn btn-outline btn-sm" onclick="addCustomStep('agent')">+ Agent Step</button>
+                  <button class="btn btn-outline btn-sm" onclick="addCustomStep('gate')">+ Quality Gate</button>
+                  <button class="btn btn-outline btn-sm" onclick="addCustomStep('transform')">+ Transform</button>
+                  <button class="btn btn-outline btn-sm" onclick="addCustomStep('condition')">+ Condition</button>
+                  <button class="btn btn-outline btn-sm" onclick="addCustomStep('notification')">+ Notification</button>
+                </div>
               </div>
             </div>
           </div>
-
-          <!-- Right: Steps Builder -->
-          <div>
-            <div class="config-section">
-              <h4>⚙️ Workflow Steps</h4>
-              <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">Add steps to define the workflow execution order</p>
-              <div id="customBuilderSteps"></div>
-              <div style="margin-top:12px">
-                <button class="btn btn-outline btn-sm" onclick="addCustomStep('agent')">+ Agent Step</button>
-                <button class="btn btn-outline btn-sm" onclick="addCustomStep('gate')">+ Quality Gate</button>
-                <button class="btn btn-outline btn-sm" onclick="addCustomStep('transform')">+ Transform</button>
-                <button class="btn btn-outline btn-sm" onclick="addCustomStep('condition')">+ Condition</button>
-                <button class="btn btn-outline btn-sm" onclick="addCustomStep('notification')">+ Notification</button>
-              </div>
-            </div>
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+            <button class="btn btn-outline" onclick="resetCustomBuilder()">Reset</button>
+            <button class="btn btn-primary" onclick="createCustomWorkflow()">🚀 Create Workflow</button>
           </div>
         </div>
-        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-          <button class="btn btn-outline" onclick="resetCustomBuilder()">Reset</button>
-          <button class="btn btn-primary" onclick="createCustomWorkflow()">🚀 Create Workflow</button>
+      </div>
+
+      <!-- Monitor -->
+      <div class="tab-content" id="wfMonitor-section">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">📊 Execution Monitor</h3></div>
+          <div class="table-container">
+            <table><thead><tr><th>Execution ID</th><th>Workflow</th><th>Trigger</th><th>Started</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="executionTable"></tbody></table>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Workflow Monitor -->
-    <div class="tab-content" id="wfMonitor-section">
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">📊 Execution Monitor</h3></div>
-        <div class="table-container">
-          <table>
-            <thead><tr><th>Execution ID</th><th>Workflow</th><th>Trigger</th><th>Started</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody id="executionTable"></tbody>
-          </table>
+      <!-- Recovery -->
+      <div class="tab-content" id="wfRecovery-section">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🔄 Failed Workflow Recovery</h3></div>
+          <div id="failedWorkflows"></div>
         </div>
-      </div>
-    </div>
-
-    <!-- Workflow Recovery -->
-    <div class="tab-content" id="wfRecovery-section">
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">🔄 Failed Workflow Recovery</h3></div>
-        <div id="failedWorkflows"></div>
       </div>
     </div>
   </div>
@@ -313,9 +234,7 @@
         <button class="modal-close" onclick="closeModal('previewTemplateModal')">&times;</button>
       </div>
       <div class="modal-body" id="previewWfBody"></div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('previewTemplateModal')">Close</button>
-      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('previewTemplateModal')">Close</button></div>
     </div>
   </div>
 
@@ -331,134 +250,84 @@
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('workflows');
-    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
 
     function openModal(id) { document.getElementById(id).classList.add('show'); }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
+    // ─── State ───
+    let selectedProjectId = null;
     let currentTemplateFilter = 'all';
     let currentMyWfFilter = 'all';
     let pendingTemplate = null;
+    let customSteps = [];
 
     // ─── Predefined Workflow Templates ───
     const WORKFLOW_TEMPLATES = [
-      {
-        templateId: 'wft_req_pipeline', name: 'Requirements → Backlog Pipeline', icon: '📋', category: 'management',
-        desc: 'Automated requirements ingestion, AI-powered analysis, deduplication, and backlog generation with MoSCoW prioritization.',
-        trigger: 'Manual', agents: ['Business Analyst', 'Product Manager'],
-        steps: ['Load raw sources', 'Normalize text via AI', 'Extract requirements', 'Deduplicate', 'Generate backlog', 'Apply MoSCoW sizing'],
-        avgDuration: '5-8 min', successRate: 98, useCount: 3200
-      },
-      {
-        templateId: 'wft_code_review', name: 'Code Review Pipeline', icon: '🔍', category: 'development',
-        desc: 'Automated code review with static analysis, security scanning, test coverage check, and quality gate enforcement.',
-        trigger: 'On PR', agents: ['Module Architect', 'QA Agent', 'Security Agent'],
-        steps: ['Pull changes', 'Static analysis', 'Security scan', 'Test coverage check', 'Architect review', 'Quality gate'],
-        avgDuration: '3-5 min', successRate: 94, useCount: 5600
-      },
-      {
-        templateId: 'wft_task_decomp', name: 'Task Decomposition', icon: '🧩', category: 'management',
-        desc: 'Break user stories into developer tasks with acceptance criteria, story points, and dependency mapping.',
-        trigger: 'On Story Assignment', agents: ['Module Architect'],
-        steps: ['Parse user story', 'Identify subtasks', 'Assign acceptance criteria', 'Estimate story points', 'Map dependencies'],
-        avgDuration: '2-3 min', successRate: 100, useCount: 2800
-      },
-      {
-        templateId: 'wft_cicd', name: 'CI/CD Deployment Pipeline', icon: '🚀', category: 'devops',
-        desc: 'Full CI/CD pipeline with build, test, security scan, staging deploy, smoke tests, and production release.',
-        trigger: 'On Merge', agents: ['Security Agent', 'QA Agent'],
-        steps: ['Build artifact', 'Run unit tests', 'Security scan', 'Deploy to staging', 'Smoke tests', 'Production deploy', 'Health check'],
-        avgDuration: '8-15 min', successRate: 87, useCount: 4100
-      },
-      {
-        templateId: 'wft_incident', name: 'Incident Response', icon: '🚨', category: 'security',
-        desc: 'Automated incident detection, classification, severity assessment, team notification, and post-mortem generation.',
-        trigger: 'On Alert', agents: ['Security Agent'],
-        steps: ['Detect anomaly', 'Classify severity', 'Notify team', 'Isolate threat', 'Generate post-mortem', 'Create follow-up tasks'],
-        avgDuration: '1-3 min', successRate: 100, useCount: 1500
-      },
-      {
-        templateId: 'wft_sprint', name: 'Sprint Planning Automation', icon: '🏃', category: 'management',
-        desc: 'Automated sprint planning with velocity-based capacity allocation, story selection, and team workload balancing.',
-        trigger: 'Scheduled', agents: ['Scrum Master', 'Product Manager'],
-        steps: ['Calculate velocity', 'Rank backlog', 'Allocate capacity', 'Select stories', 'Balance workload', 'Generate sprint plan'],
-        avgDuration: '4-6 min', successRate: 100, useCount: 1800
-      },
-      {
-        templateId: 'wft_arch_review', name: 'Architecture Review', icon: '🏛️', category: 'development',
-        desc: 'Cross-module integration review, dependency analysis, API contract validation, and architecture compliance check.',
-        trigger: 'Manual', agents: ['Chief Architect', 'Integration Architect'],
-        steps: ['Collect module changes', 'Analyze dependencies', 'Validate API contracts', 'Check compliance', 'Generate report'],
-        avgDuration: '6-10 min', successRate: 100, useCount: 900
-      },
-      {
-        templateId: 'wft_test_gen', name: 'Test Generation Pipeline', icon: '🧪', category: 'quality',
-        desc: 'Auto-generate test cases from user stories — positive, negative, edge cases, and integration test stubs.',
-        trigger: 'On Task Complete', agents: ['Test Case Generator', 'QA Agent'],
-        steps: ['Extract acceptance criteria', 'Generate positive tests', 'Generate negative tests', 'Generate edge cases', 'Create test stubs'],
-        avgDuration: '2-4 min', successRate: 95, useCount: 3400
-      },
-      {
-        templateId: 'wft_vuln_scan', name: 'Vulnerability Assessment', icon: '🛡️', category: 'security',
-        desc: 'Comprehensive vulnerability scanning including OWASP top 10, dependency audit, secrets detection, and compliance report.',
-        trigger: 'Scheduled', agents: ['Security Agent'],
-        steps: ['OWASP scan', 'Dependency audit', 'Secrets detection', 'License check', 'Generate compliance report'],
-        avgDuration: '5-8 min', successRate: 100, useCount: 2200
-      },
-      {
-        templateId: 'wft_onboarding', name: 'Agent Onboarding', icon: '🎓', category: 'management',
-        desc: 'Onboard new agents with workspace setup, skill assignment, tool access, governance ceiling configuration.',
-        trigger: 'On Agent Create', agents: ['Chief Architect'],
-        steps: ['Create workspace', 'Assign skills', 'Configure tools', 'Set governance ceiling', 'Initial calibration', 'Integration test'],
-        avgDuration: '1-2 min', successRate: 100, useCount: 1100
-      },
-      {
-        templateId: 'wft_perf_audit', name: 'Performance Audit', icon: '📊', category: 'quality',
-        desc: 'Automated performance profiling, bottleneck detection, memory leak analysis, and optimization recommendations.',
-        trigger: 'Manual', agents: ['QA Agent', 'Module Architect'],
-        steps: ['Profile endpoints', 'Detect bottlenecks', 'Memory analysis', 'Generate recommendations', 'Create optimization tasks'],
-        avgDuration: '5-10 min', successRate: 92, useCount: 800
-      },
-      {
-        templateId: 'wft_release', name: 'Release Management', icon: '📦', category: 'devops',
-        desc: 'End-to-end release management with changelog generation, version bumping, artifact publishing, and rollback plan.',
-        trigger: 'Manual', agents: ['Security Agent', 'QA Agent'],
-        steps: ['Generate changelog', 'Bump version', 'Final test suite', 'Build release artifacts', 'Publish', 'Create rollback plan'],
-        avgDuration: '10-15 min', successRate: 96, useCount: 1400
-      }
+      { templateId:'wft_req_pipeline', name:'Requirements → Backlog Pipeline', icon:'📋', category:'management', desc:'Automated requirements ingestion, AI-powered analysis, deduplication, and backlog generation with MoSCoW prioritization.', trigger:'Manual', agents:['Business Analyst','Product Manager'], steps:['Load raw sources','Normalize text via AI','Extract requirements','Deduplicate','Generate backlog','Apply MoSCoW sizing'], avgDuration:'5-8 min', successRate:98, useCount:3200 },
+      { templateId:'wft_code_review', name:'Code Review Pipeline', icon:'🔍', category:'development', desc:'Automated code review with static analysis, security scanning, test coverage check, and quality gate enforcement.', trigger:'On PR', agents:['Module Architect','QA Agent','Security Agent'], steps:['Pull changes','Static analysis','Security scan','Test coverage check','Architect review','Quality gate'], avgDuration:'3-5 min', successRate:94, useCount:5600 },
+      { templateId:'wft_task_decomp', name:'Task Decomposition', icon:'🧩', category:'management', desc:'Break user stories into developer tasks with acceptance criteria, story points, and dependency mapping.', trigger:'On Story Assignment', agents:['Module Architect'], steps:['Parse user story','Identify subtasks','Assign acceptance criteria','Estimate story points','Map dependencies'], avgDuration:'2-3 min', successRate:100, useCount:2800 },
+      { templateId:'wft_cicd', name:'CI/CD Deployment Pipeline', icon:'🚀', category:'devops', desc:'Full CI/CD pipeline with build, test, security scan, staging deploy, smoke tests, and production release.', trigger:'On Merge', agents:['Security Agent','QA Agent'], steps:['Build artifact','Run unit tests','Security scan','Deploy to staging','Smoke tests','Production deploy','Health check'], avgDuration:'8-15 min', successRate:87, useCount:4100 },
+      { templateId:'wft_incident', name:'Incident Response', icon:'🚨', category:'security', desc:'Automated incident detection, classification, severity assessment, team notification, and post-mortem generation.', trigger:'On Alert', agents:['Security Agent'], steps:['Detect anomaly','Classify severity','Notify team','Isolate threat','Generate post-mortem','Create follow-up tasks'], avgDuration:'1-3 min', successRate:100, useCount:1500 },
+      { templateId:'wft_sprint', name:'Sprint Planning Automation', icon:'🏃', category:'management', desc:'Automated sprint planning with velocity-based capacity allocation, story selection, and team workload balancing.', trigger:'Scheduled', agents:['Scrum Master','Product Manager'], steps:['Calculate velocity','Rank backlog','Allocate capacity','Select stories','Balance workload','Generate sprint plan'], avgDuration:'4-6 min', successRate:100, useCount:1800 },
+      { templateId:'wft_arch_review', name:'Architecture Review', icon:'🏛️', category:'development', desc:'Cross-module integration review, dependency analysis, API contract validation, and architecture compliance check.', trigger:'Manual', agents:['Chief Architect','Integration Architect'], steps:['Collect module changes','Analyze dependencies','Validate API contracts','Check compliance','Generate report'], avgDuration:'6-10 min', successRate:100, useCount:900 },
+      { templateId:'wft_test_gen', name:'Test Generation Pipeline', icon:'🧪', category:'quality', desc:'Auto-generate test cases from user stories — positive, negative, edge cases, and integration test stubs.', trigger:'On Task Complete', agents:['Test Case Generator','QA Agent'], steps:['Extract acceptance criteria','Generate positive tests','Generate negative tests','Generate edge cases','Create test stubs'], avgDuration:'2-4 min', successRate:95, useCount:3400 },
+      { templateId:'wft_vuln_scan', name:'Vulnerability Assessment', icon:'🛡️', category:'security', desc:'Comprehensive vulnerability scanning including OWASP top 10, dependency audit, secrets detection, and compliance report.', trigger:'Scheduled', agents:['Security Agent'], steps:['OWASP scan','Dependency audit','Secrets detection','License check','Generate compliance report'], avgDuration:'5-8 min', successRate:100, useCount:2200 },
+      { templateId:'wft_onboarding', name:'Agent Onboarding', icon:'🎓', category:'management', desc:'Onboard new agents with workspace setup, skill assignment, tool access, governance ceiling configuration.', trigger:'On Agent Create', agents:['Chief Architect'], steps:['Create workspace','Assign skills','Configure tools','Set governance ceiling','Initial calibration','Integration test'], avgDuration:'1-2 min', successRate:100, useCount:1100 },
+      { templateId:'wft_perf_audit', name:'Performance Audit', icon:'📊', category:'quality', desc:'Automated performance profiling, bottleneck detection, memory leak analysis, and optimization recommendations.', trigger:'Manual', agents:['QA Agent','Module Architect'], steps:['Profile endpoints','Detect bottlenecks','Memory analysis','Generate recommendations','Create optimization tasks'], avgDuration:'5-10 min', successRate:92, useCount:800 },
+      { templateId:'wft_release', name:'Release Management', icon:'📦', category:'devops', desc:'End-to-end release management with changelog generation, version bumping, artifact publishing, and rollback plan.', trigger:'Manual', agents:['Security Agent','QA Agent'], steps:['Generate changelog','Bump version','Final test suite','Build release artifacts','Publish','Create rollback plan'], avgDuration:'10-15 min', successRate:96, useCount:1400 }
     ];
 
-    // ─── My Workflows Storage ───
-    function getMyWorkflows() {
-      return NexusStore.get('user_workflows') || [];
-    }
-    function setMyWorkflows(wfs) {
-      NexusStore.set('user_workflows', wfs);
-    }
-    function saveMyWorkflow(wf) {
-      const wfs = getMyWorkflows();
-      const idx = wfs.findIndex(w => w.id === wf.id);
-      if (idx >= 0) wfs[idx] = wf;
-      else wfs.push(wf);
-      setMyWorkflows(wfs);
+    // ─── Project Selector ───
+    function initProjectSelector() {
+      const projects = NexusStore.getProjects() || [];
+      const sel = document.getElementById('projectSelector');
+      if (!projects.length) {
+        document.getElementById('noProjectState').style.display = 'block';
+        document.getElementById('mainWfContent').style.display = 'none';
+        return;
+      }
+      document.getElementById('noProjectState').style.display = 'none';
+      document.getElementById('mainWfContent').style.display = '';
+
+      const saved = NexusStore.getActiveProject();
+      selectedProjectId = projects.find(p => p.id === saved) ? saved : projects[0].id;
+      NexusStore.setActiveProject(selectedProjectId);
+
+      sel.innerHTML = projects.map(p =>
+        `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${p.name}</option>`
+      ).join('');
+      updateProjectMeta();
     }
 
-    // Seed default workflows if empty
-    function seedDefaultWorkflows() {
-      if (getMyWorkflows().length > 0) return;
-      const defaults = [
-        { id: 'WF-001', name: 'Requirements → Backlog Pipeline', desc: 'Automated requirements ingestion, analysis, and backlog generation', trigger: 'Manual', agents: ['Business Analyst', 'Product Manager'], status: 'ACTIVE', executions: 12, lastRun: '2024-01-15T14:00:00Z', successRate: 100, _type: 'template', _templateId: 'wft_req_pipeline', icon: '📋', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-002', name: 'Code Review Pipeline', desc: 'Automated code review with security scanning and quality gates', trigger: 'On PR', agents: ['Module Architect', 'QA Agent', 'Security Agent'], status: 'ACTIVE', executions: 34, lastRun: '2024-01-15T16:00:00Z', successRate: 94, _type: 'template', _templateId: 'wft_code_review', icon: '🔍', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-003', name: 'Task Decomposition', desc: 'Break user stories into developer tasks with acceptance criteria', trigger: 'On Story Assignment', agents: ['Module Architect'], status: 'ACTIVE', executions: 18, lastRun: '2024-01-15T12:00:00Z', successRate: 100, _type: 'template', _templateId: 'wft_task_decomp', icon: '🧩', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-004', name: 'CI/CD Deployment', desc: 'Build, test, and deploy to staging/production environments', trigger: 'On Merge', agents: ['Security Agent', 'QA Agent'], status: 'ACTIVE', executions: 8, lastRun: '2024-01-14T18:00:00Z', successRate: 87, _type: 'template', _templateId: 'wft_cicd', icon: '🚀', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-005', name: 'Incident Response', desc: 'Automated incident detection, classification, and escalation', trigger: 'On Alert', agents: ['Security Agent'], status: 'ACTIVE', executions: 3, lastRun: '2024-01-13T09:00:00Z', successRate: 100, _type: 'template', _templateId: 'wft_incident', icon: '🚨', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-006', name: 'Sprint Planning', desc: 'Automated sprint planning with velocity-based capacity allocation', trigger: 'Scheduled', agents: ['Scrum Master', 'Product Manager'], status: 'IDLE', executions: 4, lastRun: '2024-01-10T10:00:00Z', successRate: 100, _type: 'template', _templateId: 'wft_sprint', icon: '🏃', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-007', name: 'Architecture Review', desc: 'Cross-module integration review and dependency analysis', trigger: 'Manual', agents: ['Chief Architect', 'Integration Architect'], status: 'IDLE', executions: 2, lastRun: '2024-01-12T15:00:00Z', successRate: 100, _type: 'template', _templateId: 'wft_arch_review', icon: '🏛️', createdAt: '2024-01-10T09:00:00Z' },
-        { id: 'WF-008', name: 'Test Generation', desc: 'Auto-generate test cases from user stories and acceptance criteria', trigger: 'On Task Complete', agents: ['Test Case Generator', 'QA Agent'], status: 'ACTIVE', executions: 21, lastRun: '2024-01-15T11:00:00Z', successRate: 95, _type: 'template', _templateId: 'wft_test_gen', icon: '🧪', createdAt: '2024-01-10T09:00:00Z' }
-      ];
-      setMyWorkflows(defaults);
+    function onProjectChange() {
+      selectedProjectId = document.getElementById('projectSelector').value;
+      NexusStore.setActiveProject(selectedProjectId);
+      updateProjectMeta();
+      renderAll();
     }
-    seedDefaultWorkflows();
+
+    function updateProjectMeta() {
+      const proj = NexusStore.getProject(selectedProjectId);
+      if (!proj) return;
+      const wfs = getProjectWorkflows();
+      document.getElementById('projectMeta').innerHTML = `
+        <span>⚡ ${wfs.length} workflows</span>
+        <span>${statusBadge(proj.status)}</span>
+      `;
+    }
+
+    // ─── Project-Scoped Workflow Helpers ───
+    function getProjectWorkflows() {
+      return NexusStore.getProjectWorkflows(selectedProjectId);
+    }
+
+    function setProjectWorkflows(wfs) {
+      NexusStore.setProjectWorkflows(selectedProjectId, wfs);
+    }
+
+    function saveProjectWorkflow(wf) {
+      NexusStore.saveProjectWorkflow(selectedProjectId, wf);
+    }
 
     // ─── Tab Switching ───
     function switchWfTab(tabId) {
@@ -480,22 +349,18 @@
 
     function renderTemplateGallery() {
       const search = (document.getElementById('templateSearch')?.value || '').toLowerCase();
-      const usedTemplateIds = getMyWorkflows().map(w => w._templateId).filter(Boolean);
-
+      const usedIds = getProjectWorkflows().map(w => w._templateId).filter(Boolean);
       let filtered = WORKFLOW_TEMPLATES.filter(t => {
         if (currentTemplateFilter !== 'all' && t.category !== currentTemplateFilter) return false;
         if (search) {
-          const haystack = (t.name + ' ' + t.desc + ' ' + t.category + ' ' + t.agents.join(' ') + ' ' + t.steps.join(' ')).toLowerCase();
-          if (!haystack.includes(search)) return false;
+          if (!(t.name+' '+t.desc+' '+t.category+' '+t.agents.join(' ')+' '+t.steps.join(' ')).toLowerCase().includes(search)) return false;
         }
         return true;
       });
-
-      const catColors = { development: '#10b981', devops: '#3b82f6', management: '#8b5cf6', quality: '#f59e0b', security: '#ef4444' };
-
+      const catColors = { development:'#10b981', devops:'#3b82f6', management:'#8b5cf6', quality:'#f59e0b', security:'#ef4444' };
       document.getElementById('templateGrid').innerHTML = filtered.map(t => {
         const bg = catColors[t.category] || '#6366f1';
-        const isUsed = usedTemplateIds.includes(t.templateId);
+        const isUsed = usedIds.includes(t.templateId);
         return `
           <div class="template-card">
             <span class="tc-badge-template">Template</span>
@@ -503,29 +368,26 @@
             <div class="tc-title">${t.name}</div>
             <div class="tc-category">${t.category}</div>
             <div class="tc-desc">${t.desc}</div>
-            <div class="tc-steps">${t.steps.slice(0, 4).map(s => `<span class="step-tag">${s}</span>`).join('')}${t.steps.length > 4 ? `<span class="step-tag">+${t.steps.length - 4} more</span>` : ''}</div>
+            <div class="tc-steps">${t.steps.slice(0,4).map(s=>`<span class="step-tag">${s}</span>`).join('')}${t.steps.length>4?`<span class="step-tag">+${t.steps.length-4}</span>`:''}</div>
             <div class="tc-meta">
-              <span>⏱️ ${t.avgDuration}</span>
-              <span>✅ ${t.successRate}%</span>
-              <span>🚀 ${t.useCount.toLocaleString()} uses</span>
+              <span>⏱️ ${t.avgDuration}</span><span>✅ ${t.successRate}%</span><span>🚀 ${t.useCount.toLocaleString()}</span>
             </div>
             <div class="tc-actions">
               ${isUsed
                 ? `<button class="btn btn-primary btn-sm" onclick="openDeployTemplate('${t.templateId}')">+ Add Another</button>`
-                : `<button class="btn btn-primary btn-sm" onclick="openDeployTemplate('${t.templateId}')">⚡ Use Template</button>`
-              }
+                : `<button class="btn btn-primary btn-sm" onclick="openDeployTemplate('${t.templateId}')">⚡ Use Template</button>`}
               <button class="btn btn-outline btn-sm" onclick="previewTemplate('${t.templateId}')">Details</button>
             </div>
-          </div>
-        `;
-      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3 class="empty-state-title">No templates match your filter</h3></div>';
+          </div>`;
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3 class="empty-state-title">No templates match</h3></div>';
     }
 
     function openDeployTemplate(templateId) {
       const t = WORKFLOW_TEMPLATES.find(w => w.templateId === templateId);
       if (!t) return;
       pendingTemplate = t;
-      document.getElementById('deployWfTitle').textContent = `Use "${t.name}"`;
+      const proj = NexusStore.getProject(selectedProjectId);
+      document.getElementById('deployWfTitle').textContent = `Use "${t.name}" in ${proj?.name || 'Project'}`;
       document.getElementById('deployWfBody').innerHTML = `
         <div style="display:flex;gap:16px;margin-bottom:16px">
           <div style="font-size:48px">${t.icon}</div>
@@ -535,28 +397,22 @@
             <p style="font-size:13px;color:var(--text-secondary)">${t.desc}</p>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Workflow Name (customize)</label>
+        <div class="form-group"><label class="form-label">Workflow Name</label>
           <input type="text" id="deployWfName" class="form-input" value="${t.name}">
         </div>
-        <div class="form-group">
-          <label class="form-label">Trigger Override</label>
+        <div class="form-group"><label class="form-label">Trigger Override</label>
           <select id="deployWfTrigger" class="form-select">
             <option value="${t.trigger}" selected>${t.trigger} (default)</option>
-            <option value="manual">Manual</option>
-            <option value="on_commit">On Commit</option>
-            <option value="on_pr">On Pull Request</option>
-            <option value="on_merge">On Merge</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="webhook">Webhook</option>
+            <option value="manual">Manual</option><option value="on_commit">On Commit</option>
+            <option value="on_pr">On Pull Request</option><option value="on_merge">On Merge</option>
+            <option value="scheduled">Scheduled</option><option value="webhook">Webhook</option>
           </select>
         </div>
         <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-top:12px">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">Workflow Steps</div>
-          <div style="display:flex;flex-direction:column;gap:4px">${t.steps.map((s, i) => `<div style="font-size:12px;color:var(--text-secondary)"><span style="color:var(--accent);font-weight:600">${i + 1}.</span> ${s}</div>`).join('')}</div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${t.agents.map(a => `<span class="tag">🤖 ${a}</span>`).join('')}</div>
-        </div>
-      `;
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:8px">Project: <strong style="color:var(--accent)">${proj?.name || 'Project'}</strong></div>
+          <div style="display:flex;flex-direction:column;gap:4px">${t.steps.map((s,i)=>`<div style="font-size:12px;color:var(--text-secondary)"><span style="color:var(--accent);font-weight:600">${i+1}.</span> ${s}</div>`).join('')}</div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${t.agents.map(a=>`<span class="tag">🤖 ${a}</span>`).join('')}</div>
+        </div>`;
       openModal('deployTemplateModal');
     }
 
@@ -566,76 +422,53 @@
       const name = document.getElementById('deployWfName').value.trim() || t.name;
       const trigger = document.getElementById('deployWfTrigger').value;
 
+      const wfs = getProjectWorkflows();
       const newWf = {
-        id: 'WF-' + String(getMyWorkflows().length + 1).padStart(3, '0'),
-        name: name,
-        desc: t.desc,
-        trigger: trigger,
-        agents: [...t.agents],
-        status: 'ACTIVE',
-        executions: 0,
-        lastRun: null,
-        successRate: 0,
-        _type: 'template',
-        _templateId: t.templateId,
-        icon: t.icon,
-        steps: [...t.steps],
-        createdAt: new Date().toISOString()
+        id: 'WF-' + String(wfs.length + 1).padStart(3, '0') + '-' + Date.now(),
+        name, desc: t.desc, trigger,
+        agents: [...t.agents], status: 'ACTIVE',
+        executions: 0, lastRun: null, successRate: 0,
+        _type: 'template', _templateId: t.templateId,
+        icon: t.icon, steps: [...t.steps],
+        createdAt: new Date().toISOString(),
+        _projectId: selectedProjectId
       };
-
-      saveMyWorkflow(newWf);
+      saveProjectWorkflow(newWf);
       closeModal('deployTemplateModal');
       pendingTemplate = null;
-      showToast(`Workflow "${name}" created from template!`, 'success');
+      showToast(`Workflow "${name}" created!`, 'success');
       renderAll();
     }
 
     function previewTemplate(templateId) {
       const t = WORKFLOW_TEMPLATES.find(w => w.templateId === templateId);
       if (!t) return;
-      document.getElementById('previewWfTitle').textContent = t.name;
-      const catColors = { development: '#10b981', devops: '#3b82f6', management: '#8b5cf6', quality: '#f59e0b', security: '#ef4444' };
+      const catColors = { development:'#10b981', devops:'#3b82f6', management:'#8b5cf6', quality:'#f59e0b', security:'#ef4444' };
       const bg = catColors[t.category] || '#6366f1';
+      document.getElementById('previewWfTitle').textContent = t.name;
       document.getElementById('previewWfBody').innerHTML = `
-        <div style="display:flex;gap:16px;margin-bottom:24px">
-          <div style="font-size:56px">${t.icon}</div>
-          <div>
-            <h2 style="margin:0;color:var(--text-primary)">${t.name}</h2>
-            <p style="color:${bg};font-size:12px;text-transform:uppercase;letter-spacing:0.6px;font-weight:600">${t.category}</p>
-            <p style="color:var(--text-secondary);font-size:13px;margin-top:4px">${t.desc}</p>
-          </div>
-        </div>
+        <div style="display:flex;gap:16px;margin-bottom:24px"><div style="font-size:56px">${t.icon}</div>
+          <div><h2 style="margin:0;color:var(--text-primary)">${t.name}</h2>
+            <p style="color:${bg};font-size:12px;text-transform:uppercase;font-weight:600">${t.category}</p>
+            <p style="color:var(--text-secondary);font-size:13px;margin-top:4px">${t.desc}</p></div></div>
         <div class="grid grid-2" style="gap:16px">
-          <div class="config-section">
-            <h4>Workflow Steps</h4>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              ${t.steps.map((s, i) => `
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div style="width:24px;height:24px;border-radius:50%;background:var(--accent)20;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i + 1}</div>
-                  <span style="font-size:13px;color:var(--text-secondary)">${s}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-          <div class="config-section">
-            <h4>Agents Involved</h4>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">${t.agents.map(a => `<span class="tag">🤖 ${a}</span>`).join('')}</div>
-          </div>
-          <div class="config-section">
-            <h4>Performance</h4>
+          <div class="config-section"><h4>Steps</h4>
+            <div style="display:flex;flex-direction:column;gap:6px">${t.steps.map((s,i)=>`
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:24px;height:24px;border-radius:50%;background:var(--accent)20;color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${i+1}</div>
+                <span style="font-size:13px;color:var(--text-secondary)">${s}</span></div>`).join('')}</div></div>
+          <div class="config-section"><h4>Agents</h4><div style="display:flex;flex-wrap:wrap;gap:6px">${t.agents.map(a=>`<span class="tag">🤖 ${a}</span>`).join('')}</div></div>
+          <div class="config-section"><h4>Performance</h4>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;color:var(--text-secondary)">
-              <div>⏱️ Avg Duration: <strong>${t.avgDuration}</strong></div>
-              <div>✅ Success Rate: <strong>${t.successRate}%</strong></div>
-              <div>🚀 Total Uses: <strong>${t.useCount.toLocaleString()}</strong></div>
+              <div>⏱️ Duration: <strong>${t.avgDuration}</strong></div>
+              <div>✅ Success: <strong>${t.successRate}%</strong></div>
+              <div>🚀 Uses: <strong>${t.useCount.toLocaleString()}</strong></div>
               <div>🔄 Trigger: <strong>${t.trigger}</strong></div>
-            </div>
-          </div>
-        </div>
-      `;
+            </div></div></div>`;
       openModal('previewTemplateModal');
     }
 
-    // ─── My Workflows ───
+    // ─── My Workflows (project scoped) ───
     function setMyWfFilter(filter, el) {
       currentMyWfFilter = filter;
       document.querySelectorAll('#wfMyWorkflows-section .wf-filter-chip').forEach(c => c.classList.remove('active'));
@@ -646,34 +479,30 @@
 
     function renderMyWorkflows() {
       const search = (document.getElementById('myWfSearch')?.value || '').toLowerCase();
-      let wfs = getMyWorkflows();
-
+      let wfs = getProjectWorkflows();
       wfs = wfs.filter(w => {
         if (currentMyWfFilter === 'template' && w._type !== 'template') return false;
         if (currentMyWfFilter === 'custom' && w._type !== 'custom') return false;
         if (currentMyWfFilter === 'ACTIVE' && w.status !== 'ACTIVE') return false;
         if (currentMyWfFilter === 'IDLE' && w.status !== 'IDLE') return false;
-        if (search) {
-          const haystack = (w.name + ' ' + w.desc + ' ' + w.trigger + ' ' + (w.agents || []).join(' ')).toLowerCase();
-          if (!haystack.includes(search)) return false;
-        }
+        if (search) { if (!(w.name+' '+w.desc+' '+w.trigger+' '+(w.agents||[]).join(' ')).toLowerCase().includes(search)) return false; }
         return true;
       });
 
       document.getElementById('myWorkflowsGrid').innerHTML = wfs.map(wf => {
         const isCustom = wf._type === 'custom';
         return `
-          <div class="my-wf-card ${wf.status === 'ACTIVE' ? 'wf-active' : ''}">
-            ${isCustom ? '<span class="tc-badge-custom">Custom</span>' : '<span class="tc-badge-template">Template</span>'}
+          <div class="my-wf-card ${wf.status==='ACTIVE'?'wf-active':''}">
+            ${isCustom?'<span class="tc-badge-custom">Custom</span>':'<span class="tc-badge-template">Template</span>'}
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
               <div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${wf.icon || '🔄'} ${wf.name}</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${wf.icon||'🔄'} ${wf.name}</div>
                 <div style="font-size:11px;color:var(--text-muted)">Trigger: ${wf.trigger}</div>
               </div>
               ${statusBadge(wf.status)}
             </div>
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.4">${wf.desc}</p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${(wf.agents || []).map(a => `<span class="tag">🤖 ${a}</span>`).join('')}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${(wf.agents||[]).map(a=>`<span class="tag">🤖 ${a}</span>`).join('')}</div>
             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:12px">
               <span>${wf.executions} runs</span>
               <span>${wf.successRate}% success</span>
@@ -681,28 +510,26 @@
             </div>
             <div style="display:flex;gap:6px">
               <button class="btn btn-primary btn-sm" onclick="executeWorkflow('${wf.id}')">▶ Run</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleWfStatus('${wf.id}')">${wf.status === 'ACTIVE' ? '⏸ Pause' : '▶ Resume'}</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleWfStatus('${wf.id}')">${wf.status==='ACTIVE'?'⏸ Pause':'▶ Resume'}</button>
               <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeWorkflow('${wf.id}')">✕</button>
             </div>
-          </div>
-        `;
-      }).join('') || '<div class="empty-state"><div class="empty-state-icon">⚡</div><h3 class="empty-state-title">No workflows yet</h3><p class="empty-state-text">Use a template or build a custom workflow</p></div>';
+          </div>`;
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon">⚡</div><h3 class="empty-state-title">No workflows in this project</h3><p class="empty-state-text">Use a template or build a custom workflow</p></div>';
     }
 
     function toggleWfStatus(wfId) {
-      const wfs = getMyWorkflows();
+      const wfs = getProjectWorkflows();
       const wf = wfs.find(w => w.id === wfId);
       if (!wf) return;
       wf.status = wf.status === 'ACTIVE' ? 'IDLE' : 'ACTIVE';
-      setMyWorkflows(wfs);
-      showToast(`${wf.name} ${wf.status === 'ACTIVE' ? 'activated' : 'paused'}`, 'info');
+      setProjectWorkflows(wfs);
+      showToast(`${wf.name} ${wf.status==='ACTIVE'?'activated':'paused'}`, 'info');
       renderAll();
     }
 
     function removeWorkflow(wfId) {
       if (!confirm('Remove this workflow?')) return;
-      const wfs = getMyWorkflows().filter(w => w.id !== wfId);
-      setMyWorkflows(wfs);
+      NexusStore.removeProjectWorkflow(selectedProjectId, wfId);
       showToast('Workflow removed', 'info');
       renderAll();
     }
@@ -710,41 +537,34 @@
     function executeWorkflow(id) { showToast('Workflow ' + id + ' started', 'success'); }
 
     // ─── Custom Workflow Builder ───
-    let customSteps = [];
-
     function addCustomStep(type) {
-      const labels = { agent: '🤖 Agent Step', gate: '🛡️ Quality Gate', transform: '⚙️ Transform', condition: '🔀 Condition', notification: '📢 Notification' };
-      customSteps.push({ type, name: labels[type] || 'Step', action: '', agent: '' });
+      const labels = { agent:'🤖 Agent Step', gate:'🛡️ Quality Gate', transform:'⚙️ Transform', condition:'🔀 Condition', notification:'📢 Notification' };
+      customSteps.push({ type, name: labels[type]||'Step', action:'', agent:'' });
       renderCustomSteps();
     }
 
-    function removeCustomStep(i) {
-      customSteps.splice(i, 1);
-      renderCustomSteps();
-    }
+    function removeCustomStep(i) { customSteps.splice(i, 1); renderCustomSteps(); }
 
     function renderCustomSteps() {
-      const container = document.getElementById('customBuilderSteps');
-      if (customSteps.length === 0) {
-        container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px">No steps added yet. Use buttons below to add steps.</div>';
+      const c = document.getElementById('customBuilderSteps');
+      if (!customSteps.length) {
+        c.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);font-size:13px">No steps added yet.</div>';
         return;
       }
-
-      container.innerHTML = customSteps.map((s, i) => `
+      c.innerHTML = customSteps.map((s, i) => `
         <div style="margin-bottom:8px">
           ${i > 0 ? '<div class="builder-arrow">↓</div>' : ''}
           <div class="builder-step">
             <div class="step-info">
               <div class="step-name">${s.name}</div>
               <div class="step-detail">
-                <input type="text" class="form-input" style="margin-top:4px;padding:4px 8px;font-size:11px" placeholder="Action description..." value="${s.action}" onchange="customSteps[${i}].action=this.value">
-                ${s.type === 'agent' ? `<input type="text" class="form-input" style="margin-top:4px;padding:4px 8px;font-size:11px" placeholder="Agent name..." value="${s.agent}" onchange="customSteps[${i}].agent=this.value">` : ''}
+                <input type="text" class="form-input" style="margin-top:4px;padding:4px 8px;font-size:11px" placeholder="Action..." value="${s.action}" onchange="customSteps[${i}].action=this.value">
+                ${s.type==='agent'?`<input type="text" class="form-input" style="margin-top:4px;padding:4px 8px;font-size:11px" placeholder="Agent name..." value="${s.agent}" onchange="customSteps[${i}].agent=this.value">`:''}
               </div>
             </div>
             <button class="btn btn-outline btn-sm" onclick="removeCustomStep(${i})">✕</button>
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     function resetCustomBuilder() {
@@ -758,74 +578,63 @@
     function createCustomWorkflow() {
       const name = document.getElementById('cwfName').value.trim();
       if (!name) { showToast('Workflow name is required', 'error'); return; }
-      if (customSteps.length === 0) { showToast('Add at least one step', 'error'); return; }
-
-      const agents = [...new Set(customSteps.filter(s => s.agent).map(s => s.agent))];
+      if (!customSteps.length) { showToast('Add at least one step', 'error'); return; }
+      const agents = [...new Set(customSteps.filter(s=>s.agent).map(s=>s.agent))];
+      const wfs = getProjectWorkflows();
       const newWf = {
-        id: 'WF-' + String(getMyWorkflows().length + 1).padStart(3, '0'),
-        name: name,
-        desc: document.getElementById('cwfDesc').value || 'Custom workflow',
+        id: 'WF-' + String(wfs.length + 1).padStart(3, '0') + '-' + Date.now(),
+        name, desc: document.getElementById('cwfDesc').value || 'Custom workflow',
         trigger: document.getElementById('cwfTrigger').value,
-        agents: agents,
-        status: 'ACTIVE',
-        executions: 0,
-        lastRun: null,
-        successRate: 0,
-        _type: 'custom',
-        icon: document.getElementById('cwfIcon').value,
+        agents, status: 'ACTIVE', executions: 0, lastRun: null, successRate: 0,
+        _type: 'custom', icon: document.getElementById('cwfIcon').value,
         steps: customSteps.map(s => s.action || s.name),
         customSteps: JSON.parse(JSON.stringify(customSteps)),
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        _projectId: selectedProjectId
       };
-
-      saveMyWorkflow(newWf);
+      saveProjectWorkflow(newWf);
       showToast(`Custom workflow "${name}" created!`, 'success');
       resetCustomBuilder();
       switchWfTab('wfMyWorkflows-section');
       renderAll();
     }
 
-    // ─── Monitor & Recovery ───
+    // ─── Monitor & Recovery (mock data) ───
     const executions = [
-      { id: 'EXE-101', workflow: 'Code Review Pipeline', trigger: 'On PR', started: '2024-01-15T16:30:00Z', duration: '3m 24s', status: 'COMPLETED' },
-      { id: 'EXE-100', workflow: 'Test Generation', trigger: 'On Task Complete', started: '2024-01-15T15:10:00Z', duration: '1m 56s', status: 'COMPLETED' },
-      { id: 'EXE-099', workflow: 'Task Decomposition', trigger: 'On Story Assignment', started: '2024-01-15T14:45:00Z', duration: '2m 12s', status: 'COMPLETED' },
-      { id: 'EXE-098', workflow: 'CI/CD Deployment', trigger: 'On Merge', started: '2024-01-15T13:00:00Z', duration: '8m 45s', status: 'FAILED' },
-      { id: 'EXE-097', workflow: 'Requirements Pipeline', trigger: 'Manual', started: '2024-01-15T10:20:00Z', duration: '5m 30s', status: 'COMPLETED' }
+      { id:'EXE-101', workflow:'Code Review Pipeline', trigger:'On PR', started:'2024-01-15T16:30:00Z', duration:'3m 24s', status:'COMPLETED' },
+      { id:'EXE-100', workflow:'Test Generation', trigger:'On Task Complete', started:'2024-01-15T15:10:00Z', duration:'1m 56s', status:'COMPLETED' },
+      { id:'EXE-099', workflow:'Task Decomposition', trigger:'On Story Assignment', started:'2024-01-15T14:45:00Z', duration:'2m 12s', status:'COMPLETED' },
+      { id:'EXE-098', workflow:'CI/CD Deployment', trigger:'On Merge', started:'2024-01-15T13:00:00Z', duration:'8m 45s', status:'FAILED' },
+      { id:'EXE-097', workflow:'Requirements Pipeline', trigger:'Manual', started:'2024-01-15T10:20:00Z', duration:'5m 30s', status:'COMPLETED' }
     ];
 
     function renderMonitorAndRecovery() {
       document.getElementById('executionTable').innerHTML = executions.map(e => `<tr>
         <td style="font-weight:600;color:var(--accent)">${e.id}</td><td>${e.workflow}</td><td><span class="tag">${e.trigger}</span></td>
         <td style="font-size:12px">${formatTime(e.started)}</td><td>${e.duration}</td><td>${statusBadge(e.status)}</td>
-        <td><button class="btn btn-outline btn-sm">Details</button></td>
-      </tr>`).join('');
+        <td><button class="btn btn-outline btn-sm">Details</button></td></tr>`).join('');
 
       const failed = executions.filter(e => e.status === 'FAILED');
-      document.getElementById('failedWorkflows').innerHTML = failed.length === 0 ?
-        '<div class="empty-state"><div class="empty-state-icon">✅</div><h3 class="empty-state-title">No Failed Workflows</h3><p class="empty-state-text">All workflows completed successfully</p></div>' :
+      document.getElementById('failedWorkflows').innerHTML = !failed.length ?
+        '<div class="empty-state"><div class="empty-state-icon">✅</div><h3 class="empty-state-title">No Failed Workflows</h3></div>' :
         failed.map(f => `
           <div class="card" style="border-left:3px solid var(--danger)">
             <div class="card-header"><h3 class="card-title">${f.workflow}</h3>${statusBadge(f.status)}</div>
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">Failed at ${formatTime(f.started)} after ${f.duration}</p>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-warning btn-sm" onclick="retryWorkflow('${f.id}')">🔄 Retry</button>
+              <button class="btn btn-warning btn-sm" onclick="showToast('Retrying...','info')">🔄 Retry</button>
               <button class="btn btn-outline btn-sm">View Logs</button>
-              <button class="btn btn-outline btn-sm">Skip & Continue</button>
             </div>
-          </div>
-        `).join('');
+          </div>`).join('');
     }
-
-    function retryWorkflow(id) { showToast('Retrying workflow ' + id, 'info'); }
 
     // ─── Render All ───
     function renderAll() {
-      const wfs = getMyWorkflows();
+      if (!selectedProjectId) return;
+      const wfs = getProjectWorkflows();
       const templateCount = wfs.filter(w => w._type === 'template').length;
       const customCount = wfs.filter(w => w._type === 'custom').length;
-      const activeWfs = wfs.filter(w => w.status === 'ACTIVE');
-      const avgSuccess = wfs.length ? Math.round(wfs.reduce((a, w) => a + (w.successRate || 0), 0) / wfs.length) : 0;
+      const avgSuccess = wfs.length ? Math.round(wfs.reduce((a,w) => a + (w.successRate||0), 0) / wfs.length) : 0;
 
       document.getElementById('wfTotal').textContent = wfs.length;
       document.getElementById('wfTemplateCount').textContent = templateCount;
@@ -836,9 +645,12 @@
       renderMyWorkflows();
       renderMonitorAndRecovery();
       renderCustomSteps();
+      updateProjectMeta();
     }
 
-    renderAll();
+    // ─── Init ───
+    initProjectSelector();
+    if (selectedProjectId) renderAll();
   </script>
 </body>
 </html>
