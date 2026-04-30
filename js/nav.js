@@ -15,6 +15,7 @@ function createNavigation(activePage) {
 
   // ─── Master Navigation Structure ───
   const mainNavItems = [
+    { id: 'portfolio', label: 'Portfolio', icon: '🏢', href: 'portfolio.html' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊', href: 'dashboard.html' },
     { id: 'workspace', label: 'Workspace', icon: '💬', href: 'workspace.html' },
     { id: 'projects', label: 'Projects', icon: '📂', href: 'projects.html' },

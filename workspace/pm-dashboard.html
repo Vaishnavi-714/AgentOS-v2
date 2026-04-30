@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — PM Decision Dashboard</title>
+  <meta name="description" content="Product Manager Decision Dashboard — Lifecycle-aware project management">
+  <link rel="stylesheet" href="../css/common.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <!-- Header -->
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <a href="portfolio.html" class="back-btn">← Portfolio</a>
+        <div>
+          <h1 class="page-title" id="projectTitle">PM Dashboard</h1>
+          <p class="page-subtitle" id="projectSubtitle">Loading...</p>
+        </div>
+      </div>
+      <div class="page-actions">
+        <div class="phase-switcher" id="phaseSwitcher"></div>
+      </div>
+    </div>
+
+    <!-- Summary Bar -->
+    <div class="pm-summary-bar" id="summaryBar"></div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="dashTabs">
+      <a href="#phase-section" class="tab nav-link active">📊 Phase Dashboard</a>
+      <a href="#health-section" class="tab nav-link">💪 Health & Metrics</a>
+      <a href="#decisions-section" class="tab nav-link">📋 Decisions</a>
+      <a href="#issues-section" class="tab nav-link">🔧 Issues</a>
+      <a href="#governance-section" class="tab nav-link">🏛️ Governance</a>
+    </div>
+
+    <!-- Phase Dashboard -->
+    <div id="phase-section" class="tab-content active"></div>
+
+    <!-- Health & Metrics -->
+    <div id="health-section" class="tab-content">
+      <div class="grid grid-2">
+        <div class="card" id="healthRingCard"></div>
+        <div class="card" id="triangleCard"></div>
+      </div>
+      <div class="card" id="scoreCard"></div>
+    </div>
+
+    <!-- Decisions -->
+    <div id="decisions-section" class="tab-content">
+      <div class="pm-section-header">
+        <h3 class="pm-section-title">📋 Decision Log</h3>
+      </div>
+      <div id="decisionsContent"></div>
+    </div>
+
+    <!-- Issues -->
+    <div id="issues-section" class="tab-content">
+      <div class="pm-section-header">
+        <h3 class="pm-section-title">🔧 Key Issues Tracker</h3>
+      </div>
+      <div id="issuesContent"></div>
+    </div>
+
+    <!-- Governance -->
+    <div id="governance-section" class="tab-content">
+      <div id="governanceContent"></div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/pm-data.js"></script>
+  <script src="../js/pm-render.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('portfolio');
+
+    const projId = sessionStorage.getItem('pm_selected_project');
+    if (!projId) { window.location.href = 'portfolio.html'; }
+    const project = PMData.getProject(projId);
+    if (!project) { window.location.href = 'portfolio.html'; }
+
+    let currentPhase = project.phase;
+
+    function init() {
+      // Title
+      document.getElementById('projectTitle').textContent = project.name;
+      document.getElementById('projectSubtitle').textContent = `${project.domain} · ${PMData.getPhaseLabel(currentPhase)} · Owner: ${project.owner}`;
+
+      // Phase switcher
+      document.getElementById('phaseSwitcher').innerHTML = [
+        { id: 'idea', label: '🟣 Idea' },
+        { id: 'execution', label: '🟡 Execution' },
+        { id: 'post-launch', label: '🟢 Post-Launch' }
+      ].map(ph => `<button class="phase-btn ${ph.id === currentPhase ? 'active' : ''}" onclick="switchPhase('${ph.id}')">${ph.label}</button>`).join('');
+
+      // Summary bar
+      const hc = project.healthScore >= 70 ? '#10b981' : project.healthScore >= 50 ? '#f59e0b' : '#ef4444';
+      const budgetPct = Math.round(project.budget.spent / project.budget.allocated * 100);
+      document.getElementById('summaryBar').innerHTML = `
+        <div class="pm-summary-item"><div class="pm-summary-label">Health</div><div class="pm-summary-value" style="color:${hc}"><span class="health-dot ${project.health}"></span>${project.healthScore}%</div></div>
+        <div class="pm-summary-divider"></div>
+        <div class="pm-summary-item"><div class="pm-summary-label">Phase</div><div class="pm-summary-value"><span class="phase-badge ${currentPhase}">${PMData.getPhaseIcon(currentPhase)} ${PMData.getPhaseLabel(currentPhase)}</span></div></div>
+        <div class="pm-summary-divider"></div>
+        <div class="pm-summary-item"><div class="pm-summary-label">Progress</div><div class="pm-summary-value">${project.progress}%</div></div>
+        <div class="pm-summary-divider"></div>
+        <div class="pm-summary-item"><div class="pm-summary-label">Budget</div><div class="pm-summary-value" style="color:${budgetPct>80?'#ef4444':budgetPct>60?'#f59e0b':'#10b981'}">$${(project.budget.spent/1000).toFixed(0)}K / $${(project.budget.allocated/1000).toFixed(0)}K</div></div>
+        <div class="pm-summary-divider"></div>
+        <div class="pm-summary-item"><div class="pm-summary-label">Team</div><div class="pm-summary-value">👥 ${project.team}</div></div>
+      `;
+
+      renderPhase();
+      renderSharedSections();
+    }
+
+    function switchPhase(phase) {
+      currentPhase = phase;
+      document.querySelectorAll('#phaseSwitcher .phase-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('projectSubtitle').textContent = `${project.domain} · ${PMData.getPhaseLabel(currentPhase)} · Owner: ${project.owner}`;
+      document.querySelector('#summaryBar .phase-badge').className = 'phase-badge ' + phase;
+      document.querySelector('#summaryBar .phase-badge').innerHTML = PMData.getPhaseIcon(phase) + ' ' + PMData.getPhaseLabel(phase);
+      renderPhase();
+    }
+
+    function renderPhase() {
+      const el = document.getElementById('phase-section');
+      if (currentPhase === 'idea' && project.phase === 'idea') {
+        el.innerHTML = renderIdeaPhase(project);
+      } else if (currentPhase === 'execution' && (project.phase === 'execution' || project.roadmap)) {
+        el.innerHTML = renderExecutionPhase(project);
+      } else if (currentPhase === 'post-launch' && project.phase === 'post-launch') {
+        el.innerHTML = renderPostLaunchPhase(project);
+      } else {
+        el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${PMData.getPhaseIcon(currentPhase)}</div><h3 class="empty-state-title">${PMData.getPhaseLabel(currentPhase)} View</h3><p class="empty-state-text">This project is currently in the <strong>${PMData.getPhaseLabel(project.phase)}</strong> phase.<br>Data for this phase view will be available when the project reaches this stage.</p></div>`;
+      }
+    }
+
+    function renderSharedSections() {
+      // Health
+      document.getElementById('healthRingCard').innerHTML = `<div class="card-header"><h3 class="card-title">🏥 Project Health Score</h3></div>${renderHealthRing(project.healthScore)}<div style="margin-top:16px">${renderScoreBreakdown(project.scores)}</div>`;
+      document.getElementById('triangleCard').innerHTML = `<div class="card-header"><h3 class="card-title">📐 Cost–Time–Quality Triangle</h3></div>${renderTriangle(project.costTimeQuality)}`;
+      document.getElementById('scoreCard').innerHTML = `<div class="card-header"><h3 class="card-title">📊 Score Breakdown</h3></div><div class="grid grid-4">${['Progress','Risk Mgmt','Quality','Budget'].map((l,i)=>{const v=[project.scores.progress,100-project.scores.risk,project.scores.quality,project.scores.budget][i];const c=v>=70?'#10b981':v>=50?'#f59e0b':'#ef4444';return `<div class="stat-card"><span class="stat-label">${l}</span><span class="stat-value" style="color:${c}">${v}%</span></div>`}).join('')}</div>`;
+      // Decisions
+      document.getElementById('decisionsContent').innerHTML = project.decisions ? renderDecisions(project.decisions) : '<p style="color:var(--text-muted)">No decisions recorded yet.</p>';
+      // Issues
+      document.getElementById('issuesContent').innerHTML = renderIssues(project.issues);
+      // Governance
+      document.getElementById('governanceContent').innerHTML = project.governance ? renderGovernance(project.governance) : '<p style="color:var(--text-muted)">No governance data.</p>';
+    }
+
+    function gateDecision(type) {
+      const labels = { proceed: '✅ PROCEED — Project approved to move forward', hold: '⏸️ HOLD — Project paused for further review', kill: '❌ KILL — Project terminated' };
+      showToast(labels[type], type === 'proceed' ? 'success' : type === 'hold' ? 'warning' : 'error');
+    }
+
+    init();
+  </script>
+</body>
+</html>

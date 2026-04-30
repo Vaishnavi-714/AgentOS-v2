@@ -59,7 +59,7 @@
         window.location.href = 'admin/admin-console.html';
       } else {
         localStorage.setItem("role", "tenant");
-        window.location.href = 'workspace/dashboard.html';
+        window.location.href = 'workspace/portfolio.html';
       }
     }
 
@@ -125,7 +125,7 @@
       const userName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       NexusStore.setUser({ id: 'tenant_user_' + Date.now(), name: userName, role: 'Human Orchestrator', avatar: '👤', loginAt: new Date().toISOString() });
       NexusStore.addLog({ type: 'AUTH', message: `${userName} logged into ${tenant.name}`, agent: 'system' });
-      window.location.href = 'workspace/dashboard.html';
+      window.location.href = 'workspace/portfolio.html';
     }
   </script>
 </body>
