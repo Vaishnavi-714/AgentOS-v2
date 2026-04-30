@@ -3,89 +3,312 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEXUS — Dashboard</title>
+  <title>NEXUS — Dashboard & Projects</title>
   <link rel="stylesheet" href="../css/common.css">
+  <style>
+    /* Document Upload Zone */
+    .doc-upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius-lg);
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: all 0.3s ease; background: var(--bg-tertiary);
+    }
+    .doc-upload-zone:hover, .doc-upload-zone.drag-active {
+      border-color: var(--accent); background: var(--accent)08;
+    }
+    .doc-upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .doc-upload-text { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+    .doc-upload-hint { font-size: 11px; color: var(--text-muted); }
+
+    /* Uploaded Files List */
+    .uploaded-files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .uploaded-file-chip {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.2s; animation: chipIn 0.3s ease;
+    }
+    .uploaded-file-chip.complete { border-color: var(--success)40; }
+    .ufc-icon { font-size: 18px; flex-shrink: 0; }
+    .ufc-info { flex: 1; min-width: 0; }
+    .ufc-name { display: block; font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ufc-size { font-size: 10px; color: var(--text-muted); }
+    .ufc-progress { flex: 0 0 80px; height: 4px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden; }
+    .ufc-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 2px; transition: width 0.3s; }
+    .ufc-done { color: var(--success); font-size: 14px; font-weight: 700; }
+    .ufc-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 4px; border-radius: 4px; transition: all 0.2s; }
+    .ufc-remove:hover { color: var(--danger); background: var(--danger)15; }
+    .doc-upload-success {
+      display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 14px;
+      background: var(--success)10; border: 1px solid var(--success)30; border-radius: var(--radius);
+      font-size: 12px; color: var(--success); font-weight: 600;
+    }
+    .doc-success-icon { font-size: 16px; }
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* AI Loading Overlay */
+    .ai-loading-overlay {
+      position: fixed; inset: 0; z-index: 5000;
+      background: var(--bg-primary); display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+    }
+    .ai-loading-overlay.show { opacity: 1; pointer-events: all; }
+    .ai-loading-container {
+      width: 100%; max-width: 560px; padding: 48px 40px; text-align: center;
+    }
+    .ai-loading-header { margin-bottom: 36px; }
+    .ai-loading-brain {
+      font-size: 56px; margin-bottom: 16px;
+      animation: aiBrainPulse 2s ease-in-out infinite;
+    }
+    @keyframes aiBrainPulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px var(--accent)40); }
+      50% { transform: scale(1.08); filter: drop-shadow(0 0 20px var(--accent)80); }
+    }
+    .ai-loading-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+    .ai-loading-subtitle { font-size: 13px; color: var(--text-muted); }
+
+    /* AI Progress Bar */
+    .ai-loading-progress { margin-bottom: 32px; }
+    .ai-progress-bar { width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+    .ai-progress-fill {
+      height: 100%; width: 0; border-radius: 3px; transition: width 0.4s ease;
+      background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+      background-size: 200% 100%; animation: aiProgressShimmer 2s linear infinite;
+    }
+    @keyframes aiProgressShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .ai-progress-pct { font-size: 12px; color: var(--text-muted); margin-top: 8px; font-weight: 600; }
+
+    /* AI Steps */
+    .ai-loading-steps { display: flex; flex-direction: column; gap: 8px; text-align: left; margin-bottom: 24px; }
+    .ai-step {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      border-radius: var(--radius); background: var(--bg-secondary); border: 1px solid var(--border);
+      transition: all 0.3s ease; opacity: 0.5;
+    }
+    .ai-step-active {
+      opacity: 1; border-color: var(--accent)60; background: var(--accent)08;
+      box-shadow: 0 0 12px var(--accent)15;
+    }
+    .ai-step-done { opacity: 1; border-color: var(--success)40; }
+    .ai-step-icon { font-size: 18px; }
+    .ai-step-text { flex: 1; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    .ai-step-status { font-size: 14px; }
+    .ai-step-running { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* AI System Messages */
+    .ai-system-messages { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+    .ai-sys-msg {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+      font-size: 11px; color: var(--text-muted); border-left: 2px solid var(--accent)40;
+      opacity: 0; transform: translateX(-8px); transition: all 0.3s ease;
+    }
+    .ai-sys-msg.show { opacity: 1; transform: translateX(0); }
+    .ai-sys-msg-text { font-family: var(--mono); }
+  </style>
 </head>
 <body>
   <div class="main-content" id="app">
     <div class="page-header">
       <div>
-        <h1 class="page-title">Project Dashboard</h1>
-        <p class="page-subtitle">Manage your software projects and track progress</p>
+        <h1 class="page-title">Projects Hub</h1>
+        <p class="page-subtitle">Manage your software projects, track progress, and view analytics</p>
       </div>
       <div class="page-actions">
-        <button class="btn btn-primary" onclick="openCreateProject()">+ New Project</button>
+        <div id="projectSelectorContainer" style="display:inline-block"></div>
+        <button class="btn btn-primary" onclick="openModal('createProjectModal')">+ New Project</button>
         <button class="btn btn-outline btn-sm" onclick="resetData()">Reset Demo Data</button>
       </div>
     </div>
 
-    <div class="tabs">
-      <a href="#stats-section" class="tab nav-link active">📊 Stats</a>
-      <a href="#projects-section" class="tab nav-link">📂 Projects</a>
+    <!-- Tabs -->
+    <div class="tabs" data-tab-group="projects">
+      <a href="#overview-section" class="tab nav-link active">📊 Overview</a>
+      <a href="#projectListing-section" class="tab nav-link">📂 Projects</a>
       <a href="#activity-section" class="tab nav-link">📜 Activity</a>
+      <a href="#projectOverview-section" class="tab nav-link">📋 Project Details</a>
+      <a href="#requirements-section" class="tab nav-link">📄 Requirements</a>
+      <a href="#backlog-section" class="tab nav-link">📝 Backlog</a>
+      <a href="#tasks-section" class="tab nav-link">✅ Tasks</a>
+      <a href="#timeline-section" class="tab nav-link">📅 Timeline</a>
+      <a href="#pipeline-section" class="tab nav-link">⚙️ Pipeline</a>
     </div>
 
-    <!-- Stats -->
-    <div id="stats-section" class="tab-content active">
-      <div class="grid grid-4" id="statsGrid" style="margin-bottom: 24px;"></div>
+    <!-- Overview (Global Stats) -->
+    <div class="tab-content active" id="overview-section">
+      <div class="grid grid-4" id="projStatsGrid" style="margin-bottom:20px"></div>
     </div>
 
-    <!-- Projects -->
-    <div id="projects-section" class="tab-content">
-      <div id="projectsList"></div>
+    <!-- Projects Listing -->
+    <div class="tab-content" id="projectListing-section">
+      <div id="projectCards"></div>
     </div>
 
-    <!-- Recent Activity -->
-    <div id="activity-section" class="tab-content">
-      <div class="card" style="margin-top: 24px;">
+    <!-- Global Activity -->
+    <div class="tab-content" id="activity-section">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Recent Activity</h3></div>
+        <div id="globalActivityLog" class="timeline"></div>
+      </div>
+    </div>
+
+    <!-- Project Overview -->
+    <div class="tab-content" id="projectOverview-section">
+      <div class="grid grid-4" id="overviewStats" style="margin-bottom:20px"></div>
+      <div class="grid grid-2">
+        <div class="card"><div class="card-header"><h3 class="card-title">📊 Progress</h3></div><div id="overviewProgress"></div></div>
+        <div class="card"><div class="card-header"><h3 class="card-title">👥 Team</h3></div><div id="overviewTeam"></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="card-header"><h3 class="card-title">📜 Activity</h3></div><div id="overviewActivity" class="timeline"></div></div>
+    </div>
+
+    <!-- Requirements -->
+    <div class="tab-content" id="requirements-section">
+      <div class="card">
         <div class="card-header">
-          <h3 class="card-title">Recent Activity</h3>
+          <h3 class="card-title">📄 Requirements</h3>
+          <div class="page-actions">
+            <button class="btn btn-outline btn-sm" onclick="generateRequirements()">🤖 AI Generate</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('uploadReqModal')">+ Upload</button>
+          </div>
         </div>
-        <div id="activityLog" class="timeline"></div>
+        <div class="filter-bar">
+          <select class="form-select" id="reqFilterType" onchange="renderRequirements()">
+            <option value="ALL">All Types</option><option value="FUNCTIONAL">Functional</option><option value="NON_FUNCTIONAL">Non-Functional</option><option value="CONSTRAINT">Constraint</option>
+          </select>
+          <select class="form-select" id="reqFilterModule" onchange="renderRequirements()"><option value="ALL">All Modules</option></select>
+          <select class="form-select" id="reqFilterPriority" onchange="renderRequirements()">
+            <option value="ALL">All Priorities</option><option value="MUST_HAVE">Must Have</option><option value="SHOULD_HAVE">Should Have</option><option value="COULD_HAVE">Could Have</option>
+          </select>
+        </div>
+        <div class="table-container">
+          <table><thead><tr><th>ID</th><th>Requirement</th><th>Type</th><th>Module</th><th>Priority</th><th>Confidence</th></tr></thead>
+          <tbody id="reqTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backlog (Kanban) -->
+    <div class="tab-content" id="backlog-section">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">📝 Backlog Board</h3>
+          <div class="page-actions">
+            <select class="form-select" id="backlogFilter" onchange="renderBacklog()" style="max-width:160px">
+              <option value="ALL">All Types</option><option value="EPIC">Epics</option><option value="FEATURE">Features</option><option value="USER_STORY">User Stories</option>
+            </select>
+          </div>
+        </div>
+        <div id="backlogKanban" class="kanban-grid" style="grid-template-columns:repeat(5,minmax(200px,1fr))"></div>
+      </div>
+    </div>
+
+    <!-- Tasks -->
+    <div class="tab-content" id="tasks-section">
+      <div class="grid grid-4" id="taskStats" style="margin-bottom:20px"></div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">✅ Task Board</h3>
+          <div class="page-actions">
+            <select class="form-select" id="taskFilter" onchange="renderTasks()" style="max-width:160px">
+              <option value="ALL">All Status</option><option value="EXECUTING">In Progress</option><option value="DONE">Completed</option><option value="BLOCKED">Blocked</option><option value="ESCALATED">Escalated</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-container">
+          <table><thead><tr><th>ID</th><th>Task</th><th>Module</th><th>Assigned To</th><th>Status</th><th>Risk</th><th>Gate</th></tr></thead>
+          <tbody id="taskTable"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline / Roadmap -->
+    <div class="tab-content" id="timeline-section">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">📅 Project Timeline & Roadmap</h3></div>
+        <div id="timelineView" style="padding:16px"></div>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="tab-content" id="pipeline-section">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">⚙️ Requirements Pipeline</h3>
+          <button class="btn btn-primary btn-sm" onclick="runPipeline()">▶ Run Pipeline</button>
+        </div>
+        <div id="pipelineStages"></div>
       </div>
     </div>
   </div>
 
   <!-- Create Project Modal -->
   <div class="modal-overlay" id="createProjectModal">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 class="modal-title">Create New Project</h3>
-        <button class="modal-close" onclick="closeModal('createProjectModal')">&times;</button>
-      </div>
+    <div class="modal" style="max-width:700px">
+      <div class="modal-header"><h3 class="modal-title">Create New Project</h3><button class="modal-close" onclick="closeModal('createProjectModal')">&times;</button></div>
       <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Project Name</label>
-          <input type="text" id="projName" class="form-input" placeholder="e.g., E-Commerce Platform">
+        <div class="form-group"><label class="form-label">Project Name</label><input type="text" id="projName" class="form-input" placeholder="e.g., E-Commerce Platform"></div>
+        <div class="form-group"><label class="form-label">Description</label><textarea id="projDesc" class="form-textarea" placeholder="Describe the project scope..."></textarea></div>
+        <div class="form-group"><label class="form-label">Domain</label>
+          <select id="projDomain" class="form-select"><option value="E-Commerce">E-Commerce</option><option value="Healthcare">Healthcare</option><option value="Finance">Finance</option><option value="Education">Education</option><option value="SaaS">SaaS</option></select>
         </div>
+        <div class="form-group"><label class="form-label">Tech Stack</label><input type="text" id="projTech" class="form-input" placeholder="Node.js, React, PostgreSQL"></div>
+        <div class="form-group"><label class="form-label">Modules</label><input type="text" id="projModules" class="form-input" placeholder="auth, payments, orders"></div>
+
+        <!-- Client Documents Upload Section -->
         <div class="form-group">
-          <label class="form-label">Description</label>
-          <textarea id="projDesc" class="form-textarea" placeholder="Describe the project scope and goals..."></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Domain</label>
-          <select id="projDomain" class="form-select">
-            <option value="E-Commerce">E-Commerce</option>
-            <option value="Healthcare">Healthcare</option>
-            <option value="Finance">Finance</option>
-            <option value="Education">Education</option>
-            <option value="SaaS">SaaS</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tech Stack (comma-separated)</label>
-          <input type="text" id="projTech" class="form-input" placeholder="e.g., Node.js, React, PostgreSQL">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Modules (comma-separated)</label>
-          <input type="text" id="projModules" class="form-input" placeholder="e.g., auth, payments, orders">
+          <label class="form-label">📄 Client Documents</label>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">These documents will be used to auto-generate org structure</p>
+          <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('docFileInput').click()" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event)">
+            <div class="doc-upload-icon">📁</div>
+            <div class="doc-upload-text">Drag & drop files here or <span style="color:var(--accent);cursor:pointer">browse</span></div>
+            <div class="doc-upload-hint">PDF, DOCX, TXT — Multiple files supported</div>
+            <input type="file" id="docFileInput" multiple accept=".pdf,.docx,.doc,.txt" style="display:none" onchange="handleDocFileSelect(event)">
+          </div>
+          <div id="uploadedFilesList" class="uploaded-files-list"></div>
+          <div id="docUploadSuccess" class="doc-upload-success" style="display:none">
+            <span class="doc-success-icon">✅</span> Documents uploaded successfully
+          </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button>
-        <button class="btn btn-primary" onclick="createProject()">Create Project</button>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProjectWithAI()">🚀 Create Project</button></div>
+    </div>
+  </div>
+
+  <!-- AI Processing Overlay -->
+  <div class="ai-loading-overlay" id="aiLoadingOverlay">
+    <div class="ai-loading-container">
+      <div class="ai-loading-header">
+        <div class="ai-loading-brain">🧠</div>
+        <h2 class="ai-loading-title">AI Processing</h2>
+        <p class="ai-loading-subtitle">Generating organizational structure...</p>
       </div>
+      <div class="ai-loading-progress">
+        <div class="ai-progress-bar"><div class="ai-progress-fill" id="aiProgressFill"></div></div>
+        <div class="ai-progress-pct" id="aiProgressPct">0%</div>
+      </div>
+      <div class="ai-loading-steps" id="aiLoadingSteps"></div>
+      <div class="ai-system-messages" id="aiSystemMessages"></div>
+    </div>
+  </div>
+
+  <!-- Upload Requirements Modal -->
+  <div class="modal-overlay" id="uploadReqModal">
+    <div class="modal">
+      <div class="modal-header"><h3 class="modal-title">Upload Requirements</h3><button class="modal-close" onclick="closeModal('uploadReqModal')">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Requirement Text</label><textarea id="reqText" class="form-textarea" placeholder="Enter requirement text..."></textarea></div>
+        <div class="form-group"><label class="form-label">Type</label>
+          <select id="reqType" class="form-select"><option value="FUNCTIONAL">Functional</option><option value="NON_FUNCTIONAL">Non-Functional</option><option value="CONSTRAINT">Constraint</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Module</label><input type="text" id="reqModule" class="form-input" placeholder="auth"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('uploadReqModal')">Cancel</button><button class="btn btn-primary" onclick="uploadRequirement()">Add Requirement</button></div>
     </div>
   </div>
 
@@ -96,32 +319,43 @@
   <script src="../js/permissions.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
+  <script src="../js/ai-org-generator.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('dashboard');
-    
-    // Only show tenant info card for tenant users
-    if (TenantState.isTenantUser()) {
-      injectTenantInfoCard();
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+
+    function openModal(id) { document.getElementById(id).classList.add('show'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    const projId = createProjectSelector('projectSelectorContainer', () => renderAll());
+
+    function renderAll() {
+      renderProjectListing();
+      renderProjectOverview();
+      renderRequirements();
+      renderBacklog();
+      renderTasks();
+      renderTimeline();
+      renderPipeline();
+      renderGlobalActivity();
     }
 
-    function render() {
+    function renderProjectListing() {
       const projects = NexusStore.getProjects();
       const agents = NexusStore.getAgents();
       const escalations = NexusStore.getEscalations();
-      const decisions = NexusStore.getDecisions();
-      const role = TenantState.getRole();
-      const tenant = TenantState.getCurrentTenant();
+      const tenant = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenant() : null;
+      
       const tProjects = tenant ? tenant.projects : projects.length;
       const tAgents = tenant ? tenant.agents : agents.filter(a=>a.status==='ACTIVE').length;
       const tApiUsage = tenant ? tenant.api_usage : 0;
-      const tEscalations = tenant ? (tenant.escalations || 0) : escalations.filter(e=>e.status==='PENDING').length;
       const limits = tenant ? TenantState.getSubscriptionLimits(tenant.subscription) : null;
-      const contextLabel = tenant ? tenant.name : 'System';
+      const tEscalations = tenant ? (tenant.escalations || 0) : escalations.filter(e=>e.status==='PENDING').length;
 
-      document.getElementById('statsGrid').innerHTML = `
+      document.getElementById('projStatsGrid').innerHTML = `
         <div class="stat-card">
           <span class="stat-label">Total Projects</span>
           <span class="stat-value">${tProjects}</span>
@@ -144,126 +378,477 @@
         </div>
       `;
 
+      document.getElementById('projectCards').innerHTML = projects.length === 0 ?
+        `<div class="empty-state"><div class="empty-state-icon">📂</div><h3 class="empty-state-title">No Projects Yet</h3><p class="empty-state-text">Create your first project to get started</p><button class="btn btn-primary" onclick="openModal('createProjectModal')">+ Create Project</button></div>` :
+        `<div class="grid grid-2">${projects.map(p => {
+          const pipeline = NexusStore.getPipeline(p.id);
+          const tasks = NexusStore.getTasks(p.id);
+          const done = tasks.filter(t=>t.status==='DONE').length;
+          const pct = pipeline ? Math.round(pipeline.stages.filter(s=>s.status==='COMPLETED').length/pipeline.stages.length*100) : 0;
+          return `<div class="card" style="cursor:pointer" onclick="selectProject('${p.id}')">
+            <div class="card-header"><div><h3 class="card-title">${escapeHtml(p.name)}</h3><p class="card-subtitle">${escapeHtml(p.domain)} · ${formatTime(p.createdAt)}</p></div>${statusBadge(p.status)}</div>
+            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">${escapeHtml(p.description)}</p>
+            <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text-muted)">Pipeline</span><span style="font-size:12px">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${(p.techStack||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>Tasks: ${done}/${tasks.length}</span><span>Modules: ${(p.modules||[]).length}</span></div>
+          </div>`;
+        }).join('')}</div>`;
+    }
 
+    function selectProject(id) {
+      sessionStorage.setItem('nexus_selected_project', id);
+      if (document.getElementById('projectSelect')) document.getElementById('projectSelect').value = id;
+      switchTab('projects', 'projectOverview');
+      renderAll();
+    }
 
-      // Projects
-      if (projects.length === 0) {
-        document.getElementById('projectsList').innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">📂</div>
-            <h3 class="empty-state-title">No Projects Yet</h3>
-            <p class="empty-state-text">Create your first project to get started with NEXUS</p>
-            <button class="btn btn-primary" onclick="openCreateProject()">+ Create Project</button>
-          </div>
-        `;
-      } else {
-        document.getElementById('projectsList').innerHTML = `
-          <div class="grid grid-2">
-            ${projects.map(p => {
-              const pipeline = NexusStore.getPipeline(p.id);
-              const tasks = NexusStore.getTasks(p.id);
-              const completedTasks = tasks.filter(t => t.status === 'DONE').length;
-              const pipelineProgress = p.status === 'DONE' ? 100 : (pipeline ? (pipeline.stages.filter(s => s.status === 'COMPLETED').length / 13 * 100) : 0);
-              return `
-                <div class="card" style="cursor:pointer" onclick="openProject('${p.id}')">
-                  <div class="card-header">
-                    <div>
-                      <h3 class="card-title">${escapeHtml(p.name)}</h3>
-                      <p class="card-subtitle">${escapeHtml(p.domain)} · Created ${formatTime(p.createdAt)}</p>
-                    </div>
-                    ${statusBadge(p.status)}
-                  </div>
-                  <p style="font-size:13px; color:var(--text-secondary); margin-bottom: 16px;">${escapeHtml(p.description)}</p>
-                  <div style="margin-bottom: 12px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                      <span style="font-size:12px; color:var(--text-muted)">Pipeline Progress</span>
-                      <span style="font-size:12px; color:var(--text-primary)">${Math.round(pipelineProgress)}%</span>
-                    </div>
-                    <div class="progress-bar">
-                      <div class="progress-fill" style="width:${pipelineProgress}%"></div>
-                    </div>
-                  </div>
-                  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-                    ${(p.techStack||[]).map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}
-                  </div>
-                  <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
-                    <span>Tasks: ${completedTasks}/${tasks.length}</span>
-                    <span>Modules: ${(p.modules||[]).length}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        `;
+    function renderProjectOverview() {
+      const pid = getSelectedProject();
+      const project = NexusStore.getProject(pid);
+      if (!project) return;
+      const tasks = NexusStore.getTasks(pid);
+      const reqs = NexusStore.getRequirements(pid);
+      const backlog = NexusStore.getBacklog(pid);
+      const agents = NexusStore.getAgents();
+      const done = tasks.filter(t=>t.status==='DONE').length;
+
+      document.getElementById('overviewStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Requirements</span><span class="stat-value">${reqs.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Backlog Items</span><span class="stat-value">${backlog.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Tasks</span><span class="stat-value">${done}/${tasks.length}</span><span class="stat-change up">${tasks.length?Math.round(done/tasks.length*100):0}% done</span></div>
+        <div class="stat-card"><span class="stat-label">Agents</span><span class="stat-value">${agents.filter(a=>a.module_scope===project.modules?.[0]||a.module_scope==='global').length}</span></div>
+      `;
+
+      document.getElementById('overviewProgress').innerHTML = (project.modules||[]).map(m => {
+        const modTasks = tasks.filter(t=>t.module===m);
+        const modDone = modTasks.filter(t=>t.status==='DONE').length;
+        const pct = modTasks.length ? Math.round(modDone/modTasks.length*100) : 0;
+        return `<div class="metric-bar"><span class="metric-label">${m}</span><div class="metric-track"><div class="metric-fill" style="width:${pct}%;background:var(--accent)"></div></div><span class="metric-value">${pct}%</span></div>`;
+      }).join('') || '<p style="color:var(--text-muted);font-size:12px">No modules defined</p>';
+
+      document.getElementById('overviewTeam').innerHTML = agents.filter(a => a.module_scope === 'global' || (project.modules||[]).includes(a.module_scope)).slice(0, 8).map(a => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+          <div><span style="font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(a.agent_name)}</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${a.role}</span></div>
+          ${statusBadge(a.status)}
+        </div>
+      `).join('');
+
+      const logs = NexusStore.getLogs().filter(l => l.message && l.message.includes(pid)).slice(0, 8);
+      document.getElementById('overviewActivity').innerHTML = logs.map(l => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(l.message)}</p><span style="font-size:11px;color:var(--text-muted)">${formatTime(l.timestamp)}</span></div>`).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:12px">No activity</p>';
+    }
+
+    function renderRequirements() {
+      const pid = getSelectedProject();
+      const reqs = NexusStore.getRequirements(pid);
+      const filterType = document.getElementById('reqFilterType')?.value || 'ALL';
+      const filterModule = document.getElementById('reqFilterModule')?.value || 'ALL';
+      const filterPriority = document.getElementById('reqFilterPriority')?.value || 'ALL';
+
+      // Populate module filter
+      const modules = [...new Set(reqs.map(r => r.module))];
+      const moduleSelect = document.getElementById('reqFilterModule');
+      if (moduleSelect && moduleSelect.options.length <= 1) {
+        modules.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; moduleSelect.appendChild(opt); });
       }
 
-      // Activity log
-      const logs = NexusStore.getLogs().slice(0, 10);
-      document.getElementById('activityLog').innerHTML = logs.map(log => {
-        const typeColors = { SYSTEM: 'var(--info)', AUTH: 'var(--purple)', PROJECT: 'var(--success)', PIPELINE: 'var(--accent)', AGENT: 'var(--warning)', TASK: 'var(--info)', GATE: 'var(--success)', ESCALATION: 'var(--orange)', DECISION: 'var(--purple)', REQUIREMENTS: 'var(--info)' };
-        return `
-          <div class="timeline-item completed">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span style="font-size:11px; font-weight:600; color:${typeColors[log.type]||'var(--text-muted)'}; text-transform:uppercase;">${log.type}</span>
-              <span style="font-size:11px; color:var(--text-muted)">${formatTime(log.timestamp)}</span>
+      const filtered = reqs.filter(r => {
+        if (filterType !== 'ALL' && r.type !== filterType) return false;
+        if (filterModule !== 'ALL' && r.module !== filterModule) return false;
+        if (filterPriority !== 'ALL' && r.priority !== filterPriority) return false;
+        return true;
+      });
+
+      document.getElementById('reqTable').innerHTML = filtered.map(r => `<tr>
+        <td style="font-weight:600;color:var(--accent)">${r.id}</td>
+        <td style="max-width:300px">${escapeHtml(r.text)}</td>
+        <td><span class="tag">${r.type}</span></td>
+        <td>${r.module}</td>
+        <td>${priorityBadge(r.priority)}</td>
+        <td>${(r.confidence * 100).toFixed(0)}%</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No requirements found</td></tr>';
+    }
+
+    function renderBacklog() {
+      const pid = getSelectedProject();
+      const backlog = NexusStore.getBacklog(pid);
+      const filter = document.getElementById('backlogFilter')?.value || 'ALL';
+      const items = filter === 'ALL' ? backlog : backlog.filter(b => b.type === filter);
+      const statuses = ['SPECIFIED', 'IN_PROGRESS', 'DONE', 'BLOCKED', 'NOT_STARTED'];
+
+      document.getElementById('backlogKanban').innerHTML = statuses.map(status => {
+        const colItems = items.filter(i => i.status === status || (status === 'NOT_STARTED' && !statuses.slice(0,4).includes(i.status)));
+        return `<div class="kanban-col">
+          <div class="kanban-col-header"><span class="kanban-col-title">${status.replace(/_/g,' ')}</span><span class="tag">${colItems.length}</span></div>
+          <div class="kanban-dropzone">${colItems.map(i => `
+            <div class="kanban-task">
+              <div style="display:flex;justify-content:space-between"><span class="tag" style="font-size:10px">${i.type}</span>${i.priority ? priorityBadge(i.priority) : ''}</div>
+              <div class="kanban-task-title">${escapeHtml(i.title)}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${i.module || ''}${i.storyPoints ? ' · '+i.storyPoints+'pts' : ''}</div>
             </div>
-            <p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(log.message)}</p>
-          </div>
-        `;
+          `).join('')}</div>
+        </div>`;
       }).join('');
     }
 
-    function openProject(id) {
-      sessionStorage.setItem('nexus_selected_project', id);
-      window.location.href = 'projects.html';
+    function renderTasks() {
+      const pid = getSelectedProject();
+      const tasks = NexusStore.getTasks(pid);
+      const filter = document.getElementById('taskFilter')?.value || 'ALL';
+      const filtered = filter === 'ALL' ? tasks : tasks.filter(t => t.status === filter);
+      const agents = NexusStore.getAgents();
+
+      const done = tasks.filter(t=>t.status==='DONE').length;
+      const blocked = tasks.filter(t=>t.status==='BLOCKED'||t.status==='ESCALATED').length;
+      document.getElementById('taskStats').innerHTML = `
+        <div class="stat-card"><span class="stat-label">Total Tasks</span><span class="stat-value">${tasks.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Completed</span><span class="stat-value" style="color:var(--success)">${done}</span></div>
+        <div class="stat-card"><span class="stat-label">In Progress</span><span class="stat-value" style="color:var(--info)">${tasks.filter(t=>t.status==='EXECUTING').length}</span></div>
+        <div class="stat-card"><span class="stat-label">Blocked</span><span class="stat-value" style="color:${blocked?'var(--danger)':'var(--text-primary)'}">${blocked}</span></div>
+      `;
+
+      document.getElementById('taskTable').innerHTML = filtered.map(t => {
+        const agent = agents.find(a => a.agent_id === t.assignedTo);
+        return `<tr>
+          <td style="font-weight:600;color:var(--accent)">${t.task_id}</td>
+          <td>${escapeHtml(t.title)}</td>
+          <td><span class="tag">${t.module}</span></td>
+          <td style="font-size:12px">${agent ? escapeHtml(agent.agent_name) : t.assignedTo}</td>
+          <td>${statusBadge(t.status)}</td>
+          <td>${riskBadge(t.risk)}</td>
+          <td>${t.gateStatus ? statusBadge(t.gateStatus) : '—'}</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No tasks</td></tr>';
     }
 
-    function openCreateProject() {
-      document.getElementById('createProjectModal').classList.add('show');
+    function renderTimeline() {
+      const pid = getSelectedProject();
+      const project = NexusStore.getProject(pid);
+      const tasks = NexusStore.getTasks(pid);
+      if (!project) return;
+
+      const phases = [
+        { name: 'Requirements', icon: '📄', status: 'COMPLETED', date: project.createdAt },
+        { name: 'Architecture', icon: '🏗️', status: tasks.some(t=>t.module&&t.status==='DONE') ? 'COMPLETED' : 'IN_PROGRESS', date: null },
+        { name: 'Development', icon: '💻', status: tasks.filter(t=>t.status==='EXECUTING').length > 0 ? 'IN_PROGRESS' : 'PENDING', date: null },
+        { name: 'Testing', icon: '🧪', status: 'PENDING', date: null },
+        { name: 'Deployment', icon: '🚀', status: 'PENDING', date: null },
+        { name: 'Release', icon: '🎉', status: 'PENDING', date: null }
+      ];
+
+      document.getElementById('timelineView').innerHTML = `
+        <div style="display:flex;gap:16px;overflow-x:auto;padding:20px 0">
+          ${phases.map((p, i) => {
+            const colors = { COMPLETED: 'var(--success)', IN_PROGRESS: 'var(--accent)', PENDING: 'var(--text-muted)' };
+            const color = colors[p.status] || 'var(--text-muted)';
+            return `
+              <div style="flex:1;min-width:150px;text-align:center">
+                <div style="width:48px;height:48px;border-radius:50%;background:${color}20;border:2px solid ${color};display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:20px">${p.icon}</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:4px">${p.name}</div>
+                ${statusBadge(p.status)}
+                ${i < phases.length - 1 ? '<div style="margin-top:8px;color:var(--text-muted)">→</div>' : ''}
+              </div>`;
+          }).join('')}
+        </div>
+      `;
     }
 
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('show');
+    function renderPipeline() {
+      const pid = getSelectedProject();
+      const pipeline = NexusStore.getPipeline(pid);
+      if (!pipeline) {
+        document.getElementById('pipelineStages').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚙️</div><h3 class="empty-state-title">No Pipeline</h3><p class="empty-state-text">Upload requirements to start the pipeline</p></div>';
+        return;
+      }
+      document.getElementById('pipelineStages').innerHTML = pipeline.stages.map(s => {
+        const cls = s.status === 'COMPLETED' ? 'completed' : s.status === 'IN_PROGRESS' ? 'in-progress' : 'pending';
+        return `<div class="pipeline-stage ${cls}">
+          <div class="pipeline-stage-number">${s.stage}</div>
+          <div class="pipeline-stage-info"><div class="pipeline-stage-name">${s.name}</div><div class="pipeline-stage-logs">${(s.logs||[]).slice(-2).join(' · ')}</div></div>
+          <div class="pipeline-stage-time">${statusBadge(s.status)}</div>
+        </div>`;
+      }).join('');
     }
 
-    async function createProject() {
+    async function createProjectWithAI() {
       const name = document.getElementById('projName').value.trim();
-      if (!name) { showToast('Project name is required', 'error'); return; }
-      showLoading('Creating project...');
-      const result = await MockAPI.createProject({
+      if (!name) { showToast('Project name required', 'error'); return; }
+
+      const projectData = {
         name,
         description: document.getElementById('projDesc').value.trim(),
         domain: document.getElementById('projDomain').value,
         techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean),
         modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean)
-      });
-      hideLoading();
+      };
+
+      // Store file metadata in AI state
+      AIOrg.loadState();
+
+      // Close modal
       closeModal('createProjectModal');
-      if (result.success) {
-        showToast('Project created successfully', 'success');
-        render();
+
+      // Create the project first
+      const result = await MockAPI.createProject(projectData);
+      if (!result.success) { showToast('Failed to create project', 'error'); return; }
+      const project = result.project;
+      sessionStorage.setItem('nexus_selected_project', project.id);
+
+      // Show AI loading overlay
+      showAILoadingOverlay(project);
+    }
+
+    // Legacy createProject function for backward compatibility
+    async function createProject() { return createProjectWithAI(); }
+
+    function showAILoadingOverlay(project) {
+      const overlay = document.getElementById('aiLoadingOverlay');
+      overlay.classList.add('show');
+
+      const steps = AIOrg.getLoadingSteps();
+      const stepsContainer = document.getElementById('aiLoadingSteps');
+      const messagesContainer = document.getElementById('aiSystemMessages');
+      const progressFill = document.getElementById('aiProgressFill');
+      const progressPct = document.getElementById('aiProgressPct');
+
+      // Render step placeholders
+      stepsContainer.innerHTML = steps.map((s, i) => `
+        <div class="ai-step" id="aiStep_${i}">
+          <span class="ai-step-icon">${s.icon}</span>
+          <span class="ai-step-text">${s.text}</span>
+          <span class="ai-step-status ai-step-pending">⏳</span>
+        </div>
+      `).join('');
+      messagesContainer.innerHTML = '';
+
+      // Animate steps sequentially
+      let totalDuration = 0;
+      const totalTime = steps.reduce((sum, s) => sum + s.duration, 0);
+
+      // System messages
+      const sysMessages = AIOrg.getSystemMessages();
+      sysMessages.forEach(msg => {
+        setTimeout(() => {
+          const msgEl = document.createElement('div');
+          msgEl.className = 'ai-sys-msg ai-sys-msg-enter';
+          msgEl.innerHTML = `<span class="ai-sys-msg-text">${msg.text}</span>`;
+          messagesContainer.appendChild(msgEl);
+          requestAnimationFrame(() => msgEl.classList.add('show'));
+        }, msg.delay);
+      });
+
+      steps.forEach((step, idx) => {
+        // Activate step
+        setTimeout(() => {
+          const el = document.getElementById('aiStep_' + idx);
+          el.classList.add('ai-step-active');
+          el.querySelector('.ai-step-status').textContent = '⚙️';
+          el.querySelector('.ai-step-status').classList.remove('ai-step-pending');
+          el.querySelector('.ai-step-status').classList.add('ai-step-running');
+        }, totalDuration);
+
+        totalDuration += step.duration;
+
+        // Complete step
+        setTimeout(() => {
+          const el = document.getElementById('aiStep_' + idx);
+          el.classList.remove('ai-step-active');
+          el.classList.add('ai-step-done');
+          el.querySelector('.ai-step-status').textContent = '✅';
+          el.querySelector('.ai-step-status').classList.remove('ai-step-running');
+          el.querySelector('.ai-step-status').classList.add('ai-step-complete');
+
+          // Update progress
+          const pct = Math.round(((idx + 1) / steps.length) * 100);
+          progressFill.style.width = pct + '%';
+          progressPct.textContent = pct + '%';
+        }, totalDuration);
+      });
+
+      // Smooth progress animation
+      let startTime = Date.now();
+      function animateProgress() {
+        const elapsed = Date.now() - startTime;
+        const rawPct = Math.min((elapsed / totalTime) * 100, 100);
+        progressFill.style.width = rawPct + '%';
+        progressPct.textContent = Math.round(rawPct) + '%';
+        if (rawPct < 100) requestAnimationFrame(animateProgress);
       }
+      requestAnimationFrame(animateProgress);
+
+      // After all steps done, navigate to agents page org builder
+      setTimeout(() => {
+        // Generate org structure
+        const orgResult = AIOrg.generateOrgStructure(project);
+        NexusStore.setProjectOrgStructure(project.id, {
+          levels: orgResult.levels,
+          updatedAt: orgResult.metadata.generatedAt,
+          _aiGenerated: true,
+          _metadata: orgResult.metadata
+        });
+
+        // Store generation prompt
+        NexusStore.set('ai_org_prompt_' + project.id, {
+          prompt: orgResult.metadata.prompt,
+          mode: AIOrg._state.promptMode,
+          customPrompt: AIOrg._state.customPrompt
+        });
+
+        // Hide overlay and navigate
+        setTimeout(() => {
+          overlay.classList.remove('show');
+          showToast('AI org structure generated! Redirecting to Org Builder...', 'success');
+          setTimeout(() => {
+            window.location.href = 'agents.html?project=' + project.id + '&tab=orgchart&ai=1';
+          }, 800);
+        }, 600);
+      }, totalDuration + 400);
+    }
+
+    // ─── Document Upload Handlers ───
+    function handleDocDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('docUploadZone').classList.add('drag-active');
+    }
+
+    function handleDocDragLeave(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('docUploadZone').classList.remove('drag-active');
+    }
+
+    function handleDocDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('docUploadZone').classList.remove('drag-active');
+      if (e.dataTransfer.files.length > 0) {
+        processDocFiles(e.dataTransfer.files);
+      }
+    }
+
+    function handleDocFileSelect(e) {
+      if (e.target.files.length > 0) {
+        processDocFiles(e.target.files);
+      }
+    }
+
+    function processDocFiles(files) {
+      AIOrg.loadState();
+      Array.from(files).forEach(file => {
+        const validExts = ['pdf', 'docx', 'doc', 'txt'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!validExts.includes(ext)) {
+          showToast(`Unsupported file type: .${ext}`, 'error');
+          return;
+        }
+        const fileEntry = AIOrg.addFile(file);
+        renderUploadedFiles();
+
+        // Simulate upload progress
+        AIOrg.simulateUpload(fileEntry.id, (progress) => {
+          renderUploadedFiles();
+        }, () => {
+          renderUploadedFiles();
+          checkAllUploadsComplete();
+        });
+      });
+    }
+
+    function renderUploadedFiles() {
+      const container = document.getElementById('uploadedFilesList');
+      const files = AIOrg.getState().uploadedFiles;
+      if (!files.length) { container.innerHTML = ''; return; }
+
+      container.innerHTML = files.map(f => {
+        const typeIcon = f.name.endsWith('.pdf') ? '📕' : f.name.endsWith('.docx') || f.name.endsWith('.doc') ? '📘' : '📄';
+        const sizeStr = f.size > 1024*1024 ? (f.size/(1024*1024)).toFixed(1) + ' MB' : (f.size/1024).toFixed(1) + ' KB';
+        return `
+          <div class="uploaded-file-chip ${f.status === 'completed' ? 'complete' : ''}">
+            <span class="ufc-icon">${typeIcon}</span>
+            <div class="ufc-info">
+              <span class="ufc-name">${escapeHtml(f.name)}</span>
+              <span class="ufc-size">${sizeStr}</span>
+            </div>
+            ${f.status === 'uploading' ? `
+              <div class="ufc-progress"><div class="ufc-progress-fill" style="width:${f.progress}%"></div></div>
+            ` : `<span class="ufc-done">✓</span>`}
+            <button class="ufc-remove" onclick="removeUploadedFile('${f.id}')" title="Remove">✕</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function removeUploadedFile(fileId) {
+      AIOrg.removeFile(fileId);
+      renderUploadedFiles();
+      const allDone = AIOrg.getState().uploadedFiles.every(f => f.status === 'completed');
+      if (!AIOrg.getState().uploadedFiles.length) {
+        document.getElementById('docUploadSuccess').style.display = 'none';
+      }
+    }
+
+    function checkAllUploadsComplete() {
+      const files = AIOrg.getState().uploadedFiles;
+      if (files.length > 0 && files.every(f => f.status === 'completed')) {
+        document.getElementById('docUploadSuccess').style.display = 'flex';
+      }
+    }
+
+    function escapeHtml(str) { if(!str)return''; const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+
+    async function uploadRequirement() {
+      const pid = getSelectedProject();
+      const text = document.getElementById('reqText').value.trim();
+      if (!text) { showToast('Requirement text required', 'error'); return; }
+      showLoading('Processing...');
+      await MockAPI.uploadRequirements(pid, [{ content: text, type: document.getElementById('reqType').value, module: document.getElementById('reqModule').value.trim() || 'unassigned', name: 'manual_input' }]);
+      hideLoading();
+      closeModal('uploadReqModal');
+      showToast('Requirement added', 'success');
+      renderAll();
+    }
+
+    function generateRequirements() {
+      showToast('AI Requirements Generator activated — analyzing project context...', 'info');
+    }
+
+    async function runPipeline() {
+      const pid = getSelectedProject();
+      showLoading('Running pipeline stage...');
+      const result = await MockAPI.advancePipeline(pid);
+      hideLoading();
+      if (result.completed) showToast('Pipeline completed!', 'success');
+      else showToast('Pipeline stage completed', 'info');
+      renderAll();
+    }
+
+
+    function renderGlobalActivity() {
+      const logs = NexusStore.getLogs().slice(0, 15);
+      const typeColors = { SYSTEM: 'var(--info)', AUTH: 'var(--purple)', PROJECT: 'var(--success)', PIPELINE: 'var(--accent)', AGENT: 'var(--warning)', TASK: 'var(--info)', GATE: 'var(--success)', ESCALATION: 'var(--orange)', DECISION: 'var(--purple)', REQUIREMENTS: 'var(--info)' };
+      document.getElementById('globalActivityLog').innerHTML = logs.map(log => `
+        <div class="timeline-item completed">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:600; color:${typeColors[log.type]||'var(--text-muted)'}; text-transform:uppercase;">${log.type}</span>
+            <span style="font-size:11px; color:var(--text-muted)">${formatTime(log.timestamp)}</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(log.message)}</p>
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);font-size:13px">No recent activity.</p>';
     }
 
     function resetData() {
       if (confirm('Reset all data to initial demo state?')) {
         NexusStore.clearAll();
         const _role = localStorage.getItem("role");
-    if (_role !== "tenant") { window.location.href = "../index.html"; }
-    seedNexusData();
+        if (_role !== "tenant") { window.location.href = "../index.html"; return; }
+        seedNexusData();
         showToast('Data reset to demo state', 'info');
-        render();
+        renderAll();
       }
     }
 
-    function escapeHtml(str) {
-      if (!str) return '';
-      const div = document.createElement('div');
-      div.textContent = str;
-      return div.innerHTML;
-    }
-
-    render();
+    renderAll();
   </script>
 </body>
 </html>

@@ -1296,13 +1296,13 @@ const NexusOrchestration = (() => {
   function handlePhaseNavigation(phase) {
     let target = null;
     if (phase.id === 'business_analyst') target = 'workspace.html';
-    else if (phase.id === 'ai_pipeline') target = 'projects.html';
-    else if (phase.id === 'product_owner') target = 'projects.html';
+    else if (phase.id === 'ai_pipeline') target = 'dashboard.html';
+    else if (phase.id === 'product_owner') target = 'dashboard.html';
     // ONLY SCRUM MASTER CAN NAVIGATE
     else if (phase.id === 'chief_scrum_parallel') {
       if (!hasNavigatedToTasks) {
         hasNavigatedToTasks = true;
-        target = 'projects.html';
+        target = 'dashboard.html';
       }
     }
 
