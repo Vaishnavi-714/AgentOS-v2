@@ -5,6 +5,112 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Projects</title>
   <link rel="stylesheet" href="../css/common.css">
+  <style>
+    /* Document Upload Zone */
+    .doc-upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius-lg);
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: all 0.3s ease; background: var(--bg-tertiary);
+    }
+    .doc-upload-zone:hover, .doc-upload-zone.drag-active {
+      border-color: var(--accent); background: var(--accent)08;
+    }
+    .doc-upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .doc-upload-text { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+    .doc-upload-hint { font-size: 11px; color: var(--text-muted); }
+
+    /* Uploaded Files List */
+    .uploaded-files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .uploaded-file-chip {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      transition: all 0.2s; animation: chipIn 0.3s ease;
+    }
+    .uploaded-file-chip.complete { border-color: var(--success)40; }
+    .ufc-icon { font-size: 18px; flex-shrink: 0; }
+    .ufc-info { flex: 1; min-width: 0; }
+    .ufc-name { display: block; font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ufc-size { font-size: 10px; color: var(--text-muted); }
+    .ufc-progress { flex: 0 0 80px; height: 4px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden; }
+    .ufc-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 2px; transition: width 0.3s; }
+    .ufc-done { color: var(--success); font-size: 14px; font-weight: 700; }
+    .ufc-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 4px; border-radius: 4px; transition: all 0.2s; }
+    .ufc-remove:hover { color: var(--danger); background: var(--danger)15; }
+    .doc-upload-success {
+      display: flex; align-items: center; gap: 8px; margin-top: 10px; padding: 8px 14px;
+      background: var(--success)10; border: 1px solid var(--success)30; border-radius: var(--radius);
+      font-size: 12px; color: var(--success); font-weight: 600;
+    }
+    .doc-success-icon { font-size: 16px; }
+    @keyframes chipIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* AI Loading Overlay */
+    .ai-loading-overlay {
+      position: fixed; inset: 0; z-index: 5000;
+      background: var(--bg-primary); display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+    }
+    .ai-loading-overlay.show { opacity: 1; pointer-events: all; }
+    .ai-loading-container {
+      width: 100%; max-width: 560px; padding: 48px 40px; text-align: center;
+    }
+    .ai-loading-header { margin-bottom: 36px; }
+    .ai-loading-brain {
+      font-size: 56px; margin-bottom: 16px;
+      animation: aiBrainPulse 2s ease-in-out infinite;
+    }
+    @keyframes aiBrainPulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px var(--accent)40); }
+      50% { transform: scale(1.08); filter: drop-shadow(0 0 20px var(--accent)80); }
+    }
+    .ai-loading-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+    .ai-loading-subtitle { font-size: 13px; color: var(--text-muted); }
+
+    /* AI Progress Bar */
+    .ai-loading-progress { margin-bottom: 32px; }
+    .ai-progress-bar { width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+    .ai-progress-fill {
+      height: 100%; width: 0; border-radius: 3px; transition: width 0.4s ease;
+      background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+      background-size: 200% 100%; animation: aiProgressShimmer 2s linear infinite;
+    }
+    @keyframes aiProgressShimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .ai-progress-pct { font-size: 12px; color: var(--text-muted); margin-top: 8px; font-weight: 600; }
+
+    /* AI Steps */
+    .ai-loading-steps { display: flex; flex-direction: column; gap: 8px; text-align: left; margin-bottom: 24px; }
+    .ai-step {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      border-radius: var(--radius); background: var(--bg-secondary); border: 1px solid var(--border);
+      transition: all 0.3s ease; opacity: 0.5;
+    }
+    .ai-step-active {
+      opacity: 1; border-color: var(--accent)60; background: var(--accent)08;
+      box-shadow: 0 0 12px var(--accent)15;
+    }
+    .ai-step-done { opacity: 1; border-color: var(--success)40; }
+    .ai-step-icon { font-size: 18px; }
+    .ai-step-text { flex: 1; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    .ai-step-status { font-size: 14px; }
+    .ai-step-running { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* AI System Messages */
+    .ai-system-messages { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+    .ai-sys-msg {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+      font-size: 11px; color: var(--text-muted); border-left: 2px solid var(--accent)40;
+      opacity: 0; transform: translateX(-8px); transition: all 0.3s ease;
+    }
+    .ai-sys-msg.show { opacity: 1; transform: translateX(0); }
+    .ai-sys-msg-text { font-family: var(--mono); }
+  </style>
 </head>
 <body>
   <div class="main-content" id="app">
@@ -128,7 +234,7 @@
 
   <!-- Create Project Modal -->
   <div class="modal-overlay" id="createProjectModal">
-    <div class="modal">
+    <div class="modal" style="max-width:700px">
       <div class="modal-header"><h3 class="modal-title">Create New Project</h3><button class="modal-close" onclick="closeModal('createProjectModal')">&times;</button></div>
       <div class="modal-body">
         <div class="form-group"><label class="form-label">Project Name</label><input type="text" id="projName" class="form-input" placeholder="e.g., E-Commerce Platform"></div>
@@ -138,8 +244,41 @@
         </div>
         <div class="form-group"><label class="form-label">Tech Stack</label><input type="text" id="projTech" class="form-input" placeholder="Node.js, React, PostgreSQL"></div>
         <div class="form-group"><label class="form-label">Modules</label><input type="text" id="projModules" class="form-input" placeholder="auth, payments, orders"></div>
+
+        <!-- Client Documents Upload Section -->
+        <div class="form-group">
+          <label class="form-label">📄 Client Documents</label>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">These documents will be used to auto-generate org structure</p>
+          <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('docFileInput').click()" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event)">
+            <div class="doc-upload-icon">📁</div>
+            <div class="doc-upload-text">Drag & drop files here or <span style="color:var(--accent);cursor:pointer">browse</span></div>
+            <div class="doc-upload-hint">PDF, DOCX, TXT — Multiple files supported</div>
+            <input type="file" id="docFileInput" multiple accept=".pdf,.docx,.doc,.txt" style="display:none" onchange="handleDocFileSelect(event)">
+          </div>
+          <div id="uploadedFilesList" class="uploaded-files-list"></div>
+          <div id="docUploadSuccess" class="doc-upload-success" style="display:none">
+            <span class="doc-success-icon">✅</span> Documents uploaded successfully
+          </div>
+        </div>
       </div>
-      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProject()">Create Project</button></div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProjectWithAI()">🚀 Create Project</button></div>
+    </div>
+  </div>
+
+  <!-- AI Processing Overlay -->
+  <div class="ai-loading-overlay" id="aiLoadingOverlay">
+    <div class="ai-loading-container">
+      <div class="ai-loading-header">
+        <div class="ai-loading-brain">🧠</div>
+        <h2 class="ai-loading-title">AI Processing</h2>
+        <p class="ai-loading-subtitle">Generating organizational structure...</p>
+      </div>
+      <div class="ai-loading-progress">
+        <div class="ai-progress-bar"><div class="ai-progress-fill" id="aiProgressFill"></div></div>
+        <div class="ai-progress-pct" id="aiProgressPct">0%</div>
+      </div>
+      <div class="ai-loading-steps" id="aiLoadingSteps"></div>
+      <div class="ai-system-messages" id="aiSystemMessages"></div>
     </div>
   </div>
 
@@ -165,6 +304,7 @@
   <script src="../js/permissions.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
+  <script src="../js/ai-org-generator.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
@@ -390,16 +530,232 @@
       }).join('');
     }
 
-    async function createProject() {
+    async function createProjectWithAI() {
       const name = document.getElementById('projName').value.trim();
       if (!name) { showToast('Project name required', 'error'); return; }
-      showLoading('Creating project...');
-      await MockAPI.createProject({ name, description: document.getElementById('projDesc').value.trim(), domain: document.getElementById('projDomain').value, techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean), modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean) });
-      hideLoading();
+
+      const projectData = {
+        name,
+        description: document.getElementById('projDesc').value.trim(),
+        domain: document.getElementById('projDomain').value,
+        techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean),
+        modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean)
+      };
+
+      // Store file metadata in AI state
+      AIOrg.loadState();
+
+      // Close modal
       closeModal('createProjectModal');
-      showToast('Project created', 'success');
-      renderAll();
+
+      // Create the project first
+      const result = await MockAPI.createProject(projectData);
+      if (!result.success) { showToast('Failed to create project', 'error'); return; }
+      const project = result.project;
+      sessionStorage.setItem('nexus_selected_project', project.id);
+
+      // Show AI loading overlay
+      showAILoadingOverlay(project);
     }
+
+    // Legacy createProject function for backward compatibility
+    async function createProject() { return createProjectWithAI(); }
+
+    function showAILoadingOverlay(project) {
+      const overlay = document.getElementById('aiLoadingOverlay');
+      overlay.classList.add('show');
+
+      const steps = AIOrg.getLoadingSteps();
+      const stepsContainer = document.getElementById('aiLoadingSteps');
+      const messagesContainer = document.getElementById('aiSystemMessages');
+      const progressFill = document.getElementById('aiProgressFill');
+      const progressPct = document.getElementById('aiProgressPct');
+
+      // Render step placeholders
+      stepsContainer.innerHTML = steps.map((s, i) => `
+        <div class="ai-step" id="aiStep_${i}">
+          <span class="ai-step-icon">${s.icon}</span>
+          <span class="ai-step-text">${s.text}</span>
+          <span class="ai-step-status ai-step-pending">⏳</span>
+        </div>
+      `).join('');
+      messagesContainer.innerHTML = '';
+
+      // Animate steps sequentially
+      let totalDuration = 0;
+      const totalTime = steps.reduce((sum, s) => sum + s.duration, 0);
+
+      // System messages
+      const sysMessages = AIOrg.getSystemMessages();
+      sysMessages.forEach(msg => {
+        setTimeout(() => {
+          const msgEl = document.createElement('div');
+          msgEl.className = 'ai-sys-msg ai-sys-msg-enter';
+          msgEl.innerHTML = `<span class="ai-sys-msg-text">${msg.text}</span>`;
+          messagesContainer.appendChild(msgEl);
+          requestAnimationFrame(() => msgEl.classList.add('show'));
+        }, msg.delay);
+      });
+
+      steps.forEach((step, idx) => {
+        // Activate step
+        setTimeout(() => {
+          const el = document.getElementById('aiStep_' + idx);
+          el.classList.add('ai-step-active');
+          el.querySelector('.ai-step-status').textContent = '⚙️';
+          el.querySelector('.ai-step-status').classList.remove('ai-step-pending');
+          el.querySelector('.ai-step-status').classList.add('ai-step-running');
+        }, totalDuration);
+
+        totalDuration += step.duration;
+
+        // Complete step
+        setTimeout(() => {
+          const el = document.getElementById('aiStep_' + idx);
+          el.classList.remove('ai-step-active');
+          el.classList.add('ai-step-done');
+          el.querySelector('.ai-step-status').textContent = '✅';
+          el.querySelector('.ai-step-status').classList.remove('ai-step-running');
+          el.querySelector('.ai-step-status').classList.add('ai-step-complete');
+
+          // Update progress
+          const pct = Math.round(((idx + 1) / steps.length) * 100);
+          progressFill.style.width = pct + '%';
+          progressPct.textContent = pct + '%';
+        }, totalDuration);
+      });
+
+      // Smooth progress animation
+      let startTime = Date.now();
+      function animateProgress() {
+        const elapsed = Date.now() - startTime;
+        const rawPct = Math.min((elapsed / totalTime) * 100, 100);
+        progressFill.style.width = rawPct + '%';
+        progressPct.textContent = Math.round(rawPct) + '%';
+        if (rawPct < 100) requestAnimationFrame(animateProgress);
+      }
+      requestAnimationFrame(animateProgress);
+
+      // After all steps done, navigate to agents page org builder
+      setTimeout(() => {
+        // Generate org structure
+        const orgResult = AIOrg.generateOrgStructure(project);
+        NexusStore.setProjectOrgStructure(project.id, {
+          levels: orgResult.levels,
+          updatedAt: orgResult.metadata.generatedAt,
+          _aiGenerated: true,
+          _metadata: orgResult.metadata
+        });
+
+        // Store generation prompt
+        NexusStore.set('ai_org_prompt_' + project.id, {
+          prompt: orgResult.metadata.prompt,
+          mode: AIOrg._state.promptMode,
+          customPrompt: AIOrg._state.customPrompt
+        });
+
+        // Hide overlay and navigate
+        setTimeout(() => {
+          overlay.classList.remove('show');
+          showToast('AI org structure generated! Redirecting to Org Builder...', 'success');
+          setTimeout(() => {
+            window.location.href = 'agents.html?project=' + project.id + '&tab=orgchart&ai=1';
+          }, 800);
+        }, 600);
+      }, totalDuration + 400);
+    }
+
+    // ─── Document Upload Handlers ───
+    function handleDocDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('docUploadZone').classList.add('drag-active');
+    }
+
+    function handleDocDragLeave(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('docUploadZone').classList.remove('drag-active');
+    }
+
+    function handleDocDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.getElementById('docUploadZone').classList.remove('drag-active');
+      if (e.dataTransfer.files.length > 0) {
+        processDocFiles(e.dataTransfer.files);
+      }
+    }
+
+    function handleDocFileSelect(e) {
+      if (e.target.files.length > 0) {
+        processDocFiles(e.target.files);
+      }
+    }
+
+    function processDocFiles(files) {
+      AIOrg.loadState();
+      Array.from(files).forEach(file => {
+        const validExts = ['pdf', 'docx', 'doc', 'txt'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (!validExts.includes(ext)) {
+          showToast(`Unsupported file type: .${ext}`, 'error');
+          return;
+        }
+        const fileEntry = AIOrg.addFile(file);
+        renderUploadedFiles();
+
+        // Simulate upload progress
+        AIOrg.simulateUpload(fileEntry.id, (progress) => {
+          renderUploadedFiles();
+        }, () => {
+          renderUploadedFiles();
+          checkAllUploadsComplete();
+        });
+      });
+    }
+
+    function renderUploadedFiles() {
+      const container = document.getElementById('uploadedFilesList');
+      const files = AIOrg.getState().uploadedFiles;
+      if (!files.length) { container.innerHTML = ''; return; }
+
+      container.innerHTML = files.map(f => {
+        const typeIcon = f.name.endsWith('.pdf') ? '📕' : f.name.endsWith('.docx') || f.name.endsWith('.doc') ? '📘' : '📄';
+        const sizeStr = f.size > 1024*1024 ? (f.size/(1024*1024)).toFixed(1) + ' MB' : (f.size/1024).toFixed(1) + ' KB';
+        return `
+          <div class="uploaded-file-chip ${f.status === 'completed' ? 'complete' : ''}">
+            <span class="ufc-icon">${typeIcon}</span>
+            <div class="ufc-info">
+              <span class="ufc-name">${escapeHtml(f.name)}</span>
+              <span class="ufc-size">${sizeStr}</span>
+            </div>
+            ${f.status === 'uploading' ? `
+              <div class="ufc-progress"><div class="ufc-progress-fill" style="width:${f.progress}%"></div></div>
+            ` : `<span class="ufc-done">✓</span>`}
+            <button class="ufc-remove" onclick="removeUploadedFile('${f.id}')" title="Remove">✕</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function removeUploadedFile(fileId) {
+      AIOrg.removeFile(fileId);
+      renderUploadedFiles();
+      const allDone = AIOrg.getState().uploadedFiles.every(f => f.status === 'completed');
+      if (!AIOrg.getState().uploadedFiles.length) {
+        document.getElementById('docUploadSuccess').style.display = 'none';
+      }
+    }
+
+    function checkAllUploadsComplete() {
+      const files = AIOrg.getState().uploadedFiles;
+      if (files.length > 0 && files.every(f => f.status === 'completed')) {
+        document.getElementById('docUploadSuccess').style.display = 'flex';
+      }
+    }
+
+    function escapeHtml(str) { if(!str)return''; const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
 
     async function uploadRequirement() {
       const pid = getSelectedProject();

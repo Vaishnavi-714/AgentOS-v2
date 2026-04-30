@@ -282,6 +282,117 @@
       border-bottom: 1px solid var(--warning)35;
       text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
     }
+
+    /* ─── AI Generated Banner ─── */
+    .ai-gen-banner {
+      margin-bottom: 20px; padding: 16px 20px;
+      background: linear-gradient(135deg, var(--accent)08, var(--purple)08);
+      border: 1px solid var(--accent)30; border-radius: var(--radius-lg);
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .ai-gen-badge {
+      padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;
+      background: var(--accent)18; color: var(--accent); border: 1px solid var(--accent)40;
+      white-space: nowrap;
+    }
+    .ai-gen-text { flex: 1; font-size: 12px; color: var(--text-secondary); min-width: 200px; }
+    .ai-gen-actions { display: flex; gap: 8px; }
+
+    /* ─── Prompt Modal ─── */
+    .prompt-mode-toggle {
+      display: flex; gap: 0; margin-bottom: 20px;
+      border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+    }
+    .prompt-mode-btn {
+      flex: 1; padding: 10px 16px; font-size: 12px; font-weight: 600;
+      background: var(--bg-tertiary); color: var(--text-secondary);
+      border: none; cursor: pointer; transition: all 0.2s;
+    }
+    .prompt-mode-btn.active {
+      background: var(--accent)18; color: var(--accent);
+    }
+    .prompt-mode-btn:hover:not(.active) { background: var(--bg-hover); }
+    .prompt-label-row {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .prompt-edit-badge {
+      font-size: 10px; padding: 2px 8px; border-radius: 8px;
+      background: var(--warning)18; color: var(--warning); border: 1px solid var(--warning)35;
+      font-weight: 600;
+    }
+    .prompt-textarea {
+      min-height: 160px; font-size: 13px; line-height: 1.7;
+      font-family: var(--font); resize: vertical;
+    }
+    .prompt-helper { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+
+    /* ─── AI Loading Overlay (agents page) ─── */
+    .ai-loading-overlay {
+      position: fixed; inset: 0; z-index: 5000;
+      background: var(--bg-primary); display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.4s ease;
+    }
+    .ai-loading-overlay.show { opacity: 1; pointer-events: all; }
+    .ai-loading-container { width: 100%; max-width: 560px; padding: 48px 40px; text-align: center; }
+    .ai-loading-header { margin-bottom: 36px; }
+    .ai-loading-brain {
+      font-size: 56px; margin-bottom: 16px;
+      animation: aiBrainPulse 2s ease-in-out infinite;
+    }
+    @keyframes aiBrainPulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px var(--accent)40); }
+      50% { transform: scale(1.08); filter: drop-shadow(0 0 20px var(--accent)80); }
+    }
+    .ai-loading-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+    .ai-loading-subtitle { font-size: 13px; color: var(--text-muted); }
+    .ai-loading-progress { margin-bottom: 32px; }
+    .ai-progress-bar { width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 3px; overflow: hidden; }
+    .ai-progress-fill {
+      height: 100%; width: 0; border-radius: 3px; transition: width 0.4s ease;
+      background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+      background-size: 200% 100%; animation: aiProgressShimmer 2s linear infinite;
+    }
+    @keyframes aiProgressShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .ai-progress-pct { font-size: 12px; color: var(--text-muted); margin-top: 8px; font-weight: 600; }
+    .ai-loading-steps { display: flex; flex-direction: column; gap: 8px; text-align: left; margin-bottom: 24px; }
+    .ai-step {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+      border-radius: var(--radius); background: var(--bg-secondary); border: 1px solid var(--border);
+      transition: all 0.3s ease; opacity: 0.5;
+    }
+    .ai-step-active { opacity: 1; border-color: var(--accent)60; background: var(--accent)08; box-shadow: 0 0 12px var(--accent)15; }
+    .ai-step-done { opacity: 1; border-color: var(--success)40; }
+    .ai-step-icon { font-size: 18px; }
+    .ai-step-text { flex: 1; font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+    .ai-step-status { font-size: 14px; }
+    .ai-step-running { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ai-system-messages { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+    .ai-sys-msg {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+      font-size: 11px; color: var(--text-muted); border-left: 2px solid var(--accent)40;
+      opacity: 0; transform: translateX(-8px); transition: all 0.3s ease;
+    }
+    .ai-sys-msg.show { opacity: 1; transform: translateX(0); }
+    .ai-sys-msg-text { font-family: var(--mono); }
+
+    /* ─── Editable Org Nodes ─── */
+    .org-placed-node.editable { cursor: grab; }
+    .org-placed-node.editable:active { cursor: grabbing; }
+    .org-node-edit-input {
+      background: var(--bg-tertiary); border: 1px solid var(--accent); border-radius: 4px;
+      color: var(--text-primary); font-size: 12px; font-weight: 600; padding: 2px 6px;
+      width: 120px; font-family: var(--font);
+    }
+    .org-node-edit-input:focus { outline: none; border-color: var(--accent-hover); }
+
+    /* ─── Inline add role ─── */
+    .org-add-role-btn {
+      padding: 6px 12px; border: 1px dashed var(--accent)50; border-radius: var(--radius);
+      background: transparent; color: var(--accent); font-size: 11px; cursor: pointer;
+      transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .org-add-role-btn:hover { background: var(--accent)08; border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -434,12 +545,22 @@
 
       <!-- Org Builder -->
       <div id="tab-orgchart-section" class="tab-content">
+        <!-- AI Generated Banner -->
+        <div class="ai-gen-banner" id="aiGenBanner" style="display:none">
+          <div class="ai-gen-badge">🤖 AI Generated Structure</div>
+          <p class="ai-gen-text">This structure was automatically generated based on project requirements and uploaded documents.</p>
+          <div class="ai-gen-actions">
+            <button class="btn btn-outline btn-sm" onclick="openPromptModal()">👁️ View Generation Prompt</button>
+            <button class="btn btn-outline btn-sm" onclick="toggleEditMode()" id="editStructureBtn">✏️ Edit Structure</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">🏗️ Org Structure Builder</h3>
             <div class="page-actions">
               <button class="btn btn-outline btn-sm" onclick="addOrgLevel()">+ Add Level</button>
-              <button class="btn btn-primary btn-sm" onclick="saveOrgStructure()">💾 Save Structure</button>
+              <button class="btn btn-outline btn-sm" id="saveOrgBtn" onclick="saveOrgStructure(); showToast('Structure saved!','success')">💾 Save Structure</button>
             </div>
           </div>
           <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Drag agents from the pool into levels to build your project's org hierarchy. Top = highest authority, bottom = execution layer.</p>
@@ -455,6 +576,61 @@
               <div class="org-canvas" id="orgCanvas"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Prompt Modal -->
+      <div class="modal-overlay" id="promptModal">
+        <div class="modal" style="max-width:720px">
+          <div class="modal-header">
+            <h3 class="modal-title">🧠 AI Generation Prompt</h3>
+            <button class="modal-close" onclick="closeModal('promptModal')">&times;</button>
+          </div>
+          <div class="modal-body">
+            <!-- Mode Toggle -->
+            <div class="prompt-mode-toggle">
+              <button class="prompt-mode-btn active" id="promptModeAuto" onclick="setPromptMode('auto')">🤖 Auto (Predefined Prompt)</button>
+              <button class="prompt-mode-btn" id="promptModeCustom" onclick="setPromptMode('custom')">✍️ Custom Prompt</button>
+            </div>
+
+            <!-- Auto mode -->
+            <div id="promptAutoSection">
+              <div class="prompt-label-row">
+                <label class="form-label" style="margin-bottom:0">System-generated prompt (editable)</label>
+                <span class="prompt-edit-badge">✏️ Editable</span>
+              </div>
+              <textarea id="predefinedPromptTextarea" class="form-textarea prompt-textarea"></textarea>
+              <p class="prompt-helper">You can edit this predefined prompt to customize the AI generation behavior. Minimum 50 characters required.</p>
+            </div>
+
+            <!-- Custom mode -->
+            <div id="promptCustomSection" style="display:none">
+              <label class="form-label">Enter your custom prompt</label>
+              <textarea id="customPromptTextarea" class="form-textarea prompt-textarea" placeholder="Describe how you want the organizational structure to be generated..."></textarea>
+              <p class="prompt-helper">Write a detailed prompt to control how roles and hierarchy are generated.</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('promptModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="regenerateFromPrompt()">🔄 Regenerate Structure</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Regeneration Overlay (inside agents page) -->
+      <div class="ai-loading-overlay" id="aiRegenOverlay">
+        <div class="ai-loading-container">
+          <div class="ai-loading-header">
+            <div class="ai-loading-brain">🧠</div>
+            <h2 class="ai-loading-title">Regenerating Structure</h2>
+            <p class="ai-loading-subtitle">Processing with updated prompt...</p>
+          </div>
+          <div class="ai-loading-progress">
+            <div class="ai-progress-bar"><div class="ai-progress-fill" id="regenProgressFill"></div></div>
+            <div class="ai-progress-pct" id="regenProgressPct">0%</div>
+          </div>
+          <div class="ai-loading-steps" id="regenLoadingSteps"></div>
+          <div class="ai-system-messages" id="regenSystemMessages"></div>
         </div>
       </div>
 
@@ -547,6 +723,7 @@
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
   <script src="../js/orchestration-runtime.js"></script>
+  <script src="../js/ai-org-generator.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
@@ -1200,6 +1377,9 @@
       orgLevels.forEach(l => l.agents.forEach(a => placedIds.add(a.agent_id)));
       const availableAgents = agents.filter(a => !placedIds.has(a.agent_id));
 
+      // Check if AI generated
+      checkAIGenerated();
+
       // Agent Pool
       document.getElementById('orgAgentPool').innerHTML = availableAgents.length ? availableAgents.map(a => `
         <div class="org-pool-item" draggable="true" ondragstart="onDragStart(event,'${a.agent_id}')">
@@ -1208,7 +1388,7 @@
         </div>
       `).join('') : '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px">All agents placed or none deployed yet.</div>';
 
-      // Canvas
+      // Canvas with edit support
       document.getElementById('orgCanvas').innerHTML = orgLevels.map((level, idx) => `
         <div class="org-level-row" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${idx})" id="orgLevel_${idx}">
           <div class="org-level-label">
@@ -1218,12 +1398,16 @@
               <button onclick="moveOrgLevel(${idx},1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px" title="Move down">▼</button>
               <button onclick="removeOrgLevel(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;margin-left:4px" title="Remove level">✕</button>
             ` : ''}
+            ${isEditMode ? `<button class="org-add-role-btn" onclick="addRoleToLevel(${idx})" style="margin-left:8px">+ Add Role</button>` : ''}
           </div>
-          ${level.agents.length ? level.agents.map(a => `
-            <div class="org-placed-node">
+          ${level.agents.length ? level.agents.map((a, aIdx) => `
+            <div class="org-placed-node ${isEditMode ? 'editable' : ''} ${a._aiGenerated ? 'ai-node' : ''}" data-org-node="${idx}-${aIdx}" ${isEditMode && a.agent_id !== '_human_' ? `onclick="inlineRenameRole(${idx},${aIdx})"` : ''}>
               <span>${a.icon||'🤖'}</span>
-              <div><strong>${escapeHtml(a.name)}</strong><br><span style="font-size:10px;color:var(--text-muted)">${escapeHtml(a.role)}</span></div>
-              ${a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="removeAgentFromOrg(${idx},'${a.agent_id}')">✕</button>` : ''}
+              <div>
+                <span class="org-node-name-text"><strong>${escapeHtml(a.name)}</strong></span>
+                <br><span style="font-size:10px;color:var(--text-muted)">${escapeHtml(a.role)}</span>
+              </div>
+              ${a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="event.stopPropagation();${isEditMode ? `deleteRoleFromOrg(${idx},${aIdx})` : `removeAgentFromOrg(${idx},'${a.agent_id}')`}">✕</button>` : ''}
             </div>
           `).join('') : '<div style="font-size:11px;color:var(--text-muted);padding:8px;border:1px dashed var(--border);border-radius:var(--radius)">Drop agents here...</div>'}
         </div>
@@ -1351,6 +1535,217 @@
       if (id === 'workspacePanel') activeWorkspaceAgentId = null;
     }
 
+    // ─── AI Org Builder Functions ───
+    let isEditMode = false;
+
+    function checkAIGenerated() {
+      const orgData = NexusStore.getProjectOrgStructure(selectedProjectId);
+      const banner = document.getElementById('aiGenBanner');
+      if (orgData && orgData._aiGenerated) {
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function openPromptModal() {
+      AIOrg.loadState();
+      const promptData = NexusStore.get('ai_org_prompt_' + selectedProjectId);
+      const predefined = document.getElementById('predefinedPromptTextarea');
+      const custom = document.getElementById('customPromptTextarea');
+
+      predefined.value = promptData?.prompt || AIOrg.defaultPrompt;
+      custom.value = promptData?.customPrompt || AIOrg._state.customPrompt || '';
+
+      const mode = promptData?.mode || 'auto';
+      setPromptMode(mode);
+
+      document.getElementById('promptModal').classList.add('show');
+    }
+
+    function setPromptMode(mode) {
+      document.getElementById('promptModeAuto').classList.toggle('active', mode === 'auto');
+      document.getElementById('promptModeCustom').classList.toggle('active', mode === 'custom');
+      document.getElementById('promptAutoSection').style.display = mode === 'auto' ? 'block' : 'none';
+      document.getElementById('promptCustomSection').style.display = mode === 'custom' ? 'block' : 'none';
+      AIOrg.setState({ promptMode: mode });
+    }
+
+    function regenerateFromPrompt() {
+      const mode = AIOrg._state.promptMode;
+      let prompt;
+      if (mode === 'auto') {
+        prompt = document.getElementById('predefinedPromptTextarea').value.trim();
+        if (prompt.length < 50) { showToast('Prompt must be at least 50 characters', 'error'); return; }
+        AIOrg.setState({ currentPrompt: prompt });
+      } else {
+        prompt = document.getElementById('customPromptTextarea').value.trim();
+        if (!prompt) { showToast('Please enter a custom prompt', 'error'); return; }
+        AIOrg.setState({ customPrompt: prompt });
+      }
+
+      // Save prompt data
+      NexusStore.set('ai_org_prompt_' + selectedProjectId, {
+        prompt: mode === 'auto' ? prompt : AIOrg._state.currentPrompt,
+        mode,
+        customPrompt: mode === 'custom' ? prompt : AIOrg._state.customPrompt
+      });
+
+      closeModal('promptModal');
+      showRegenOverlay();
+    }
+
+    function showRegenOverlay() {
+      const overlay = document.getElementById('aiRegenOverlay');
+      overlay.classList.add('show');
+
+      const steps = AIOrg.getLoadingSteps();
+      const stepsContainer = document.getElementById('regenLoadingSteps');
+      const messagesContainer = document.getElementById('regenSystemMessages');
+      const progressFill = document.getElementById('regenProgressFill');
+      const progressPct = document.getElementById('regenProgressPct');
+
+      progressFill.style.width = '0%';
+      progressPct.textContent = '0%';
+
+      stepsContainer.innerHTML = steps.map((s, i) => `
+        <div class="ai-step" id="regenStep_${i}">
+          <span class="ai-step-icon">${s.icon}</span>
+          <span class="ai-step-text">${s.text}</span>
+          <span class="ai-step-status ai-step-pending">⏳</span>
+        </div>
+      `).join('');
+      messagesContainer.innerHTML = '';
+
+      const sysMessages = AIOrg.getSystemMessages();
+      sysMessages.forEach(msg => {
+        setTimeout(() => {
+          const msgEl = document.createElement('div');
+          msgEl.className = 'ai-sys-msg';
+          msgEl.innerHTML = `<span class="ai-sys-msg-text">${msg.text}</span>`;
+          messagesContainer.appendChild(msgEl);
+          requestAnimationFrame(() => msgEl.classList.add('show'));
+        }, msg.delay);
+      });
+
+      let totalDuration = 0;
+      const totalTime = steps.reduce((sum, s) => sum + s.duration, 0);
+
+      steps.forEach((step, idx) => {
+        setTimeout(() => {
+          const el = document.getElementById('regenStep_' + idx);
+          el.classList.add('ai-step-active');
+          el.querySelector('.ai-step-status').textContent = '⚙️';
+          el.querySelector('.ai-step-status').classList.remove('ai-step-pending');
+          el.querySelector('.ai-step-status').classList.add('ai-step-running');
+        }, totalDuration);
+
+        totalDuration += step.duration;
+
+        setTimeout(() => {
+          const el = document.getElementById('regenStep_' + idx);
+          el.classList.remove('ai-step-active');
+          el.classList.add('ai-step-done');
+          el.querySelector('.ai-step-status').textContent = '✅';
+          el.querySelector('.ai-step-status').classList.remove('ai-step-running');
+          el.querySelector('.ai-step-status').classList.add('ai-step-complete');
+        }, totalDuration);
+      });
+
+      let startTime = Date.now();
+      function animateProgress() {
+        const elapsed = Date.now() - startTime;
+        const rawPct = Math.min((elapsed / totalTime) * 100, 100);
+        progressFill.style.width = rawPct + '%';
+        progressPct.textContent = Math.round(rawPct) + '%';
+        if (rawPct < 100) requestAnimationFrame(animateProgress);
+      }
+      requestAnimationFrame(animateProgress);
+
+      setTimeout(() => {
+        const project = NexusStore.getProject(selectedProjectId);
+        if (project) {
+          const orgResult = AIOrg.generateOrgStructure(project, true);
+          orgLevels = orgResult.levels;
+
+          NexusStore.setProjectOrgStructure(selectedProjectId, {
+            levels: orgResult.levels,
+            updatedAt: orgResult.metadata.generatedAt,
+            _aiGenerated: true,
+            _metadata: orgResult.metadata
+          });
+
+          setTimeout(() => {
+            overlay.classList.remove('show');
+            showToast('Org structure regenerated with updated prompt!', 'success');
+            renderOrgBuilder();
+            checkAIGenerated();
+          }, 600);
+        }
+      }, totalDuration + 400);
+    }
+
+    function toggleEditMode() {
+      isEditMode = !isEditMode;
+      const btn = document.getElementById('editStructureBtn');
+      btn.textContent = isEditMode ? '🔒 Lock Structure' : '✏️ Edit Structure';
+      btn.classList.toggle('btn-primary', isEditMode);
+      btn.classList.toggle('btn-outline', !isEditMode);
+      renderOrgBuilder();
+      showToast(isEditMode ? 'Edit mode enabled — click role names to rename, use buttons to manage' : 'Structure locked', 'info');
+    }
+
+    function inlineRenameRole(levelIdx, agentIdx) {
+      if (!isEditMode) return;
+      const agent = orgLevels[levelIdx].agents[agentIdx];
+      if (agent.agent_id === '_human_') return;
+      const nodeEl = document.querySelector(`[data-org-node="${levelIdx}-${agentIdx}"]`);
+      if (!nodeEl) return;
+      const nameEl = nodeEl.querySelector('.org-node-name-text');
+      if (!nameEl) return;
+      const currentName = agent.name;
+      nameEl.innerHTML = `<input type="text" class="org-node-edit-input" value="${escapeHtml(currentName)}" onblur="finishRename(${levelIdx},${agentIdx},this)" onkeydown="if(event.key==='Enter')this.blur()">`;
+      nameEl.querySelector('input').focus();
+      nameEl.querySelector('input').select();
+    }
+
+    function finishRename(levelIdx, agentIdx, input) {
+      const newName = input.value.trim();
+      if (newName && newName !== orgLevels[levelIdx].agents[agentIdx].name) {
+        orgLevels[levelIdx].agents[agentIdx].name = newName;
+        orgLevels[levelIdx].agents[agentIdx].role = newName;
+        saveOrgStructure();
+        showToast('Role renamed', 'success');
+      }
+      renderOrgBuilder();
+    }
+
+    function addRoleToLevel(levelIdx) {
+      const roleName = prompt('Enter role name:');
+      if (!roleName || !roleName.trim()) return;
+      const icons = ['🤖', '👤', '💼', '⚙️', '🔧', '📊', '🎯', '🛡️'];
+      const icon = icons[Math.floor(Math.random() * icons.length)];
+      orgLevels[levelIdx].agents.push({
+        agent_id: 'manual_' + Date.now(),
+        name: roleName.trim(),
+        icon,
+        role: roleName.trim(),
+        _manuallyAdded: true
+      });
+      saveOrgStructure();
+      renderOrgBuilder();
+      showToast('Role added to ' + orgLevels[levelIdx].label, 'success');
+    }
+
+    function deleteRoleFromOrg(levelIdx, agentIdx) {
+      const agent = orgLevels[levelIdx].agents[agentIdx];
+      if (agent.agent_id === '_human_') { showToast('Cannot remove Human Orchestrator', 'error'); return; }
+      orgLevels[levelIdx].agents.splice(agentIdx, 1);
+      saveOrgStructure();
+      renderOrgBuilder();
+      showToast('Role removed', 'info');
+    }
+
     // ─── Main Render ───
     function render() {
       if (!selectedProjectId) return;
@@ -1375,6 +1770,39 @@
     }
 
     // ─── Init ───
+    // Handle URL params from AI project creation flow
+    (function handleAINavigation() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectParam = urlParams.get('project');
+      const tabParam = urlParams.get('tab');
+      const aiParam = urlParams.get('ai');
+
+      if (projectParam) {
+        sessionStorage.setItem('nexus_selected_project', projectParam);
+        NexusStore.setActiveProject(projectParam);
+      }
+
+      if (tabParam === 'orgchart') {
+        setTimeout(() => {
+          switchToTab('tab-orgchart-section');
+          const orgSection = document.getElementById('tab-orgchart-section');
+          if (orgSection) orgSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (aiParam === '1') {
+            // Show AI generated toast messages
+            const messages = AIOrg.getSystemMessages();
+            messages.forEach(msg => {
+              setTimeout(() => showToast(msg.text, 'info'), msg.delay / 4);
+            });
+          }
+        }, 500);
+      }
+
+      // Clean URL
+      if (urlParams.toString()) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    })();
+
     initProjectSelector();
     renderSelectedSkills();
     if (selectedProjectId) render();
