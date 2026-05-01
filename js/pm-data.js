@@ -317,3 +317,301 @@ const PMData = {
     return Math.round((scores.progress * 0.3 + (100 - scores.risk) * 0.3 + scores.quality * 0.2 + scores.budget * 0.2));
   }
 };
+
+PMData.sectionKeys = ['overview', 'scope', 'schedule', 'cost', 'quality', 'resources', 'risks', 'governance', 'summary'];
+
+PMData.getDefaultProject = function() {
+  return this.projects.find(project => project.phase === 'execution') || this.projects[0] || null;
+};
+
+PMData.getSelectedProjectId = function() {
+  const existing = sessionStorage.getItem('pm_selected_project');
+  if (existing && this.getProject(existing)) return existing;
+  const fallback = this.getDefaultProject();
+  if (!fallback) return null;
+  sessionStorage.setItem('pm_selected_project', fallback.id);
+  return fallback.id;
+};
+
+PMData.getSelectedProject = function() {
+  const projectId = this.getSelectedProjectId();
+  return projectId ? this.getProject(projectId) : null;
+};
+
+PMData.getReportingPeriod = function(project) {
+  return `${project.startDate} to ${project.targetDate || 'Ongoing'}`;
+};
+
+PMData.getHealthLabel = function(score) {
+  if (score >= 70) return 'Green';
+  if (score >= 50) return 'Yellow';
+  return 'Red';
+};
+
+PMData.delaySeverity = function(delta) {
+  if (delta >= 15) return 'HIGH';
+  if (delta >= 5) return 'MEDIUM';
+  return 'LOW';
+};
+
+PMData.buildSectionSnapshot = function(project) {
+  const budgetAllocated = project.budget?.allocated || 0;
+  const budgetSpent = project.budget?.spent || 0;
+  const budgetPct = budgetAllocated ? Math.round((budgetSpent / budgetAllocated) * 100) : 0;
+  const remainingBudget = Math.max(budgetAllocated - budgetSpent, 0);
+  const schedulePerformance = project.sprint?.planned
+    ? Number((project.sprint.velocity / project.sprint.planned).toFixed(2))
+    : Number((project.progress / 100).toFixed(2));
+  const costPerformance = budgetSpent ? Number((budgetAllocated / Math.max(budgetSpent, 1)).toFixed(2)) : 1;
+  const stakeholderHealth = project.teamAlignment || Math.max(55, project.healthScore - 10);
+  const roadmapMilestones = (project.roadmap?.planned || []).map(item => {
+    const variance = item.actual - item.planned;
+    return {
+      name: item.name,
+      planned: item.planned,
+      actual: item.actual,
+      variance,
+      status: variance >= 0 ? 'ON_TRACK' : variance > -15 ? 'AT_RISK' : 'DELAYED'
+    };
+  });
+  const delayReasons = [
+    ...(project.blockers || []).map(blocker => blocker.title),
+    ...(project.redFlags || []).filter(flag => flag.type === 'delay').map(flag => flag.message)
+  ].slice(0, 4);
+  const mitigationActions = [
+    ...(project.risks || []).map(risk => risk.mitigation),
+    ...(project.learnings?.nextActions || [])
+  ].slice(0, 4);
+  const achievements = [
+    ...(roadmapMilestones.filter(item => item.actual >= item.planned).map(item => `${item.name} delivered at ${item.actual}% against ${item.planned}% plan`)),
+    ...(project.decisions || []).filter(decision => decision.status === 'Implemented' || decision.status === 'Completed').map(decision => decision.title),
+    ...(project.learnings?.worked || [])
+  ].slice(0, 5);
+  const challenges = [
+    ...(project.redFlags || []).map(flag => flag.message),
+    ...(project.blockers || []).map(blocker => blocker.title),
+    ...(project.userFeedback?.topComplaints || []),
+    ...(project.earlyFeedback || []).filter(item => item.sentiment === 'negative').map(item => item.comment)
+  ].slice(0, 5);
+  const scopeItems = project.mvpScope?.mvp || roadmapMilestones.map(item => item.name);
+  const futureScope = project.mvpScope?.future || (project.improvements || []).map(item => item.title);
+  const changeRequests = (project.scopeChanges || []).map(change => ({
+    id: change.id,
+    title: change.title,
+    status: change.status,
+    impact: change.impact,
+    requestedOn: change.date,
+    effort: change.effort
+  }));
+  const costDrivers = [
+    `Team staffing footprint: ${project.team} contributors`,
+    project.scopeChanges?.length ? `${project.scopeChanges.length} scope adjustments influencing delivery cost` : 'No major scope expansion recorded',
+    project.risks?.find(risk => risk.severity === 'Critical')?.title || 'No critical cost driver escalation',
+    project.phase === 'post-launch' ? 'Post-launch optimization and platform hardening' : 'Execution delivery and integration workload'
+  ];
+  const qualityRisks = [
+    ...(project.risks || []).filter(risk => /compliance|quality|defect|audit/i.test(`${risk.title} ${risk.mitigation}`)).map(risk => risk.title),
+    ...(project.userFeedback?.topComplaints || []),
+    ...(project.earlyFeedback || []).filter(item => item.sentiment !== 'positive').map(item => item.comment)
+  ].slice(0, 4);
+  const qualityImprovementActions = [
+    ...(project.learnings?.nextActions || []),
+    ...(project.risks || []).map(risk => risk.mitigation)
+  ].slice(0, 4);
+  const governanceFeedback = [
+    ...(project.earlyFeedback || []).map(item => `${item.user}: ${item.comment}`),
+    ...(project.userFeedback?.topPraise || []).map(item => `Positive signal: ${item}`)
+  ].slice(0, 4);
+  const activeIssues = (project.issues || []).map(issue => ({
+    id: issue.id,
+    title: issue.title,
+    priority: issue.priority,
+    status: issue.status,
+    owner: issue.assignee
+  }));
+  const statusTracking = (project.risks || []).map(risk => ({
+    title: risk.title,
+    owner: risk.owner,
+    status: risk.status,
+    severity: risk.severity
+  }));
+  const meta = {
+    projectId: project.id,
+    projectName: project.name,
+    manager: project.owner,
+    phase: project.phase,
+    status: project.status,
+    audience: 'Product leadership, delivery leads, governance reviewers',
+    purpose: 'Decision-focused execution visibility for AgentOS role-based supervision',
+    reportingPeriod: this.getReportingPeriod(project)
+  };
+
+  return {
+    meta,
+    overview: {
+      projectDetails: {
+        name: project.name,
+        manager: project.owner,
+        reportingPeriod: meta.reportingPeriod,
+        audience: meta.audience,
+        purpose: meta.purpose
+      },
+      overallHealth: {
+        status: this.getHealthLabel(project.healthScore),
+        healthScore: project.healthScore,
+        cost: project.costTimeQuality?.cost || project.scores?.budget || 0,
+        time: project.costTimeQuality?.time || project.scores?.progress || 0,
+        quality: project.costTimeQuality?.quality || project.scores?.quality || 0,
+        riskLevel: (project.risks || []).some(risk => risk.severity === 'Critical') ? 'High' : (project.risks || []).some(risk => risk.severity === 'High') ? 'Medium' : 'Low',
+        stakeholderAlignment: stakeholderHealth,
+        summary: `${project.name} is currently ${project.status.toLowerCase()} with ${project.progress}% progress and ${budgetPct}% budget utilization.`
+      },
+      achievements,
+      challenges,
+      conclusion: project.phase === 'post-launch'
+        ? 'The project is in a stable post-launch state with a clear optimization backlog and positive usage indicators.'
+        : project.healthScore >= 70
+          ? 'The project is healthy overall and can continue with focused attention on current execution risks.'
+          : 'The project requires active governance attention to stabilize delivery, cost, or risk exposure.'
+    },
+    scope: {
+      definedScope: scopeItems,
+      scopeChanges: changeRequests,
+      changeRequests: changeRequests.length ? changeRequests : futureScope.slice(0, 3).map((title, index) => ({
+        id: `CR-${index + 1}`,
+        title,
+        status: 'PROPOSED',
+        impact: 'Medium',
+        requestedOn: project.targetDate,
+        effort: 'TBD'
+      }))
+    },
+    schedule: {
+      milestones: roadmapMilestones,
+      delays: roadmapMilestones.filter(item => item.variance < 0).map(item => ({
+        name: item.name,
+        variance: Math.abs(item.variance),
+        severity: this.delaySeverity(Math.abs(item.variance))
+      })),
+      onTimeDelivery: Math.max(0, Math.min(100, Math.round(project.progress * 0.9))),
+      spi: schedulePerformance,
+      delayReasons: delayReasons.length ? delayReasons : ['No major delay drivers recorded'],
+      mitigationActions: mitigationActions.length ? mitigationActions : ['Maintain weekly execution review cadence']
+    },
+    cost: {
+      budget: budgetAllocated,
+      actualSpend: budgetSpent,
+      forecast: Math.round(budgetSpent + remainingBudget * (project.healthScore < 60 ? 1.15 : 0.85)),
+      costVariance: budgetAllocated - budgetSpent,
+      cpi: Number(costPerformance.toFixed(2)),
+      costDrivers
+    },
+    quality: {
+      defectDensity: Number(((project.issues?.length || project.bugs?.length || 1) / Math.max(project.team, 1)).toFixed(2)),
+      defectLeakage: Math.max(4, Math.round(100 - (project.scores?.quality || project.costTimeQuality?.quality || 75) * 0.6)),
+      testCoverage: Math.min(98, Math.max(45, project.costTimeQuality?.quality || project.scores?.quality || 75)),
+      automationCoverage: Math.min(95, Math.max(35, (project.scores?.quality || 70) - 8)),
+      qualityTrends: [
+        { label: 'Quality Score', value: project.scores?.quality || project.costTimeQuality?.quality || 0, status: (project.scores?.quality || 0) >= 75 ? 'POSITIVE' : 'WATCH' },
+        { label: 'Feedback Confidence', value: stakeholderHealth, status: stakeholderHealth >= 70 ? 'POSITIVE' : 'WATCH' },
+        { label: 'Release Readiness', value: Math.max(40, project.progress), status: project.progress >= 70 ? 'POSITIVE' : 'WATCH' }
+      ],
+      risks: qualityRisks.length ? qualityRisks : ['No major quality risks recorded'],
+      improvementActions: qualityImprovementActions.length ? qualityImprovementActions : ['Continue regression coverage hardening']
+    },
+    resources: {
+      teamSize: project.team,
+      utilization: Math.min(98, Math.max(58, Math.round(project.progress + 25))),
+      attrition: project.risks?.some(risk => /attrition/i.test(risk.title)) ? 'Watch' : 'Stable',
+      skillUpdates: [
+        `Phase coverage aligned to ${this.getPhaseLabel(project.phase)}`,
+        project.domain ? `${project.domain} domain context active across team` : 'Domain updates not recorded',
+        project.scopeChanges?.length ? 'Team adapting to revised scope priorities' : 'Scope stability supports execution continuity'
+      ],
+      stability: stakeholderHealth >= 70 ? 'Stable' : stakeholderHealth >= 50 ? 'Moderate' : 'At Risk',
+      resourcePlanningActions: [
+        ...(project.risks || []).filter(risk => /developer|team|resource|velocity/i.test(`${risk.title} ${risk.mitigation}`)).map(risk => risk.mitigation),
+        'Review capacity against milestone commitments'
+      ].slice(0, 4)
+    },
+    risks: {
+      identifiedRisks: (project.risks || []).map(risk => ({
+        title: risk.title,
+        impact: risk.severity,
+        probability: risk.probability,
+        mitigation: risk.mitigation,
+        status: risk.status
+      })),
+      activeIssues,
+      statusTracking
+    },
+    governance: {
+      stakeholderEngagement: stakeholderHealth,
+      meetingsReviews: [
+        'Weekly PM execution review',
+        'Governance checkpoint with delivery leads',
+        'Monthly steering review'
+      ],
+      feedback: governanceFeedback.length ? governanceFeedback : ['No stakeholder feedback logged yet'],
+      complianceStatus: project.governance?.approvals?.some(item => item.status === 'Pending') ? 'Attention Needed' : 'On Track',
+      auditStatus: project.governance?.auditLog?.length ? 'Audit Trail Available' : 'Audit Trail Pending',
+      approvals: project.governance?.approvals || [],
+      auditLog: project.governance?.auditLog || []
+    },
+    summary: {
+      forwardPlan: [
+        ...(roadmapMilestones.filter(item => item.actual < item.planned).map(item => `Recover ${item.name} variance through focused execution review`)),
+        ...(project.improvements || []).slice(0, 2).map(item => `Advance ${item.title}`),
+        'Maintain governance visibility on top delivery risks'
+      ].slice(0, 4),
+      recommendations: [
+        project.healthScore < 60 ? 'Escalate corrective actions through governance review' : 'Sustain current execution cadence',
+        budgetPct > 75 ? 'Tighten cost tracking on remaining milestones' : 'Continue monitoring spend against forecast',
+        (project.risks || []).length ? 'Track mitigation progress for active risks weekly' : 'Preserve risk review discipline'
+      ],
+      conclusion: project.healthScore >= 70
+        ? 'Overall project health supports continued delivery with targeted risk management.'
+        : project.healthScore >= 50
+          ? 'Project is viable but requires disciplined intervention on schedule, cost, or quality hotspots.'
+          : 'Project health is below target and needs immediate governance and execution alignment.'
+    }
+  };
+};
+
+PMData.persistProjectData = function(projectId) {
+  const project = this.getProject(projectId) || this.getDefaultProject();
+  if (!project) return null;
+  sessionStorage.setItem('pm_selected_project', project.id);
+  const snapshot = this.buildSectionSnapshot(project);
+  localStorage.setItem('pmData', JSON.stringify(snapshot));
+  localStorage.setItem('pmDataProjectId', project.id);
+  return snapshot;
+};
+
+PMData.ensurePMData = function() {
+  const project = this.getSelectedProject();
+  if (!project) return null;
+  const storedProjectId = localStorage.getItem('pmDataProjectId');
+  const existing = localStorage.getItem('pmData');
+  if (!existing || storedProjectId !== project.id) {
+    return this.persistProjectData(project.id);
+  }
+  try {
+    return JSON.parse(existing);
+  } catch (error) {
+    return this.persistProjectData(project.id);
+  }
+};
+
+PMData.loadMeta = async function() {
+  const data = this.ensurePMData();
+  await new Promise(resolve => setTimeout(resolve, 90));
+  return data?.meta || null;
+};
+
+PMData.loadSection = async function(section) {
+  const data = this.ensurePMData();
+  await new Promise(resolve => setTimeout(resolve, 180));
+  if (!data || !this.sectionKeys.includes(section)) return null;
+  return data[section];
+};

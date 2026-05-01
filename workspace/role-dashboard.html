@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — AgentOS Control Center</title>
+  <link rel="stylesheet" href="../css/common.css">
+  <style>
+    .role-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 220px;
+      cursor: default;
+    }
+
+    .role-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .role-card.is-interactive {
+      cursor: pointer;
+    }
+
+    .role-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .role-icon {
+      width: 48px;
+      height: 48px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .role-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .role-description {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .role-meta {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 4px;
+    }
+
+    .role-meta-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">AgentOS Control Center</h1>
+        <p class="page-subtitle">Select a Role to Access Role-Specific Dashboards</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Role-Based Control Center</h3>
+          <p class="card-subtitle">Execution visibility aligned to delivery, governance, and operations roles</p>
+        </div>
+        <span class="status-badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">Foundation Layer</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin:0">
+        This entry layer is the future starting point for role-specific dashboards across AgentOS, where humans supervise outcomes, agents execute work, and governance enforces operational rules.
+      </p>
+    </div>
+
+    <div class="grid grid-4">
+      <div class="card role-card is-interactive" onclick="goToPMDashboard()">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">Product Manager</div>
+            <p class="role-description">Track scope, delivery, risks, and governance decisions</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">📋</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#10b98120;color:#10b981;border:1px solid #10b98140">Open Dashboard</span>
+        </div>
+      </div>
+
+      <div class="card role-card is-interactive" onclick="goToDevDashboard()">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">Developer</div>
+            <p class="role-description">Monitor agent-driven development, PR lifecycle, and execution state</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">💻</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#10b98120;color:#10b981;border:1px solid #10b98140">Open Dashboard</span>
+        </div>
+      </div>
+
+      <div class="card role-card">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">QA / Tester</div>
+            <p class="role-description">View test execution, defects, and quality gates</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">🧪</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#6b728020;color:#6b7280;border:1px solid #6b728040">Coming Soon</span>
+        </div>
+      </div>
+
+      <div class="card role-card">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">Architect</div>
+            <p class="role-description">Monitor system design decisions and constraints</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">🏗️</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#6b728020;color:#6b7280;border:1px solid #6b728040">Coming Soon</span>
+        </div>
+      </div>
+
+      <div class="card role-card">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">DevOps / Deployment</div>
+            <p class="role-description">Track deployments, pipelines, and environments</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">🚀</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#6b728020;color:#6b7280;border:1px solid #6b728040">Coming Soon</span>
+        </div>
+      </div>
+
+      <div class="card role-card">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">Security &amp; Compliance</div>
+            <p class="role-description">View compliance, risks, and audit logs</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">🛡️</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#6b728020;color:#6b7280;border:1px solid #6b728040">Coming Soon</span>
+        </div>
+      </div>
+
+      <div class="card role-card">
+        <div class="role-card-top">
+          <div>
+            <div class="role-title">Support / Operations</div>
+            <p class="role-description">Monitor incidents, escalations, and logs</p>
+          </div>
+          <span class="role-icon" aria-hidden="true">🛰️</span>
+        </div>
+        <div class="role-meta">
+          <span class="role-meta-label">Role Dashboard</span>
+          <span class="status-badge" style="background:#6b728020;color:#6b7280;border:1px solid #6b728040">Coming Soon</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('role-dashboard');
+    if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+
+    function goToPMDashboard() {
+      window.location.href = "pm-overview.html";
+    }
+
+    function goToDevDashboard() {
+      window.location.href = "dev-overview.html";
+    }
+  </script>
+</body>
+</html>
