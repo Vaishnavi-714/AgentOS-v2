@@ -1,4 +1,139 @@
 // PM Dashboard Renderer
+const progressReportData = {
+  projectName: 'FinTech Payment Gateway',
+  manager: 'Sarah Chen',
+  reportingPeriod: '2026-01-15 to 2026-06-30',
+  status: 'At Risk',
+  healthMetrics: {
+    completion: 62,
+    timeline: 55,
+    scope: 72,
+    risk: 68,
+    phase: 'Execution',
+    healthScore: 68
+  },
+  features: [
+    { name: 'Auth Module', status: 'Completed', completion: 100, planned: 100 },
+    { name: 'Payment Core', status: 'In Progress', completion: 65, planned: 80 },
+    { name: 'Merchant Portal', status: 'In Progress', completion: 40, planned: 60 },
+    { name: 'Analytics', status: 'Pending', completion: 15, planned: 30 },
+    { name: 'Compliance', status: 'Pending', completion: 10, planned: 20 }
+  ],
+  risks: [
+    { title: 'Payment processor API deprecation', severity: 'High', status: 'Mitigating', mitigation: 'Building adapter layer for multiple processors' },
+    { title: 'Compliance deadline pressure', severity: 'Medium', status: 'Monitoring', mitigation: 'Parallel compliance workstream started' },
+    { title: 'Third-party KYC API integration delay', severity: 'High', status: 'Open', mitigation: 'Escalated with vendor and backend team' }
+  ],
+  kpis: {
+    completion: 62,
+    velocity: 34,
+    riskLevel: 'Medium',
+    qualityScore: 78
+  },
+  nextSteps: [
+    'Recover Payment Core variance before next milestone review',
+    'Decide on PCI compliance scope change',
+    'Stabilize vendor dependencies affecting schedule',
+    'Reconfirm budget and delivery plan with leadership'
+  ]
+};
+
+function buildProgressReportFallbackSection() {
+  const deliveredFeatureCount = progressReportData.features.filter(item => item.status === 'Completed').length;
+  const inProgressFeatureCount = progressReportData.features.filter(item => item.status === 'In Progress').length;
+  const plannedFeatureCount = progressReportData.features.length;
+  return {
+    overallStatus: {
+      healthScore: progressReportData.healthMetrics.healthScore,
+      status: progressReportData.status,
+      phase: progressReportData.healthMetrics.phase,
+      summary: `${progressReportData.projectName} is ${progressReportData.status.toLowerCase()} with ${progressReportData.healthMetrics.completion}% completion across the current reporting period.`
+    },
+    kpis: progressReportData.kpis,
+    featureProgress: progressReportData.features,
+    roadmapAlignment: {
+      plannedFeatureCount,
+      deliveredFeatureCount,
+      inProgressFeatureCount,
+      deviations: progressReportData.features
+        .filter(item => item.completion < item.planned)
+        .map(item => ({
+          feature: item.name,
+          delta: item.planned - item.completion,
+          note: `${item.name} is ${item.planned - item.completion}% behind planned roadmap delivery.`
+        }))
+    },
+    scopeTracking: {
+      definedScopeCount: plannedFeatureCount,
+      currentScopeCount: plannedFeatureCount + 1,
+      changeRequestCount: 1,
+      scopeDelta: 1,
+      scopeChanges: [
+        { id: 'CR-01', title: 'PCI DSS Level 1 compliance', status: 'In Review', impact: 'High', effort: '+2 sprints' }
+      ],
+      impactSummary: 'One active scope change is increasing delivery effort and sequencing pressure.'
+    },
+    timelineStatus: {
+      achievedMilestones: 1,
+      delayedMilestones: 4,
+      milestones: progressReportData.features.map(item => ({
+        name: item.name,
+        planned: item.planned,
+        actual: item.completion
+      })),
+      delays: ['KYC API dependency delay', 'Compliance workstream expansion'],
+      reasons: ['KYC API dependency delay', 'Compliance workstream expansion']
+    },
+    costImpact: {
+      budgetAllocated: 450000,
+      budgetSpent: 285000,
+      budgetPct: 63,
+      forecast: 412000,
+      overrunRisk: 'Medium'
+    },
+    qualityOverview: {
+      defectRate: 0.6,
+      testingStatus: 'Testing in progress',
+      releaseReadiness: 'Needs hardening',
+      qualityScore: progressReportData.kpis.qualityScore
+    },
+    risksIssues: {
+      activeRisks: progressReportData.risks,
+      activeIssues: [
+        { id: 'ISS-01', title: 'Payment timeout errors in staging', priority: 'Critical', status: 'In Progress' },
+        { id: 'ISS-02', title: 'Merchant onboarding UX gaps', priority: 'High', status: 'Open' }
+      ]
+    },
+    businessImpact: {
+      valueDelivered: 'Core authentication capability is fully delivered and payment workflows are partially enabling merchant onboarding progress.',
+      userBusinessImpact: 'Current progress supports continued product momentum, but unresolved schedule and compliance risks are constraining launch confidence.'
+    },
+    nextSteps: {
+      priorities: progressReportData.nextSteps,
+      decisionsRequired: [
+        'Approve or defer PCI compliance scope increase',
+        'Confirm mitigation plan for KYC vendor delay',
+        'Validate milestone recovery plan against current velocity'
+      ]
+    }
+  };
+}
+
+function renderProgressReport() {
+  const container = document.getElementById('tab-content') || document.getElementById('pmPageContent');
+  if (!progressReportData) {
+    console.error('Progress data missing');
+    return;
+  }
+  if (!container) return;
+  PMRender.renderProgressReport(buildProgressReportFallbackSection());
+}
+
+function handleProgressReportTabClick() {
+  sessionStorage.setItem('pm_last_tab', 'progress-report');
+  renderProgressReport();
+}
+
 function renderHealthRing(score){
   const c=score>=70?'#10b981':score>=50?'#f59e0b':'#ef4444';
   const r=52,circ=2*Math.PI*r,off=circ-(score/100)*circ;
@@ -115,7 +250,8 @@ const PMRender = {
     { id: 'resources', label: 'Resources', href: 'pm-resources.html' },
     { id: 'risks', label: 'Risks', href: 'pm-risks.html' },
     { id: 'governance', label: 'Governance', href: 'pm-governance.html' },
-    { id: 'summary', label: 'Summary', href: 'pm-summary.html' }
+    { id: 'summary', label: 'Summary', href: 'pm-summary.html' },
+    { id: 'progress-report', label: 'Project Progress Report', href: 'pm-progress-report.html' }
   ],
 
   mount(targetId, html) {
@@ -134,13 +270,15 @@ const PMRender = {
     return `
       <div class="tabs" data-tab-group="pm-dashboard">
         ${this.tabs.map(tab => `
-          <a href="${tab.href}" class="tab nav-link ${tab.id === activeTab ? 'active' : ''}">${tab.label}</a>
+          <a href="${tab.href}" class="tab nav-link ${tab.id === activeTab ? 'active' : ''}"${tab.id === 'progress-report' ? ' onclick="handleProgressReportTabClick()"' : ''}>${tab.label}</a>
         `).join('')}
       </div>
     `;
   },
 
   renderHeader(meta, activeTab, pageTitle, pageSubtitle) {
+    const activeTabConfig = this.tabs.find(tab => tab.id === activeTab);
+    const activeLabel = activeTabConfig ? activeTabConfig.label : (activeTab.charAt(0).toUpperCase() + activeTab.slice(1));
     return `
       <div class="page-header">
         <div style="display:flex;align-items:center;gap:12px">
@@ -166,7 +304,7 @@ const PMRender = {
         <div class="grid grid-4">
           <div class="stat-card"><span class="stat-label">Audience</span><span class="stat-value" style="font-size:16px">${this.escape(meta.audience)}</span></div>
           <div class="stat-card"><span class="stat-label">Purpose</span><span class="stat-value" style="font-size:16px">${this.escape(meta.purpose)}</span></div>
-          <div class="stat-card"><span class="stat-label">Active Section</span><span class="stat-value" style="font-size:16px">${this.escape(activeTab.charAt(0).toUpperCase() + activeTab.slice(1))}</span></div>
+          <div class="stat-card"><span class="stat-label">Active Section</span><span class="stat-value" style="font-size:16px">${this.escape(activeLabel)}</span></div>
           <div class="stat-card"><span class="stat-label">Phase</span><span class="stat-value" style="font-size:16px">${this.escape(PMData.getPhaseLabel(meta.phase))}</span></div>
         </div>
       </div>
@@ -204,6 +342,10 @@ const PMRender = {
     try {
       const data = await PMData.loadSection(config.section);
       if (!data) {
+        if (config.section === 'progressReport') {
+          renderProgressReport();
+          return;
+        }
         this.mount('pmPageContent', '<div class="empty-state"><div class="empty-state-icon">📭</div><h3 class="empty-state-title">No Section Data</h3><p class="empty-state-text">This PM section does not have data yet.</p></div>');
         return;
       }
@@ -486,6 +628,205 @@ const PMRender = {
       <div class="card" style="margin-top:16px">
         <div class="card-header"><h3 class="card-title">Final Project Health Conclusion</h3></div>
         <p style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin:0">${this.escape(data.conclusion)}</p>
+      </div>
+    `;
+    this.mount('pmPageContent', html);
+  },
+
+  renderProgressReport(data) {
+    const overall = data.overallStatus;
+    const kpis = data.kpis;
+    const statusColor = overall.status === 'On Track' ? '#10b981' : overall.status === 'At Risk' ? '#f59e0b' : '#ef4444';
+    const riskColor = kpis.riskLevel === 'Low' ? '#10b981' : kpis.riskLevel === 'Medium' ? '#f59e0b' : '#ef4444';
+    const qualityColor = kpis.qualityScore >= 75 ? '#10b981' : kpis.qualityScore >= 60 ? '#f59e0b' : '#ef4444';
+    const budgetColor = data.costImpact.overrunRisk === 'Low' ? '#10b981' : data.costImpact.overrunRisk === 'Medium' ? '#f59e0b' : '#ef4444';
+    const completionColor = kpis.completion >= 75 ? '#10b981' : kpis.completion >= 50 ? '#f59e0b' : '#ef4444';
+    const featureSummary = `${data.roadmapAlignment.deliveredFeatureCount}/${data.roadmapAlignment.plannedFeatureCount} features delivered`;
+    const html = `
+      <div class="grid grid-4" style="margin-bottom:20px">
+        <div class="stat-card"><span class="stat-label">Completion %</span><span class="stat-value" style="color:${completionColor}">${kpis.completion}%</span><span class="stat-change">${this.escape(featureSummary)}</span></div>
+        <div class="stat-card"><span class="stat-label">Velocity</span><span class="stat-value">${kpis.velocity}</span><span class="stat-change">Current execution pace</span></div>
+        <div class="stat-card"><span class="stat-label">Risk Level</span><span class="stat-value" style="color:${riskColor}">${this.escape(kpis.riskLevel)}</span><span class="stat-change">Portfolio exposure</span></div>
+        <div class="stat-card"><span class="stat-label">Quality Score</span><span class="stat-value" style="color:${qualityColor}">${kpis.qualityScore}%</span><span class="stat-change">Release confidence</span></div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Overall Project Status</h3>${statusBadge(overall.status.toUpperCase().replace(/ /g, '_'))}</div>
+          <div class="grid grid-2" style="align-items:center;gap:16px">
+            <div style="display:flex;justify-content:center;align-items:center;padding:8px 0">
+              ${renderHealthRing(overall.healthScore)}
+            </div>
+            <div class="grid grid-2" style="gap:10px">
+              <div class="portfolio-meta-item"><div class="portfolio-meta-label">Health Score</div><div class="portfolio-meta-value" style="color:${statusColor}">${overall.healthScore}%</div></div>
+              <div class="portfolio-meta-item"><div class="portfolio-meta-label">Phase</div><div class="portfolio-meta-value">${this.escape(overall.phase)}</div></div>
+              <div class="portfolio-meta-item"><div class="portfolio-meta-label">Delivery Status</div><div class="portfolio-meta-value" style="color:${statusColor}">${this.escape(overall.status)}</div></div>
+              <div class="portfolio-meta-item"><div class="portfolio-meta-label">Quality Signal</div><div class="portfolio-meta-value" style="color:${qualityColor}">${kpis.qualityScore}%</div></div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-top:14px">${this.escape(overall.summary)}</p>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Business / User Impact</h3></div>
+          <div class="pipeline-stage completed"><div class="pipeline-stage-info"><div class="pipeline-stage-name">${this.escape(data.businessImpact.valueDelivered)}</div></div></div>
+          <div class="pipeline-stage in-progress"><div class="pipeline-stage-info"><div class="pipeline-stage-name">${this.escape(data.businessImpact.userBusinessImpact)}</div></div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">Feature / Module Progress</h3><span class="tag">${data.featureProgress.length} tracked features</span></div>
+        <div class="table-container">
+          <table>
+            <thead><tr><th>Feature / Module</th><th>Status</th><th>Completion %</th><th>Delivery Progress</th></tr></thead>
+            <tbody>
+              ${data.featureProgress.map(item => {
+                const color = item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#f59e0b' : '#6b7280';
+                return `
+                  <tr>
+                    <td>${this.escape(item.name)}</td>
+                    <td><span class="status-badge" style="background:${color}20;color:${color};border:1px solid ${color}40">${this.escape(item.status)}</span></td>
+                    <td>${item.completion}%</td>
+                    <td><div class="metric-track"><div class="metric-fill" style="width:${item.completion}%;background:${color}"></div></div></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Roadmap Alignment</h3></div>
+          <div class="grid grid-3" style="gap:10px;margin-bottom:14px">
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Planned</div><div class="portfolio-meta-value">${data.roadmapAlignment.plannedFeatureCount}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Delivered</div><div class="portfolio-meta-value">${data.roadmapAlignment.deliveredFeatureCount}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">In Progress</div><div class="portfolio-meta-value">${data.roadmapAlignment.inProgressFeatureCount}</div></div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:12px">Roadmap execution is currently tracking at ${data.roadmapAlignment.deliveredFeatureCount} delivered features against ${data.roadmapAlignment.plannedFeatureCount} planned items, with deviations called out below for fast product decisions.</p>
+          ${data.roadmapAlignment.deviations.map(item => `
+            <div class="decision-log-item">
+              <div class="decision-log-title">${this.escape(item.feature)}</div>
+              <div style="font-size:12px;color:var(--text-secondary)">${this.escape(item.note)}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Scope Tracking</h3></div>
+          <div class="grid grid-2" style="gap:10px;margin-bottom:14px">
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Defined Scope</div><div class="portfolio-meta-value">${data.scopeTracking.definedScopeCount}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Current Scope</div><div class="portfolio-meta-value">${data.scopeTracking.currentScopeCount}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Change Requests</div><div class="portfolio-meta-value">${data.scopeTracking.changeRequestCount}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Scope Delta</div><div class="portfolio-meta-value" style="color:${data.scopeTracking.scopeDelta > 0 ? '#f59e0b' : '#10b981'}">${data.scopeTracking.scopeDelta >= 0 ? '+' : ''}${data.scopeTracking.scopeDelta}</div></div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.7">${this.escape(data.scopeTracking.impactSummary)}</p>
+          ${data.scopeTracking.scopeChanges.length ? data.scopeTracking.scopeChanges.map(item => `
+            <div class="decision-log-item">
+              <div class="decision-log-title">${this.escape(item.title)}</div>
+              <div class="decision-log-meta">
+                <span>${statusBadge(item.status.toUpperCase().replace(/ /g, '_'))}</span>
+                <span>Impact: ${this.escape(item.impact)}</span>
+                <span>${this.escape(item.effort)}</span>
+              </div>
+            </div>
+          `).join('') : '<p style="font-size:13px;color:var(--text-muted)">No scope changes recorded.</p>'}
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Timeline / Schedule Status</h3></div>
+          <div class="grid grid-2" style="gap:10px;margin-bottom:14px">
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Milestones Achieved</div><div class="portfolio-meta-value" style="color:var(--success)">${data.timelineStatus.achievedMilestones}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Delayed Milestones</div><div class="portfolio-meta-value" style="color:${data.timelineStatus.delayedMilestones ? 'var(--warning)' : 'var(--success)'}">${data.timelineStatus.delayedMilestones}</div></div>
+          </div>
+          ${data.timelineStatus.milestones.map(item => `
+            <div class="roadmap-row">
+              <span class="roadmap-label">${this.escape(item.name)}</span>
+              <div class="roadmap-tracks">
+                <div class="roadmap-planned" style="width:${item.planned}%"></div>
+                <div class="roadmap-actual" style="width:${item.actual}%"></div>
+              </div>
+              <span class="roadmap-pct">${item.actual}%</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Delay Reasons</h3></div>
+          ${data.timelineStatus.reasons.map(item => `<div class="pipeline-stage pending"><div class="pipeline-stage-info"><div class="pipeline-stage-name">${this.escape(item)}</div></div></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Cost / Effort Impact</h3></div>
+          <div class="grid grid-2" style="gap:10px;margin-bottom:14px">
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Budget Utilization</div><div class="portfolio-meta-value" style="color:${budgetColor}">${data.costImpact.budgetPct}%</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Overrun Risk</div><div class="portfolio-meta-value" style="color:${budgetColor}">${this.escape(data.costImpact.overrunRisk)}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Budget</div><div class="portfolio-meta-value">$${Math.round(data.costImpact.budgetAllocated / 1000)}K</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Spent</div><div class="portfolio-meta-value">$${Math.round(data.costImpact.budgetSpent / 1000)}K</div></div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(data.costImpact.budgetPct, 100)}%;background:${budgetColor}"></div></div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-top:12px">Forecast spend is $${Math.round(data.costImpact.forecast / 1000)}K, indicating a ${this.escape(data.costImpact.overrunRisk.toLowerCase())} overrun risk on the current delivery path.</p>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Quality Overview</h3></div>
+          <div class="grid grid-2" style="gap:10px;margin-bottom:14px">
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Defect Rate</div><div class="portfolio-meta-value">${data.qualityOverview.defectRate}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Testing Status</div><div class="portfolio-meta-value">${this.escape(data.qualityOverview.testingStatus)}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Release Readiness</div><div class="portfolio-meta-value" style="color:${qualityColor}">${this.escape(data.qualityOverview.releaseReadiness)}</div></div>
+            <div class="portfolio-meta-item"><div class="portfolio-meta-label">Quality Score</div><div class="portfolio-meta-value" style="color:${qualityColor}">${data.qualityOverview.qualityScore}%</div></div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.7">Quality posture reflects current testing confidence, defect signal, and readiness to support the next planned product release.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Risks & Issues</h3></div>
+          ${data.risksIssues.activeRisks.map(item => {
+            const color = item.severity === 'Critical' || item.severity === 'High' ? '#ef4444' : item.severity === 'Medium' ? '#f59e0b' : '#10b981';
+            return `
+              <div class="decision-log-item">
+                <div class="decision-log-title">${this.escape(item.title)}</div>
+                <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${this.escape(item.mitigation)}</div>
+                <div class="decision-log-meta">
+                  <span style="color:${color};font-weight:600">${this.escape(item.severity)}</span>
+                  <span>${statusBadge(item.status.toUpperCase().replace(/ /g, '_'))}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">Active Product Issues</h3></div>
+          ${data.risksIssues.activeIssues.length ? renderIssues(data.risksIssues.activeIssues.map(item => ({
+            id: item.id,
+            title: item.title,
+            type: 'Issue',
+            priority: item.priority,
+            status: item.status
+          }))) : '<p style="font-size:13px;color:var(--text-muted)">No active product issues logged.</p>'}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">Next Steps / Product Decisions</h3></div>
+        <div class="grid grid-2" style="gap:16px">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px">Upcoming Priorities</div>
+            ${data.nextSteps.priorities.map(item => `<div class="pipeline-stage in-progress"><div class="pipeline-stage-info"><div class="pipeline-stage-name">${this.escape(item)}</div></div></div>`).join('')}
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.8px">Decisions Required</div>
+            ${data.nextSteps.decisionsRequired.map(item => `<div class="pipeline-stage pending"><div class="pipeline-stage-info"><div class="pipeline-stage-name">${this.escape(item)}</div></div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h3 class="card-title">Decision Summary</h3></div>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.8;margin:0">The product is <span style="color:${statusColor};font-weight:700">${this.escape(overall.status)}</span> in the <span style="color:var(--accent);font-weight:700">${this.escape(overall.phase)}</span> phase. Completion is at <span style="color:${completionColor};font-weight:700">${kpis.completion}%</span>, roadmap delivery stands at <span style="color:var(--accent);font-weight:700">${this.escape(featureSummary)}</span>, budget utilization is <span style="color:${budgetColor};font-weight:700">${data.costImpact.budgetPct}%</span>, and release confidence is <span style="color:${qualityColor};font-weight:700">${data.qualityOverview.qualityScore}%</span>. The immediate PM focus is to resolve roadmap deviations, contain scope or cost pressure, and clear the decisions required for the next milestone.</p>
       </div>
     `;
     this.mount('pmPageContent', html);

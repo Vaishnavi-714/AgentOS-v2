@@ -396,6 +396,46 @@
       transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px;
     }
     .org-add-role-btn:hover { background: var(--accent)08; border-color: var(--accent); }
+
+    .workspace-meta-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-tertiary);
+      padding: 12px;
+    }
+    .workspace-toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px; flex-wrap: wrap; margin-bottom: 12px;
+    }
+    .workspace-file-title {
+      font-size: 14px; font-weight: 700; color: var(--text-primary);
+    }
+    .workspace-file-subtitle {
+      font-size: 11px; color: var(--text-muted); margin-top: 2px;
+    }
+    .workspace-actions { display: flex; gap: 8px; align-items: center; }
+    .workspace-status-badge {
+      font-size: 10px; padding: 3px 8px; border-radius: 999px;
+      border: 1px solid var(--border); color: var(--text-muted);
+      background: var(--bg-card); text-transform: uppercase; letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+    .workspace-status-badge.editing {
+      color: var(--warning); border-color: var(--warning)40; background: var(--warning)12;
+    }
+    .workspace-textarea {
+      width: 100%; min-height: 320px; resize: vertical;
+      background: var(--bg-card); color: var(--text-secondary);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    }
+    .workspace-textarea:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent)15;
+    }
+    .workspace-empty-note {
+      font-size: 11px; color: var(--text-muted); margin-top: 8px;
+    }
   </style>
 </head>
 <body>
@@ -667,7 +707,10 @@
         <button class="modal-close" onclick="closeModal('agentDetailModal')">&times;</button>
       </div>
       <div class="modal-body" id="detailBody"></div>
-      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('agentDetailModal')">Close</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="detailWorkspaceBtn" onclick="openCurrentAgentWorkspaceFromModal()">Go to Workspace</button>
+        <button class="btn btn-outline" onclick="closeModal('agentDetailModal')">Close</button>
+      </div>
     </div>
   </div>
 
@@ -739,12 +782,15 @@
     let currentMyAgentFilter = 'all';
     let pendingDeployTemplate = null;
     let activeWorkspaceAgentId = null;
-    let activeWorkspaceFile = 'heartbeat';
+    let activeWorkspaceAgentName = '';
+    let activeWorkspaceFile = 'skills';
+    let activeWorkspaceEditFile = null;
+    let currentDetailAgentRef = null;
     let orgLevels = [];
     let dragData = null;
 
-    const WORKSPACE_FILES = ['skills', 'tools', 'heartbeat', 'souls'];
-    const WORKSPACE_LABELS = { skills: 'skills.md', tools: 'tools.md', heartbeat: 'heartbeat.md', souls: 'souls.md' };
+    const WORKSPACE_FILES = ['skills', 'tools', 'souls', 'heartbeat'];
+    const WORKSPACE_LABELS = { skills: 'skills.md', tools: 'tools.md', souls: 'souls.md', heartbeat: 'heartbeat.md' };
 
     // ─── Predefined Agent Templates ───
     const PREDEFINED_AGENTS = [
@@ -1179,6 +1225,7 @@
     function previewAgent(templateId) {
       const t = PREDEFINED_AGENTS.find(a=>a.templateId===templateId);
       if (!t) return;
+      currentDetailAgentRef = { agentId: null, agentName: t.name, role: t.role, icon: t.icon };
       document.getElementById('detailTitle').textContent = t.name;
       document.getElementById('detailBody').innerHTML = `
         <div style="display:flex;gap:16px;margin-bottom:20px"><div style="font-size:56px">${t.icon}</div>
@@ -1487,55 +1534,161 @@
     // ─── Helpers ───
     function escapeHtml(str) { if(!str)return''; const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
 
-    function buildHeartbeatMarkdown(agent, runtime) {
-      return `# HEARTBEAT\n\n## Current Task\n- ${runtime?runtime.currentTaskId:'N/A'}\n\n## Status\n${runtime?runtime.status:'INACTIVE'}\n\n## Agent\n${agent.agent_name}\n\n## Project\n${selectedProjectId}`;
+    function getWorkspaceStorageKey(agentName) {
+      return 'agent_workspace_' + agentName;
     }
 
-    function ensureWorkspaceDefaults(agentId, agentName) {
-      const defaults = {
-        skills: `# SKILLS\n\n## Core Responsibilities\n- Execute ${agentName} role\n- Produce structured outputs\n- Follow governance boundaries\n`,
-        tools: '# TOOLS\n\n## Available\n- code_generator\n- test_runner\n- quality_gate_checker\n',
-        souls: '# SOUL\n\n## Traits\n- Quality-first\n- Transparent escalation\n'
+    function getDefaultWorkspaceData() {
+      return {
+        skills: '- Analyze requirements\n- Stakeholder mapping\n- Ambiguity detection\n- Domain analysis',
+        tools: '- Jira\n- Confluence\n- Figma\n- Slack',
+        souls: '- Purpose: Improve clarity\n- Goal: Reduce ambiguity\n- Behavior: Analytical thinking',
+        heartbeat: '- Status: Active\n- Last Run: Just now\n- Health: Good'
       };
-      ['skills','tools','souls'].forEach(f => { if(!NexusStore.getWorkspaceFile(agentId,f)) NexusStore.setWorkspaceFile(agentId,f,defaults[f]); });
-      if(!NexusStore.getWorkspaceFile(agentId,'heartbeat')) NexusStore.setWorkspaceFile(agentId,'heartbeat',buildHeartbeatMarkdown({agent_name:agentName},null));
     }
 
-    function openAgentWorkspacePanel(agentId) {
-      const agent = NexusStore.getProjectAgent(selectedProjectId, agentId) || NexusStore.getAgent(agentId);
-      if (!agent) return;
-      activeWorkspaceAgentId = agentId;
-      activeWorkspaceFile = 'heartbeat';
-      ensureWorkspaceDefaults(agentId, agent.agent_name);
+    function getAgentWorkspaceData(agentName) {
+      const defaults = getDefaultWorkspaceData();
+      if (!agentName) return { ...defaults };
+      const raw = localStorage.getItem(getWorkspaceStorageKey(agentName));
+      if (!raw) {
+        localStorage.setItem(getWorkspaceStorageKey(agentName), JSON.stringify(defaults));
+        return { ...defaults };
+      }
+      try {
+        const parsed = JSON.parse(raw) || {};
+        const normalized = {
+          skills: parsed.skills || defaults.skills,
+          tools: parsed.tools || defaults.tools,
+          souls: parsed.souls || defaults.souls,
+          heartbeat: parsed.heartbeat || defaults.heartbeat
+        };
+        localStorage.setItem(getWorkspaceStorageKey(agentName), JSON.stringify(normalized));
+        return normalized;
+      } catch (error) {
+        localStorage.setItem(getWorkspaceStorageKey(agentName), JSON.stringify(defaults));
+        return { ...defaults };
+      }
+    }
+
+    function saveAgentWorkspaceData(agentName, workspaceData) {
+      if (!agentName) return;
+      localStorage.setItem(getWorkspaceStorageKey(agentName), JSON.stringify(workspaceData));
+    }
+
+    function getWorkspaceAgentContext(agentRef) {
+      if (!agentRef) return null;
+      if (typeof agentRef === 'string') {
+        const agent = NexusStore.getProjectAgent(selectedProjectId, agentRef) || NexusStore.getAgent(agentRef);
+        if (!agent) return null;
+        return {
+          agentId: agent.agent_id,
+          agentName: agent.agent_name,
+          role: agent.role,
+          icon: agent._icon || agent._customIcon || '🤖',
+          status: agent.status || 'ACTIVE'
+        };
+      }
+      return {
+        agentId: agentRef.agentId || null,
+        agentName: agentRef.agentName,
+        role: agentRef.role || 'agent',
+        icon: agentRef.icon || '🤖',
+        status: agentRef.status || 'ACTIVE'
+      };
+    }
+
+    function openAgentWorkspacePanel(agentRef) {
+      const context = getWorkspaceAgentContext(agentRef);
+      if (!context) return;
+      activeWorkspaceAgentId = context.agentId;
+      activeWorkspaceAgentName = context.agentName;
+      activeWorkspaceFile = WORKSPACE_FILES[0];
+      activeWorkspaceEditFile = null;
+      getAgentWorkspaceData(activeWorkspaceAgentName);
       renderWorkspacePanel();
       document.getElementById('workspacePanel').classList.add('show');
     }
 
-    function switchWorkspaceFile(fn) { activeWorkspaceFile = fn; renderWorkspacePanel(); }
+    function openCurrentAgentWorkspaceFromModal() {
+      if (!currentDetailAgentRef) return;
+      openAgentWorkspacePanel(currentDetailAgentRef);
+    }
+
+    function switchWorkspaceFile(fn) {
+      activeWorkspaceFile = fn;
+      activeWorkspaceEditFile = null;
+      renderWorkspacePanel();
+    }
+
+    function editWorkspaceFile(fileName) {
+      activeWorkspaceEditFile = fileName;
+      renderWorkspacePanel();
+      const textarea = document.getElementById('workspaceEditorTextarea');
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+      }
+    }
+
+    function saveWorkspaceFile(fileName) {
+      if (!activeWorkspaceAgentName) return;
+      const workspaceData = getAgentWorkspaceData(activeWorkspaceAgentName);
+      const textarea = document.getElementById('workspaceEditorTextarea');
+      workspaceData[fileName] = textarea ? textarea.value : workspaceData[fileName];
+      saveAgentWorkspaceData(activeWorkspaceAgentName, workspaceData);
+      activeWorkspaceEditFile = null;
+      showToast(`${WORKSPACE_LABELS[fileName]} saved`, 'success');
+      renderWorkspacePanel();
+    }
 
     function renderWorkspacePanel() {
-      if (!activeWorkspaceAgentId) return;
-      const agent = NexusStore.getProjectAgent(selectedProjectId, activeWorkspaceAgentId) || NexusStore.getAgent(activeWorkspaceAgentId);
-      if (!agent) return;
-      const snapshot = NexusOrchestration.getSnapshot();
-      const runtime = NexusOrchestration.getAgentById(snapshot, activeWorkspaceAgentId);
-      document.getElementById('workspacePanelTitle').textContent = agent.agent_name + ' Workspace';
+      if (!activeWorkspaceAgentName) return;
+      const context = getWorkspaceAgentContext(activeWorkspaceAgentId || currentDetailAgentRef || { agentName: activeWorkspaceAgentName });
+      const workspaceData = getAgentWorkspaceData(activeWorkspaceAgentName);
+      const isEditing = activeWorkspaceEditFile === activeWorkspaceFile;
+      const content = workspaceData[activeWorkspaceFile] || '';
+      const roleLabel = (context?.role || 'agent').replace(/_/g, ' ');
+      document.getElementById('workspacePanelTitle').textContent = activeWorkspaceAgentName + ' Workspace';
       document.getElementById('workspaceAgentMeta').innerHTML = `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <span class="tag">${agent.agent_id}</span><span class="tag">${agent.role.replace(/_/g,' ')}</span>
-          ${statusBadge(runtime?runtime.status:'INACTIVE')}
+        <div class="workspace-meta-card">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <span class="tag">${escapeHtml(activeWorkspaceAgentName)}</span>
+            <span class="tag">${escapeHtml(roleLabel)}</span>
+            ${context?.agentId ? `<span class="tag">${escapeHtml(context.agentId)}</span>` : ''}
+            ${statusBadge(context?.status || 'ACTIVE')}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted)">Editable workspace files are stored locally and reused for this agent name on every visit.</div>
         </div>`;
       document.getElementById('workspacePanelTabs').innerHTML = WORKSPACE_FILES.map(f =>
         `<div class="workspace-tab ${activeWorkspaceFile===f?'active':''}" onclick="switchWorkspaceFile('${f}')">${WORKSPACE_LABELS[f]}</div>`
       ).join('');
-      let content = NexusStore.getWorkspaceFile(activeWorkspaceAgentId, activeWorkspaceFile);
-      if (activeWorkspaceFile === 'heartbeat') content = buildHeartbeatMarkdown(agent, runtime);
-      document.getElementById('workspacePanelContent').innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+      document.getElementById('workspacePanelContent').innerHTML = `
+        <div class="workspace-editor">
+          <div class="workspace-toolbar">
+            <div>
+              <div class="workspace-file-title">${WORKSPACE_LABELS[activeWorkspaceFile]}</div>
+              <div class="workspace-file-subtitle">Workspace content for ${escapeHtml(activeWorkspaceAgentName)}</div>
+            </div>
+            <div class="workspace-actions">
+              <span class="workspace-status-badge ${isEditing ? 'editing' : ''}">${isEditing ? 'Editing' : 'Read only'}</span>
+              <button class="btn btn-outline btn-sm" onclick="editWorkspaceFile('${activeWorkspaceFile}')">Edit</button>
+              <button class="btn btn-primary btn-sm" onclick="saveWorkspaceFile('${activeWorkspaceFile}')">Save</button>
+            </div>
+          </div>
+          <textarea id="workspaceEditorTextarea" class="workspace-textarea" ${isEditing ? '' : 'readonly'}>${escapeHtml(content)}</textarea>
+          <div class="workspace-empty-note">Default content is loaded automatically if no saved workspace exists. Changes persist in localStorage using the agent name.</div>
+        </div>`;
     }
 
     function closeModal(id) {
       document.getElementById(id).classList.remove('show');
-      if (id === 'workspacePanel') activeWorkspaceAgentId = null;
+      if (id === 'workspacePanel') {
+        activeWorkspaceAgentId = null;
+        activeWorkspaceAgentName = '';
+        activeWorkspaceEditFile = null;
+      }
+      if (id === 'agentDetailModal') currentDetailAgentRef = null;
     }
 
     // ─── AI Org Builder Functions ───

@@ -318,7 +318,7 @@ const PMData = {
   }
 };
 
-PMData.sectionKeys = ['overview', 'scope', 'schedule', 'cost', 'quality', 'resources', 'risks', 'governance', 'summary'];
+PMData.sectionKeys = ['overview', 'scope', 'schedule', 'cost', 'quality', 'resources', 'risks', 'governance', 'summary', 'progressReport'];
 
 PMData.getDefaultProject = function() {
   return this.projects.find(project => project.phase === 'execution') || this.projects[0] || null;
@@ -346,6 +346,13 @@ PMData.getHealthLabel = function(score) {
   if (score >= 70) return 'Green';
   if (score >= 50) return 'Yellow';
   return 'Red';
+};
+
+PMData.getDeliveryStatus = function(score, phase) {
+  if (phase === 'post-launch') return 'On Track';
+  if (score >= 70) return 'On Track';
+  if (score >= 50) return 'At Risk';
+  return 'Delayed';
 };
 
 PMData.delaySeverity = function(delta) {
@@ -422,6 +429,44 @@ PMData.buildSectionSnapshot = function(project) {
     ...(project.earlyFeedback || []).map(item => `${item.user}: ${item.comment}`),
     ...(project.userFeedback?.topPraise || []).map(item => `Positive signal: ${item}`)
   ].slice(0, 4);
+  const featureModules = (project.roadmap?.planned || scopeItems.map((name, index) => ({
+    name,
+    planned: Math.min(100, 40 + index * 15),
+    actual: Math.min(100, Math.max(10, project.progress - index * 8))
+  }))).map((item, index) => {
+    const completion = Math.max(0, Math.min(100, item.actual ?? project.progress));
+    return {
+      id: `FM-${index + 1}`,
+      name: item.name,
+      status: completion >= 100 ? 'Completed' : completion >= 40 ? 'In Progress' : 'Pending',
+      completion,
+      planned: item.planned ?? 100
+    };
+  });
+  const plannedFeatureCount = featureModules.length;
+  const deliveredFeatureCount = featureModules.filter(item => item.completion >= 100).length;
+  const inProgressFeatureCount = featureModules.filter(item => item.status === 'In Progress').length;
+  const roadmapDeviations = featureModules
+    .filter(item => item.completion < item.planned)
+    .map(item => ({
+      feature: item.name,
+      delta: item.planned - item.completion,
+      note: `${item.name} is ${item.planned - item.completion}% behind the roadmap baseline`
+    }));
+  const definedScopeCount = scopeItems.length;
+  const currentScopeCount = scopeItems.length + (project.scopeChanges?.filter(change => change.status !== 'Deferred').length || 0);
+  const changeRequestCount = project.scopeChanges?.length || 0;
+  const achievedMilestones = roadmapMilestones.filter(item => item.actual >= item.planned).length;
+  const delayedMilestones = roadmapMilestones.filter(item => item.actual < item.planned).length;
+  const riskLevel = (project.risks || []).some(risk => risk.severity === 'Critical') ? 'High' : (project.risks || []).some(risk => risk.severity === 'High') ? 'Medium' : 'Low';
+  const qualityScore = project.scores?.quality || project.costTimeQuality?.quality || 0;
+  const releaseReadiness = project.phase === 'post-launch' ? 'Released' : project.progress >= 85 && qualityScore >= 75 ? 'Ready with controls' : project.progress >= 60 ? 'Needs hardening' : 'Not ready';
+  const velocity = project.sprint?.velocity || Math.max(12, Math.round(project.progress / 2));
+  const valueDelivered = project.phase === 'post-launch'
+    ? 'Core customer journeys are live and delivering measurable adoption and revenue impact.'
+    : deliveredFeatureCount > 0
+      ? `${deliveredFeatureCount} planned features have been delivered, unlocking incremental user and business value while remaining work continues.`
+      : 'Foundational delivery is underway, but business value remains dependent on milestone completion in upcoming increments.';
   const activeIssues = (project.issues || []).map(issue => ({
     id: issue.id,
     title: issue.title,
@@ -574,6 +619,90 @@ PMData.buildSectionSnapshot = function(project) {
         : project.healthScore >= 50
           ? 'Project is viable but requires disciplined intervention on schedule, cost, or quality hotspots.'
           : 'Project health is below target and needs immediate governance and execution alignment.'
+    },
+    progressReport: {
+      overallStatus: {
+        healthScore: project.healthScore,
+        status: this.getDeliveryStatus(project.healthScore, project.phase),
+        phase: this.getPhaseLabel(project.phase),
+        summary: `${project.name} is ${this.getDeliveryStatus(project.healthScore, project.phase).toLowerCase()} with ${project.progress}% completion and ${budgetPct}% budget utilization.`
+      },
+      kpis: {
+        completion: project.progress,
+        velocity,
+        riskLevel,
+        qualityScore
+      },
+      featureProgress: featureModules,
+      roadmapAlignment: {
+        plannedFeatureCount,
+        deliveredFeatureCount,
+        inProgressFeatureCount,
+        deviations: roadmapDeviations.length ? roadmapDeviations : [{
+          feature: 'Roadmap baseline',
+          delta: 0,
+          note: 'Delivered work is currently aligned with the roadmap plan.'
+        }]
+      },
+      scopeTracking: {
+        definedScopeCount,
+        currentScopeCount,
+        changeRequestCount,
+        scopeDelta: currentScopeCount - definedScopeCount,
+        scopeChanges: changeRequests,
+        impactSummary: changeRequestCount
+          ? `${changeRequestCount} scope changes are influencing delivery sequencing and effort allocation.`
+          : 'Scope remains stable against the baseline plan.'
+      },
+      timelineStatus: {
+        achievedMilestones,
+        delayedMilestones,
+        milestones: roadmapMilestones,
+        delays: delayReasons.length ? delayReasons : ['No major delivery delays recorded'],
+        reasons: delayReasons.length ? delayReasons : ['No major delivery delays recorded']
+      },
+      costImpact: {
+        budgetAllocated,
+        budgetSpent,
+        budgetPct,
+        forecast: Math.round(budgetSpent + remainingBudget * (project.healthScore < 60 ? 1.15 : 0.85)),
+        overrunRisk: budgetPct > 85 ? 'High' : budgetPct > 65 ? 'Medium' : 'Low'
+      },
+      qualityOverview: {
+        defectRate: Number(((project.issues?.length || project.bugs?.length || 0) / Math.max(featureModules.length, 1)).toFixed(2)),
+        testingStatus: qualityScore >= 80 ? 'Healthy test confidence' : qualityScore >= 65 ? 'Testing in progress' : 'Testing needs attention',
+        releaseReadiness,
+        qualityScore
+      },
+      risksIssues: {
+        activeRisks: (project.risks || []).map(risk => ({
+          title: risk.title,
+          severity: risk.severity,
+          mitigation: risk.mitigation,
+          status: risk.status
+        })),
+        activeIssues
+      },
+      businessImpact: {
+        valueDelivered,
+        userBusinessImpact: project.phase === 'post-launch'
+          ? 'Current progress is sustaining live user adoption while enabling optimization work that improves retention and monetization.'
+          : project.healthScore >= 70
+            ? 'Current delivery is creating visible forward momentum for launch goals and stakeholder confidence.'
+            : 'Current delivery gaps are directly affecting launch confidence, stakeholder expectations, or downstream business readiness.'
+      },
+      nextSteps: {
+        priorities: [
+          ...(roadmapMilestones.filter(item => item.actual < item.planned).map(item => `Recover ${item.name} against plan`)),
+          ...(project.improvements || []).slice(0, 2).map(item => `Prepare ${item.title}`),
+          'Review top delivery risks and confirm mitigation owners'
+        ].slice(0, 4),
+        decisionsRequired: [
+          ...(project.scopeChanges || []).filter(change => change.status === 'In Review' || change.status === 'Approved').map(change => `Decision required on ${change.title}`),
+          ...(project.risks || []).filter(risk => risk.severity === 'Critical').map(risk => `Escalation path for ${risk.title}`),
+          'Validate next milestone commitments against current team capacity'
+        ].slice(0, 4)
+      }
     }
   };
 };
