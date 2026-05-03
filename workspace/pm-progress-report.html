@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NEXUS — Developer Summary</title>
+  <title>NEXUS — Project Progress Report</title>
   <link rel="stylesheet" href="../css/common.css">
   <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
 
@@ -11,8 +11,8 @@
 </head>
 <body>
   <div class="main-content" id="app">
-    <div id="devPageChrome"></div>
-    <div id="devPageContent"></div>
+    <div id="pmPageChrome"></div>
+    <div id="pmPageContent"></div>
   </div>
 
   <script src="../js/store.js"></script>
@@ -22,16 +22,16 @@
   <script src="../js/permissions.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
-  <script src="../js/dev-data.js"></script>
-  <script src="../js/dev-render.js"></script>
+  <script src="../js/pm-data.js"></script>
+  <script src="../js/pm-render.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      await DevRender.bootstrapPage({
-        activeTab: 'summary',
-        section: 'summary',
-        pageTitle: 'Developer Summary',
-        pageSubtitle: 'Execution recap, forward plan, and recommendations for development delivery',
-        renderMethod: 'renderSummary'
+      await PMRender.bootstrapPage({
+        activeTab: 'progress-report',
+        section: 'progressReport',
+        pageTitle: 'Project Progress Report',
+        pageSubtitle: 'Decision-ready product progress across status, scope, roadmap, timeline, cost, quality, risks, impact, and next decisions',
+        renderMethod: 'renderProgressReport'
       });
     });
   </script>

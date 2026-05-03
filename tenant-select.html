@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Select Workspace</title>
   <link rel="stylesheet" href="css/common.css">
+  <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
+
+  <link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
   <div class="landing-page">
@@ -32,5 +35,6 @@
     // Tenant selection is no longer needed — tenant is auto-detected from login email
     window.location.href = 'index.html';
   </script>
+  <script src="js/theme.js"></script>
 </body>
 </html>
