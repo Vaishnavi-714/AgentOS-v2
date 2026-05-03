@@ -105,6 +105,7 @@ function createNavigation(activePage) {
 
 function handleLogout() {
   NexusStore.addLog({ type: 'AUTH', message: `${NexusStore.getUser()?.name} logged out`, agent: 'system' });
+  localStorage.removeItem("isLoggedIn");
   NexusStore.logout();
   TenantState.logoutSession();
   localStorage.removeItem("role");

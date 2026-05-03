@@ -58,11 +58,13 @@
     // If already logged in, redirect
     if (TenantState.isLoggedIn()) {
       if (localStorage.getItem("role") === "admin" || TenantState.isSystemAdmin()) {
+        localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("role", "admin");
         window.location.href = 'admin/admin-console.html';
       } else {
+        localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("role", "tenant");
-        window.location.href = 'workspace/portfolio.html';
+        window.location.href = 'workspace/dashboard.html';
       }
     }
 
@@ -96,6 +98,7 @@
       // SYSTEM ADMIN LOGIN
       if (domain === 'nexus.com') {
         TenantState.loginAsSystemAdmin(email);
+        localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("role", "admin");
         // Also set NexusStore user for nav/permissions
         NexusStore.setUser({ id: 'sys_admin', name: 'System Admin', role: 'Human Orchestrator', avatar: '🛡️', loginAt: new Date().toISOString() });
@@ -123,12 +126,13 @@
       }
 
       TenantState.loginAsTenantUser(email, tenant);
+      localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("role", "tenant");
       // Set NexusStore user for nav/permissions
       const userName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       NexusStore.setUser({ id: 'tenant_user_' + Date.now(), name: userName, role: 'Human Orchestrator', avatar: '👤', loginAt: new Date().toISOString() });
       NexusStore.addLog({ type: 'AUTH', message: `${userName} logged into ${tenant.name}`, agent: 'system' });
-      window.location.href = 'workspace/portfolio.html';
+      window.location.href = 'workspace/dashboard.html';
     }
   </script>
   <script src="js/theme.js"></script>
