@@ -265,23 +265,27 @@
         <div class="form-group"><label class="form-label">Domain</label>
           <select id="projDomain" class="form-select"><option value="E-Commerce">E-Commerce</option><option value="Healthcare">Healthcare</option><option value="Finance">Finance</option><option value="Education">Education</option><option value="SaaS">SaaS</option></select>
         </div>
-        <div class="form-group"><label class="form-label">Tech Stack</label><input type="text" id="projTech" class="form-input" placeholder="Node.js, React, PostgreSQL"></div>
-        <div class="form-group"><label class="form-label">Modules</label><input type="text" id="projModules" class="form-input" placeholder="auth, payments, orders"></div>
-
-        <!-- Client Documents Upload Section -->
+        <!-- SOW Upload Section -->
         <div class="form-group">
-          <label class="form-label">📄 Client Documents</label>
-          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">These documents will be used to auto-generate org structure</p>
-          <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('docFileInput').click()" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event)">
+          <label class="form-label">📄 SOW Upload</label>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Upload Statement of Work (SOW) document</p>
+          <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('sowFile').click()" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event)">
             <div class="doc-upload-icon">📁</div>
-            <div class="doc-upload-text">Drag & drop files here or <span style="color:var(--accent);cursor:pointer">browse</span></div>
-            <div class="doc-upload-hint">PDF, DOCX, TXT — Multiple files supported</div>
-            <input type="file" id="docFileInput" multiple accept=".pdf,.docx,.doc,.txt" style="display:none" onchange="handleDocFileSelect(event)">
+            <div class="doc-upload-text">Drag & drop SOW file here or <span style="color:var(--accent);cursor:pointer">browse</span></div>
+            <div class="doc-upload-hint">PDF, DOCX, TXT</div>
+            <input type="file" id="sowFile" accept=".pdf,.docx,.txt" style="display:none">
           </div>
+          <div id="sowAnalysisLoader" style="display:none;font-size:12px;color:var(--accent);margin-top:8px">Analyzing SOW...</div>
           <div id="uploadedFilesList" class="uploaded-files-list"></div>
           <div id="docUploadSuccess" class="doc-upload-success" style="display:none">
-            <span class="doc-success-icon">✅</span> Documents uploaded successfully
+            <span class="doc-success-icon">✅</span> SOW document uploaded successfully
           </div>
+          <input type="hidden" id="clientName">
+          <input type="hidden" id="vendorName">
+          <input type="hidden" id="duration">
+          <input type="hidden" id="milestones">
+          <input type="hidden" id="risks">
+          <input type="hidden" id="pricing">
         </div>
       </div>
       <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProjectWithAI()">🚀 Create Project</button></div>
@@ -328,12 +332,138 @@
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
   <script src="../js/ai-org-generator.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.js"></script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('dashboard');
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+    let currentSOWFile = null;
+    let currentParsedSOWData = null;
+    const defaultDashboardData = Object.freeze({
+      requirements: 10,
+      backlog: 15,
+      tasks: {
+        total: 20,
+        completed: 0,
+        inProgress: 5,
+        blocked: 1
+      },
+      modules: [
+        { name: "auth", progress: 20 },
+        { name: "payments", progress: 10 },
+        { name: "dashboard", progress: 5 }
+      ],
+      activity: ["Project created", "Initial setup completed"]
+    });
+
+    function cloneDefaultDashboardData() {
+      return {
+        requirements: defaultDashboardData.requirements,
+        backlog: defaultDashboardData.backlog,
+        tasks: { ...defaultDashboardData.tasks },
+        modules: defaultDashboardData.modules.map(module => ({ ...module })),
+        activity: [...defaultDashboardData.activity]
+      };
+    }
+
+    function ensureProjectDashboard(project) {
+      if (!project) return null;
+      if (project.dashboard) return project.dashboard;
+
+      project.dashboard = cloneDefaultDashboardData();
+      if (!Array.isArray(project.modules) || project.modules.length === 0) {
+        project.modules = project.dashboard.modules.map(module => module.name);
+      }
+      project.updatedAt = new Date().toISOString();
+      NexusStore.saveProject(project);
+      return project.dashboard;
+    }
+
+    function getDashboardData(project) {
+      const dashboard = ensureProjectDashboard(project) || cloneDefaultDashboardData();
+      return {
+        requirements: Number(dashboard.requirements) || defaultDashboardData.requirements,
+        backlog: Number(dashboard.backlog) || defaultDashboardData.backlog,
+        tasks: {
+          total: Math.max(Number(dashboard.tasks?.total) || defaultDashboardData.tasks.total, 0),
+          completed: Math.max(Number(dashboard.tasks?.completed) || 0, 0),
+          inProgress: Math.max(Number(dashboard.tasks?.inProgress) || defaultDashboardData.tasks.inProgress, 0),
+          blocked: Math.max(Number(dashboard.tasks?.blocked) || defaultDashboardData.tasks.blocked, 0)
+        },
+        modules: Array.isArray(dashboard.modules) && dashboard.modules.length ? dashboard.modules : cloneDefaultDashboardData().modules,
+        activity: Array.isArray(dashboard.activity) && dashboard.activity.length ? dashboard.activity : [...defaultDashboardData.activity]
+      };
+    }
+
+    function getDisplayRequirements(project) {
+      const pid = project?.id;
+      const stored = pid ? NexusStore.getRequirements(pid) : [];
+      if (stored.length) return stored;
+      const data = getDashboardData(project);
+      const modules = data.modules.map(module => module.name);
+      return Array.from({ length: data.requirements }, (_, index) => ({
+        id: `REQ-DF-${String(index + 1).padStart(2, '0')}`,
+        text: `Define ${modules[index % modules.length] || 'core'} workflow requirement ${index + 1}`,
+        type: index % 3 === 0 ? 'NON_FUNCTIONAL' : 'FUNCTIONAL',
+        module: modules[index % modules.length] || 'core',
+        priority: index < 4 ? 'MUST_HAVE' : index < 7 ? 'SHOULD_HAVE' : 'COULD_HAVE',
+        confidence: 0.84
+      }));
+    }
+
+    function getDisplayBacklog(project) {
+      const pid = project?.id;
+      const stored = pid ? NexusStore.getBacklog(pid) : [];
+      if (stored.length) return stored;
+      const data = getDashboardData(project);
+      const modules = data.modules.map(module => module.name);
+      const statuses = ['SPECIFIED', 'IN_PROGRESS', 'NOT_STARTED', 'BLOCKED', 'DONE'];
+      const types = ['EPIC', 'FEATURE', 'USER_STORY'];
+      return Array.from({ length: data.backlog }, (_, index) => ({
+        id: `BL-DF-${String(index + 1).padStart(2, '0')}`,
+        title: `Plan ${modules[index % modules.length] || 'platform'} work item ${index + 1}`,
+        type: types[index % types.length],
+        module: modules[index % modules.length] || 'core',
+        priority: index < 5 ? 'MUST_HAVE' : index < 10 ? 'SHOULD_HAVE' : 'COULD_HAVE',
+        storyPoints: [3, 5, 8][index % 3],
+        status: statuses[index % statuses.length]
+      }));
+    }
+
+    function getDisplayTasks(project) {
+      const pid = project?.id;
+      const stored = pid ? NexusStore.getTasks(pid) : [];
+      if (stored.length) return stored;
+      const data = getDashboardData(project);
+      const modules = data.modules.map(module => module.name);
+      return Array.from({ length: data.tasks.total }, (_, index) => {
+        let status = 'NOT_STARTED';
+        if (index < data.tasks.inProgress) status = 'EXECUTING';
+        else if (index < data.tasks.inProgress + data.tasks.blocked) status = 'BLOCKED';
+        return {
+          task_id: `TASK-DF-${String(index + 1).padStart(2, '0')}`,
+          title: `Set up ${modules[index % modules.length] || 'platform'} task ${index + 1}`,
+          module: modules[index % modules.length] || 'core',
+          assignedTo: 'system',
+          status,
+          risk: status === 'BLOCKED' ? 'HIGH' : index % 2 === 0 ? 'MEDIUM' : 'LOW',
+          gateStatus: status === 'BLOCKED' ? 'PENDING' : 'APPROVED'
+        };
+      });
+    }
+
+    function getDisplayActivity(project) {
+      const pid = project?.id;
+      const stored = NexusStore.getLogs().filter(log => log.message && log.message.includes(pid)).slice(0, 8);
+      if (stored.length) return stored.map(log => ({ message: log.message, timestamp: log.timestamp }));
+      return getDashboardData(project).activity.map((message, index) => ({
+        message,
+        timestamp: new Date(Date.now() - index * 60000).toISOString()
+      }));
+    }
 
     function openModal(id) { document.getElementById(id).classList.add('show'); }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
@@ -390,7 +520,8 @@
         `<div class="empty-state"><div class="empty-state-icon">📂</div><h3 class="empty-state-title">No Projects Yet</h3><p class="empty-state-text">Create your first project to get started</p><button class="btn btn-primary" onclick="openModal('createProjectModal')">+ Create Project</button></div>` :
         `<div class="grid grid-2">${projects.map(p => {
           const pipeline = NexusStore.getPipeline(p.id);
-          const tasks = NexusStore.getTasks(p.id);
+          const tasks = getDisplayTasks(p);
+          const dashboardData = getDashboardData(p);
           const done = tasks.filter(t=>t.status==='DONE').length;
           const pct = pipeline ? Math.round(pipeline.stages.filter(s=>s.status==='COMPLETED').length/pipeline.stages.length*100) : 0;
           return `<div class="card" style="cursor:pointer" onclick="selectProject('${p.id}')">
@@ -398,7 +529,7 @@
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">${escapeHtml(p.description)}</p>
             <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text-muted)">Pipeline</span><span style="font-size:12px">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${(p.techStack||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>Tasks: ${done}/${tasks.length}</span><span>Modules: ${(p.modules||[]).length}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>Tasks: ${done}/${tasks.length}</span><span>Modules: ${(p.modules||dashboardData.modules.map(module => module.name))?.length || 0}</span></div>
           </div>`;
         }).join('')}</div>`;
     }
@@ -414,40 +545,103 @@
       const pid = getSelectedProject();
       const project = NexusStore.getProject(pid);
       if (!project) return;
-      const tasks = NexusStore.getTasks(pid);
-      const reqs = NexusStore.getRequirements(pid);
-      const backlog = NexusStore.getBacklog(pid);
+      const data = getDashboardData(project);
+      const tasks = getDisplayTasks(project);
+      const reqs = getDisplayRequirements(project);
+      const backlog = getDisplayBacklog(project);
       const agents = NexusStore.getAgents();
-      const done = tasks.filter(t=>t.status==='DONE').length;
+      const done = Math.min(data.tasks.completed, data.tasks.total);
+      const totalTasks = data.tasks.total || tasks.length;
+      const requirementsCount = data.requirements;
+      const backlogCount = data.backlog;
+      const taskProgressLabel = `${Math.floor(totalTasks ? (done / totalTasks) * 100 : 0)}% done`;
+      const teamMembers = agents
+        .filter(a => a.module_scope === 'global' || (project.modules||[]).includes(a.module_scope))
+        .slice(0, 8)
+        .map(a => ({ name: a.agent_name, role: a.role, status: a.status }));
 
       document.getElementById('overviewStats').innerHTML = `
-        <div class="stat-card"><span class="stat-label">Requirements</span><span class="stat-value">${reqs.length}</span></div>
-        <div class="stat-card"><span class="stat-label">Backlog Items</span><span class="stat-value">${backlog.length}</span></div>
-        <div class="stat-card"><span class="stat-label">Tasks</span><span class="stat-value">${done}/${tasks.length}</span><span class="stat-change up">${tasks.length?Math.round(done/tasks.length*100):0}% done</span></div>
+        <div class="stat-card"><span class="stat-label">Requirements</span><span class="stat-value" id="requirementsCount">${requirementsCount}</span></div>
+        <div class="stat-card"><span class="stat-label">Backlog Items</span><span class="stat-value" id="backlogCount">${backlogCount}</span></div>
+        <div class="stat-card"><span class="stat-label">Tasks</span><span class="stat-value" id="tasksCount">${done}/${totalTasks}</span><span class="stat-change up" id="tasksProgress">${taskProgressLabel}</span></div>
         <div class="stat-card"><span class="stat-label">Agents</span><span class="stat-value">${agents.filter(a=>a.module_scope===project.modules?.[0]||a.module_scope==='global').length}</span></div>
       `;
 
-      document.getElementById('overviewProgress').innerHTML = (project.modules||[]).map(m => {
-        const modTasks = tasks.filter(t=>t.module===m);
-        const modDone = modTasks.filter(t=>t.status==='DONE').length;
-        const pct = modTasks.length ? Math.round(modDone/modTasks.length*100) : 0;
-        return `<div class="metric-bar"><span class="metric-label">${m}</span><div class="metric-track"><div class="metric-fill" style="width:${pct}%;background:var(--accent)"></div></div><span class="metric-value">${pct}%</span></div>`;
-      }).join('') || '<p style="color:var(--text-muted);font-size:12px">No modules defined</p>';
+      renderModules(data.modules);
+      renderTeam(teamMembers);
 
-      document.getElementById('overviewTeam').innerHTML = agents.filter(a => a.module_scope === 'global' || (project.modules||[]).includes(a.module_scope)).slice(0, 8).map(a => `
-        <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-size:13px;font-weight:600;color:var(--text-primary)">${escapeHtml(a.agent_name)}</span><span style="font-size:11px;color:var(--text-muted);margin-left:8px">${a.role}</span></div>
-          ${statusBadge(a.status)}
+      const logs = getDisplayActivity(project);
+      const activityContainer = document.getElementById('overviewActivity');
+      if (!logs.length) {
+        activityContainer.innerHTML = "<p>No activity yet</p>";
+      } else {
+        activityContainer.innerHTML = logs
+          .map(log => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(log.message)}</p><span style="font-size:11px;color:var(--text-muted)">${formatTime(log.timestamp)}</span></div>`)
+          .join("");
+      }
+    }
+
+    function getProjectDummyData(projectId) {
+      const raw = localStorage.getItem("project_dummy_data");
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed) return null;
+        if (parsed.projectId && projectId && parsed.projectId !== projectId) return null;
+        return parsed;
+      } catch (error) {
+        console.warn('Unable to parse project dummy data', error);
+        return null;
+      }
+    }
+
+    function renderModules(modules) {
+      const container = document.getElementById("overviewProgress");
+      if (!container) return;
+      if (!modules || modules.length === 0) {
+        container.innerHTML = "<p>No modules yet</p>";
+        return;
+      }
+
+      container.innerHTML = modules.map(m => `
+        <div class="metric-bar module">
+          <span class="metric-label">${escapeHtml(m.name)}</span>
+          <div class="metric-track progress-bar">
+            <div class="metric-fill" style="width:${Number(m.progress) || 0}%;background:var(--accent)"></div>
+          </div>
+          <span class="metric-value">${Number(m.progress) || 0}%</span>
         </div>
-      `).join('');
+      `).join("");
+    }
 
-      const logs = NexusStore.getLogs().filter(l => l.message && l.message.includes(pid)).slice(0, 8);
-      document.getElementById('overviewActivity').innerHTML = logs.map(l => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(l.message)}</p><span style="font-size:11px;color:var(--text-muted)">${formatTime(l.timestamp)}</span></div>`).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:12px">No activity</p>';
+    function renderTeam(team) {
+      const container = document.getElementById("overviewTeam");
+      if (!container) return;
+      if (!team.length) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:12px;padding:12px">No team assigned yet</p>';
+        return;
+      }
+
+      container.innerHTML = "";
+      team.forEach(member => {
+        const label = typeof member === 'string' ? member : member?.name || '';
+        const role = typeof member === 'string' ? '' : member?.role || '';
+        container.innerHTML += `
+          <div class="team-member" style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <div>
+              ${escapeHtml(label)}
+              ${role ? `<span style="font-size:11px;color:var(--text-muted);margin-left:8px">${escapeHtml(role)}</span>` : ''}
+            </div>
+            <span class="status active">${typeof member === 'string' ? 'ACTIVE' : escapeHtml(member?.status || 'ACTIVE')}</span>
+          </div>
+        `;
+      });
     }
 
     function renderRequirements() {
       const pid = getSelectedProject();
-      const reqs = NexusStore.getRequirements(pid);
+      const project = NexusStore.getProject(pid);
+      const reqs = getDisplayRequirements(project);
       const filterType = document.getElementById('reqFilterType')?.value || 'ALL';
       const filterModule = document.getElementById('reqFilterModule')?.value || 'ALL';
       const filterPriority = document.getElementById('reqFilterPriority')?.value || 'ALL';
@@ -455,8 +649,10 @@
       // Populate module filter
       const modules = [...new Set(reqs.map(r => r.module))];
       const moduleSelect = document.getElementById('reqFilterModule');
-      if (moduleSelect && moduleSelect.options.length <= 1) {
+      if (moduleSelect) {
+        moduleSelect.innerHTML = '<option value="ALL">All Modules</option>';
         modules.forEach(m => { const opt = document.createElement('option'); opt.value = m; opt.textContent = m; moduleSelect.appendChild(opt); });
+        moduleSelect.value = modules.includes(filterModule) || filterModule === 'ALL' ? filterModule : 'ALL';
       }
 
       const filtered = reqs.filter(r => {
@@ -466,19 +662,22 @@
         return true;
       });
 
-      document.getElementById('reqTable').innerHTML = filtered.map(r => `<tr>
+      document.getElementById('reqTable').innerHTML = filtered.length === 0
+        ? "<tr><td colspan='6'>No requirements yet</td></tr>"
+        : filtered.map(r => `<tr>
         <td style="font-weight:600;color:var(--accent)">${r.id}</td>
         <td style="max-width:300px">${escapeHtml(r.text)}</td>
         <td><span class="tag">${r.type}</span></td>
         <td>${r.module}</td>
         <td>${priorityBadge(r.priority)}</td>
         <td>${(r.confidence * 100).toFixed(0)}%</td>
-      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No requirements found</td></tr>';
+      </tr>`).join('');
     }
 
     function renderBacklog() {
       const pid = getSelectedProject();
-      const backlog = NexusStore.getBacklog(pid);
+      const project = NexusStore.getProject(pid);
+      const backlog = getDisplayBacklog(project);
       const filter = document.getElementById('backlogFilter')?.value || 'ALL';
       const items = filter === 'ALL' ? backlog : backlog.filter(b => b.type === filter);
       const statuses = ['SPECIFIED', 'IN_PROGRESS', 'DONE', 'BLOCKED', 'NOT_STARTED'];
@@ -500,21 +699,25 @@
 
     function renderTasks() {
       const pid = getSelectedProject();
-      const tasks = NexusStore.getTasks(pid);
+      const project = NexusStore.getProject(pid);
+      const data = getDashboardData(project);
+      const tasks = getDisplayTasks(project);
       const filter = document.getElementById('taskFilter')?.value || 'ALL';
       const filtered = filter === 'ALL' ? tasks : tasks.filter(t => t.status === filter);
       const agents = NexusStore.getAgents();
 
-      const done = tasks.filter(t=>t.status==='DONE').length;
-      const blocked = tasks.filter(t=>t.status==='BLOCKED'||t.status==='ESCALATED').length;
+      const done = Math.min(data.tasks.completed, data.tasks.total);
+      const blocked = data.tasks.blocked;
       document.getElementById('taskStats').innerHTML = `
-        <div class="stat-card"><span class="stat-label">Total Tasks</span><span class="stat-value">${tasks.length}</span></div>
+        <div class="stat-card"><span class="stat-label">Total Tasks</span><span class="stat-value">${data.tasks.total}</span></div>
         <div class="stat-card"><span class="stat-label">Completed</span><span class="stat-value" style="color:var(--success)">${done}</span></div>
-        <div class="stat-card"><span class="stat-label">In Progress</span><span class="stat-value" style="color:var(--info)">${tasks.filter(t=>t.status==='EXECUTING').length}</span></div>
+        <div class="stat-card"><span class="stat-label">In Progress</span><span class="stat-value" style="color:var(--info)">${data.tasks.inProgress}</span></div>
         <div class="stat-card"><span class="stat-label">Blocked</span><span class="stat-value" style="color:${blocked?'var(--danger)':'var(--text-primary)'}">${blocked}</span></div>
       `;
 
-      document.getElementById('taskTable').innerHTML = filtered.map(t => {
+      document.getElementById('taskTable').innerHTML = filtered.length === 0
+        ? "<tr><td colspan='7'>No tasks yet</td></tr>"
+        : filtered.map(t => {
         const agent = agents.find(a => a.agent_id === t.assignedTo);
         return `<tr>
           <td style="font-weight:600;color:var(--accent)">${t.task_id}</td>
@@ -525,13 +728,13 @@
           <td>${riskBadge(t.risk)}</td>
           <td>${t.gateStatus ? statusBadge(t.gateStatus) : '—'}</td>
         </tr>`;
-      }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No tasks</td></tr>';
+      }).join('');
     }
 
     function renderTimeline() {
       const pid = getSelectedProject();
       const project = NexusStore.getProject(pid);
-      const tasks = NexusStore.getTasks(pid);
+      const tasks = getDisplayTasks(project);
       if (!project) return;
 
       const phases = [
@@ -580,13 +783,18 @@
     async function createProjectWithAI() {
       const name = document.getElementById('projName').value.trim();
       if (!name) { showToast('Project name required', 'error'); return; }
+      const sowFile = currentSOWFile || document.getElementById('sowFile').files[0];
+      if (!sowFile) {
+        alert("SOW document is required");
+        return;
+      }
 
       const projectData = {
         name,
         description: document.getElementById('projDesc').value.trim(),
         domain: document.getElementById('projDomain').value,
-        techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean),
-        modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean)
+        sow: sowFile.name,
+        sowData: currentParsedSOWData || null
       };
 
       // Store file metadata in AI state
@@ -599,7 +807,21 @@
       const result = await MockAPI.createProject(projectData);
       if (!result.success) { showToast('Failed to create project', 'error'); return; }
       const project = result.project;
+      project.dashboard = cloneDefaultDashboardData();
+      if (!Array.isArray(project.modules) || project.modules.length === 0) {
+        project.modules = project.dashboard.modules.map(module => module.name);
+      }
+      project.updatedAt = new Date().toISOString();
+      NexusStore.saveProject(project);
       sessionStorage.setItem('nexus_selected_project', project.id);
+      const existingDummyData = getProjectDummyData();
+      if (existingDummyData) {
+        localStorage.setItem("project_dummy_data", JSON.stringify({
+          ...existingDummyData,
+          projectId: project.id,
+          projectName: project.name
+        }));
+      }
 
       // Show AI loading overlay
       showAILoadingOverlay(project);
@@ -730,36 +952,237 @@
       e.stopPropagation();
       document.getElementById('docUploadZone').classList.remove('drag-active');
       if (e.dataTransfer.files.length > 0) {
-        processDocFiles(e.dataTransfer.files);
+        handleSOWUploadFromFiles(e.dataTransfer.files);
       }
     }
 
     function handleDocFileSelect(e) {
       if (e.target.files.length > 0) {
-        processDocFiles(e.target.files);
+        handleSOWUploadFromFiles(e.target.files);
       }
     }
 
-    function processDocFiles(files) {
-      AIOrg.loadState();
-      Array.from(files).forEach(file => {
-        const validExts = ['pdf', 'docx', 'doc', 'txt'];
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (!validExts.includes(ext)) {
-          showToast(`Unsupported file type: .${ext}`, 'error');
-          return;
-        }
-        const fileEntry = AIOrg.addFile(file);
-        renderUploadedFiles();
+    function setSOWLoader(visible, message = 'Analyzing SOW...') {
+      const loader = document.getElementById('sowAnalysisLoader');
+      if (!loader) return;
+      loader.textContent = message;
+      loader.style.display = visible ? 'block' : 'none';
+    }
 
-        // Simulate upload progress
-        AIOrg.simulateUpload(fileEntry.id, (progress) => {
-          renderUploadedFiles();
-        }, () => {
-          renderUploadedFiles();
-          checkAllUploadsComplete();
+    function escapeRegex(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function extractSingleValue(text, labels) {
+      for (const label of labels) {
+        const pattern = new RegExp(`${escapeRegex(label)}\\s*:?\\s*([^\\n\\r]+)`, 'i');
+        const match = text.match(pattern);
+        if (match && match[1]) return match[1].trim();
+      }
+      return '';
+    }
+
+    function extractSection(text, startLabels, endLabels) {
+      for (const startLabel of startLabels) {
+        const startPattern = new RegExp(`${escapeRegex(startLabel)}\\s*:?[\\t ]*`, 'i');
+        const startMatch = startPattern.exec(text);
+        if (!startMatch) continue;
+        const startIndex = startMatch.index + startMatch[0].length;
+        let endIndex = text.length;
+        for (const endLabel of endLabels) {
+          const endPattern = new RegExp(`\\n\\s*${escapeRegex(endLabel)}\\s*:?[\\t ]*`, 'i');
+          const sliced = text.slice(startIndex);
+          const endMatch = endPattern.exec(sliced);
+          if (endMatch) endIndex = Math.min(endIndex, startIndex + endMatch.index);
+        }
+        return text.slice(startIndex, endIndex).trim();
+      }
+      return '';
+    }
+
+    function parseSectionList(sectionText) {
+      return sectionText
+        .split(/\r?\n/)
+        .map(line => line.replace(/^[\s\-*•\d.]+/, '').trim())
+        .filter(Boolean);
+    }
+
+    function detectDomain(parsed) {
+      const source = JSON.stringify(parsed).toLowerCase();
+      if (source.includes('e-commerce') || source.includes('ecommerce')) return 'E-Commerce';
+      if (source.includes('healthcare')) return 'Healthcare';
+      if (source.includes('finance') || source.includes('banking') || source.includes('fintech')) return 'Finance';
+      if (/\bai\b/.test(source) || source.includes('machine learning')) return 'AI/ML';
+      return 'General';
+    }
+
+    function ensureDomainOption(value) {
+      const select = document.getElementById('projDomain');
+      if (!select || !value) return;
+      const exists = [...select.options].some(option => option.value === value);
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      }
+    }
+
+    function parseSOWContent(text) {
+      const deliverablesSection = extractSection(text, ['Deliverables'], ['Project Timeline & Milestones', 'Timeline', 'Client Responsibilities', 'Vendor Responsibilities']);
+      const timelineSection = extractSection(text, ['Project Timeline & Milestones', 'Timeline'], ['Client Responsibilities', 'Vendor Responsibilities', 'Communication Plan', 'Pricing Model']);
+      const risksSection = extractSection(text, ['Risk Table', 'Risks', 'Risk Register'], ['QA', 'Quality', 'Data Security', 'Intellectual Property']);
+
+      return {
+        projectName: extractSingleValue(text, ['Project Name']),
+        client: extractSingleValue(text, ['Client']),
+        vendor: extractSingleValue(text, ['Vendor']),
+        startDate: extractSingleValue(text, ['Effective Date', 'Start Date']),
+        duration: extractSingleValue(text, ['Project Duration', 'Duration']),
+        objective: extractSingleValue(text, ['Objective', 'Project Objective']),
+        scope: {
+          inScope: parseSectionList(extractSection(text, ['In-Scope Activities'], ['Out-of-Scope Activities', 'Deliverables', 'Project Timeline & Milestones'])),
+          outOfScope: parseSectionList(extractSection(text, ['Out-of-Scope Activities'], ['Deliverables', 'Project Timeline & Milestones', 'Client Responsibilities']))
+        },
+        deliverables: parseSectionList(deliverablesSection),
+        timeline: {
+          raw: timelineSection,
+          milestones: parseSectionList(timelineSection)
+        },
+        roles: {
+          clientResponsibilities: parseSectionList(extractSection(text, ['Client Responsibilities'], ['Vendor Responsibilities', 'Engagement Model', 'Communication Plan'])),
+          vendorResponsibilities: parseSectionList(extractSection(text, ['Vendor Responsibilities'], ['Engagement Model', 'Communication Plan', 'Pricing Model']))
+        },
+        engagementModel: {
+          type: extractSingleValue(text, ['Type', 'Engagement Model Type']),
+          teamComposition: parseSectionList(extractSection(text, ['Team Composition'], ['Communication Plan', 'Pricing Model', 'Risk Table']))
+        },
+        communicationPlan: parseSectionList(extractSection(text, ['Communication Plan'], ['Pricing Model', 'Payment Terms', 'Risk Table'])),
+        pricing: {
+          pricingModel: extractSingleValue(text, ['Pricing Model']),
+          paymentTerms: extractSingleValue(text, ['Payment Terms'])
+        },
+        risks: parseSectionList(risksSection),
+        quality: parseSectionList(extractSection(text, ['QA', 'Quality'], ['Data Security', 'Intellectual Property'])),
+        security: parseSectionList(extractSection(text, ['Data Security', 'Security'], ['Intellectual Property'])),
+        intellectualProperty: parseSectionList(extractSection(text, ['Intellectual Property', 'IP'], [])),
+        rawText: text
+      };
+    }
+
+    function fillProjectFormFromSOW(parsed) {
+      if (parsed.projectName) document.getElementById('projName').value = parsed.projectName;
+      if (parsed.objective) document.getElementById('projDesc').value = parsed.objective;
+      const detectedDomain = detectDomain(parsed);
+      ensureDomainOption(detectedDomain);
+      document.getElementById('projDomain').value = detectedDomain;
+      document.getElementById('clientName').value = parsed.client || '';
+      document.getElementById('vendorName').value = parsed.vendor || '';
+      document.getElementById('duration').value = parsed.duration || '';
+      document.getElementById('milestones').value = (parsed.timeline?.milestones || []).join('\n');
+      document.getElementById('risks').value = (parsed.risks || []).join('\n');
+      document.getElementById('pricing').value = parsed.pricing?.pricingModel || '';
+    }
+
+    async function extractTextFromSOWFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'txt') {
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result || '');
+          reader.onerror = reject;
+          reader.readAsText(file);
         });
+      }
+      if (ext === 'pdf') {
+        if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js unavailable');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.worker.min.js';
+        const buffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const pages = [];
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+          const page = await pdf.getPage(pageNumber);
+          const textContent = await page.getTextContent();
+          pages.push(textContent.items.map(item => item.str).join(' '));
+        }
+        return pages.join('\n');
+      }
+      if (ext === 'docx') {
+        if (typeof mammoth === 'undefined') throw new Error('mammoth unavailable');
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        return result.value || '';
+      }
+      throw new Error('Unsupported file type');
+    }
+
+    async function handleSOWUploadFromFiles(files) {
+      if (!files || !files.length) return;
+      const file = files[0];
+      currentSOWFile = file;
+      AIOrg.loadState();
+      AIOrg.clearFiles();
+      document.getElementById('docUploadSuccess').style.display = 'none';
+
+      const validExts = ['pdf', 'docx', 'txt'];
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!validExts.includes(ext)) {
+        showToast(`Unsupported file type: .${ext}`, 'error');
+        return;
+      }
+
+      const fileEntry = AIOrg.addFile(file);
+      renderUploadedFiles();
+      AIOrg.simulateUpload(fileEntry.id, () => {
+        renderUploadedFiles();
+      }, async () => {
+        renderUploadedFiles();
+        checkAllUploadsComplete();
+        try {
+          setSOWLoader(true, 'Analyzing SOW...');
+          const text = await extractTextFromSOWFile(file);
+          const parsed = parseSOWContent(text);
+          fillProjectFormFromSOW(parsed);
+          currentParsedSOWData = parsed;
+          localStorage.setItem("project_sow_data", JSON.stringify(parsed));
+          const dummyProjectData = {
+            requirements: 12,
+            backlog: 18,
+            tasks: {
+              total: 25,
+              completed: 0
+            },
+            modules: [
+              { name: "auth", progress: 20 },
+              { name: "payments", progress: 10 },
+              { name: "dashboard", progress: 5 }
+            ],
+            team: [
+              "Business Analyst",
+              "Product Manager",
+              "Product Owner",
+              "Scrum Master",
+              "Architect",
+              "QA Agent"
+            ],
+            activity: ["Project created", "SOW processed"]
+          };
+          localStorage.setItem("project_dummy_data", JSON.stringify(dummyProjectData));
+          document.getElementById('docUploadSuccess').innerHTML = '<span class="doc-success-icon">✅</span> SOW parsed and fields auto-filled';
+          document.getElementById('docUploadSuccess').style.display = 'flex';
+          showToast('SOW parsed and fields auto-filled', 'success');
+        } catch (error) {
+          console.error(error);
+          currentParsedSOWData = null;
+          alert('Unable to extract SOW data');
+        } finally {
+          setSOWLoader(false);
+        }
       });
+    }
+
+    function processDocFiles(files) {
+      return handleSOWUploadFromFiles(files);
     }
 
     function renderUploadedFiles() {
@@ -803,6 +1226,7 @@
     }
 
     function escapeHtml(str) { if(!str)return''; const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+    document.getElementById('sowFile')?.addEventListener('change', handleDocFileSelect);
 
     async function uploadRequirement() {
       const pid = getSelectedProject();

@@ -92,7 +92,12 @@ const DevRender = {
     try {
       const data = await DevData.loadSection(config.section);
       this[config.renderMethod](data);
-      this.startRealtime();
+      if (config.section !== 'overview') {
+        this.startRealtime();
+      } else if (this._refreshTimer) {
+        clearInterval(this._refreshTimer);
+        this._refreshTimer = null;
+      }
     } finally {
       if (typeof hideLoading === 'function') hideLoading();
     }
@@ -109,12 +114,12 @@ const DevRender = {
   },
 
   renderOverview(data) {
-    const deliverables = data?.deliverables || { completed: 3, inProgress: 2, pending: 1 };
-    const modules = this.list(data?.modules, [
-      { name: 'auth', progress: 80, completed: 4, total: 5 },
-      { name: 'payments', progress: 55, completed: 2, total: 4 },
-      { name: 'dashboard', progress: 35, completed: 1, total: 3 }
-    ]);
+    const deliverables = { completed: 62, inProgress: 66, pending: 1 };
+    const modules = [
+      { name: 'auth', progress: 100, completed: 5, total: 5 },
+      { name: 'payments', progress: 25, completed: 1, total: 4 },
+      { name: 'dashboard', progress: 50, completed: 2, total: 4 }
+    ];
     const achievements = this.list(data?.keyAchievements, DevData.defaultAchievements);
     const challenges = this.list(data?.challenges, DevData.defaultChallenges);
     const forwardPlan = this.list(data?.forwardPlan, [
@@ -130,13 +135,13 @@ const DevRender = {
 
     this.mount('devPageContent', `
       <div class="grid grid-3" style="margin-bottom:20px">
-        <div class="stat-card"><span class="stat-label">Completed Deliverables</span><span class="stat-value" style="color:var(--success)">${this.metric(deliverables.completed, 3)}</span></div>
-        <div class="stat-card"><span class="stat-label">In Progress</span><span class="stat-value" style="color:var(--accent)">${this.metric(deliverables.inProgress, 2)}</span></div>
-        <div class="stat-card"><span class="stat-label">Pending</span><span class="stat-value" style="color:var(--warning)">${this.metric(deliverables.pending, 1)}</span></div>
+        <div class="stat-card"><span class="stat-label">Completed Deliverables</span><span id="completedDeliverables" class="stat-value" style="color:var(--success)">62</span></div>
+        <div class="stat-card"><span class="stat-label">In Progress</span><span id="inProgress" class="stat-value" style="color:var(--accent)">66</span></div>
+        <div class="stat-card"><span class="stat-label">Pending</span><span id="pending" class="stat-value" style="color:var(--warning)">1</span></div>
       </div>
       <div class="card">
         <div class="card-header"><h3 class="card-title">Modules</h3></div>
-        ${modules.map(module => `<div class="metric-bar"><span class="metric-label">${this.escape(module.name)}</span><div class="metric-track"><div class="metric-fill" style="width:${module.progress || 15}%;background:${(module.progress || 15) >= 80 ? '#10b981' : (module.progress || 15) >= 40 ? '#3b82f6' : '#f59e0b'}"></div></div><span class="metric-value">${this.metric(module.completed, module.done || 1)}/${this.metric(module.total, 2)}</span></div>`).join('')}
+        ${modules.map(module => `<div class="metric-bar"><span class="metric-label">${this.escape(module.name)}</span><div class="metric-track"><div class="metric-fill" style="width:${module.progress}%;background:${module.progress >= 80 ? '#10b981' : module.progress >= 40 ? '#3b82f6' : '#f59e0b'}"></div></div><span class="metric-value">${module.completed}/${module.total}</span></div>`).join('')}
       </div>
       <div class="grid grid-2" style="margin-top:16px">
         <div class="card"><div class="card-header"><h3 class="card-title">Key Achievements</h3></div>${achievements.map(item => `<div class="pipeline-stage completed"><div class="pipeline-stage-info"><div class="pipeline-stage-name">${this.escape(item)}</div></div></div>`).join('')}</div>

@@ -15,7 +15,7 @@ function createNavigation(activePage) {
 
   // ─── Master Navigation Structure ───
   const mainNavItems = [
-    { id: 'role-dashboard', label: 'Role-Based Dashboard', icon: '🎭', href: 'role-dashboard.html' },
+    { id: 'role-dashboard', label: 'Dashboard', icon: '🎭', href: 'role-dashboard.html' },
     { id: 'dashboard', label: 'Projects Hub', icon: '📊', href: 'dashboard.html' },
     { id: 'workspace', label: 'Workspace', icon: '💬', href: 'workspace.html' },
     { id: 'agents', label: 'Agents', icon: '🤖', href: 'agents.html' },
@@ -23,7 +23,6 @@ function createNavigation(activePage) {
     { id: 'repositories', label: 'Repositories', icon: '📦', href: 'repositories.html' },
     { id: 'testing', label: 'Testing', icon: '🧪', href: 'testing.html' },
     { id: 'deployments', label: 'Deployments', icon: '🚀', href: 'deployments.html' },
-    { id: 'analytics', label: 'Analytics', icon: '📈', href: 'analytics.html' },
     { id: 'integrations', label: 'Integrations', icon: '🔗', href: 'integrations.html' }
   ];
 

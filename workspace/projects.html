@@ -245,23 +245,27 @@
         <div class="form-group"><label class="form-label">Domain</label>
           <select id="projDomain" class="form-select"><option value="E-Commerce">E-Commerce</option><option value="Healthcare">Healthcare</option><option value="Finance">Finance</option><option value="Education">Education</option><option value="SaaS">SaaS</option></select>
         </div>
-        <div class="form-group"><label class="form-label">Tech Stack</label><input type="text" id="projTech" class="form-input" placeholder="Node.js, React, PostgreSQL"></div>
-        <div class="form-group"><label class="form-label">Modules</label><input type="text" id="projModules" class="form-input" placeholder="auth, payments, orders"></div>
-
-        <!-- Client Documents Upload Section -->
+        <!-- SOW Upload Section -->
         <div class="form-group">
-          <label class="form-label">📄 Client Documents</label>
-          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">These documents will be used to auto-generate org structure</p>
-          <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('docFileInput').click()" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event)">
+          <label class="form-label">📄 SOW Upload</label>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Upload Statement of Work (SOW) document</p>
+          <div class="doc-upload-zone" id="docUploadZone" onclick="document.getElementById('sowFile').click()" ondragover="handleDocDragOver(event)" ondragleave="handleDocDragLeave(event)" ondrop="handleDocDrop(event)">
             <div class="doc-upload-icon">📁</div>
-            <div class="doc-upload-text">Drag & drop files here or <span style="color:var(--accent);cursor:pointer">browse</span></div>
-            <div class="doc-upload-hint">PDF, DOCX, TXT — Multiple files supported</div>
-            <input type="file" id="docFileInput" multiple accept=".pdf,.docx,.doc,.txt" style="display:none" onchange="handleDocFileSelect(event)">
+            <div class="doc-upload-text">Drag & drop SOW file here or <span style="color:var(--accent);cursor:pointer">browse</span></div>
+            <div class="doc-upload-hint">PDF, DOCX, TXT</div>
+            <input type="file" id="sowFile" accept=".pdf,.docx,.txt" style="display:none">
           </div>
+          <div id="sowAnalysisLoader" style="display:none;font-size:12px;color:var(--accent);margin-top:8px">Analyzing SOW...</div>
           <div id="uploadedFilesList" class="uploaded-files-list"></div>
           <div id="docUploadSuccess" class="doc-upload-success" style="display:none">
-            <span class="doc-success-icon">✅</span> Documents uploaded successfully
+            <span class="doc-success-icon">✅</span> SOW document uploaded successfully
           </div>
+          <input type="hidden" id="clientName">
+          <input type="hidden" id="vendorName">
+          <input type="hidden" id="duration">
+          <input type="hidden" id="milestones">
+          <input type="hidden" id="risks">
+          <input type="hidden" id="pricing">
         </div>
       </div>
       <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProjectWithAI()">🚀 Create Project</button></div>
@@ -308,12 +312,16 @@
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
   <script src="../js/ai-org-generator.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.min.js"></script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('projects');
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
+    let currentSOWFile = null;
+    let currentParsedSOWData = null;
 
     function openModal(id) { document.getElementById(id).classList.add('show'); }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
@@ -536,13 +544,18 @@
     async function createProjectWithAI() {
       const name = document.getElementById('projName').value.trim();
       if (!name) { showToast('Project name required', 'error'); return; }
+      const sowFile = currentSOWFile || document.getElementById('sowFile').files[0];
+      if (!sowFile) {
+        alert("SOW document is required");
+        return;
+      }
 
       const projectData = {
         name,
         description: document.getElementById('projDesc').value.trim(),
         domain: document.getElementById('projDomain').value,
-        techStack: document.getElementById('projTech').value.split(',').map(s=>s.trim()).filter(Boolean),
-        modules: document.getElementById('projModules').value.split(',').map(s=>s.trim()).filter(Boolean)
+        sow: sowFile.name,
+        sowData: currentParsedSOWData || null
       };
 
       // Store file metadata in AI state
@@ -686,36 +699,214 @@
       e.stopPropagation();
       document.getElementById('docUploadZone').classList.remove('drag-active');
       if (e.dataTransfer.files.length > 0) {
-        processDocFiles(e.dataTransfer.files);
+        handleSOWUploadFromFiles(e.dataTransfer.files);
       }
     }
 
     function handleDocFileSelect(e) {
       if (e.target.files.length > 0) {
-        processDocFiles(e.target.files);
+        handleSOWUploadFromFiles(e.target.files);
       }
     }
 
-    function processDocFiles(files) {
-      AIOrg.loadState();
-      Array.from(files).forEach(file => {
-        const validExts = ['pdf', 'docx', 'doc', 'txt'];
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (!validExts.includes(ext)) {
-          showToast(`Unsupported file type: .${ext}`, 'error');
-          return;
-        }
-        const fileEntry = AIOrg.addFile(file);
-        renderUploadedFiles();
+    function setSOWLoader(visible, message = 'Analyzing SOW...') {
+      const loader = document.getElementById('sowAnalysisLoader');
+      if (!loader) return;
+      loader.textContent = message;
+      loader.style.display = visible ? 'block' : 'none';
+    }
 
-        // Simulate upload progress
-        AIOrg.simulateUpload(fileEntry.id, (progress) => {
-          renderUploadedFiles();
-        }, () => {
-          renderUploadedFiles();
-          checkAllUploadsComplete();
+    function escapeRegex(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function extractSingleValue(text, labels) {
+      for (const label of labels) {
+        const pattern = new RegExp(`${escapeRegex(label)}\\s*:?\\s*([^\\n\\r]+)`, 'i');
+        const match = text.match(pattern);
+        if (match && match[1]) return match[1].trim();
+      }
+      return '';
+    }
+
+    function extractSection(text, startLabels, endLabels) {
+      for (const startLabel of startLabels) {
+        const startPattern = new RegExp(`${escapeRegex(startLabel)}\\s*:?[\\t ]*`, 'i');
+        const startMatch = startPattern.exec(text);
+        if (!startMatch) continue;
+        const startIndex = startMatch.index + startMatch[0].length;
+        let endIndex = text.length;
+        for (const endLabel of endLabels) {
+          const endPattern = new RegExp(`\\n\\s*${escapeRegex(endLabel)}\\s*:?[\\t ]*`, 'i');
+          const sliced = text.slice(startIndex);
+          const endMatch = endPattern.exec(sliced);
+          if (endMatch) endIndex = Math.min(endIndex, startIndex + endMatch.index);
+        }
+        return text.slice(startIndex, endIndex).trim();
+      }
+      return '';
+    }
+
+    function parseSectionList(sectionText) {
+      return sectionText
+        .split(/\r?\n/)
+        .map(line => line.replace(/^[\s\-*•\d.]+/, '').trim())
+        .filter(Boolean);
+    }
+
+    function detectDomain(parsed) {
+      const source = JSON.stringify(parsed).toLowerCase();
+      if (source.includes('e-commerce') || source.includes('ecommerce')) return 'E-Commerce';
+      if (source.includes('healthcare')) return 'Healthcare';
+      if (source.includes('finance') || source.includes('banking') || source.includes('fintech')) return 'Finance';
+      if (/\bai\b/.test(source) || source.includes('machine learning')) return 'AI/ML';
+      return 'General';
+    }
+
+    function ensureDomainOption(value) {
+      const select = document.getElementById('projDomain');
+      if (!select || !value) return;
+      const exists = [...select.options].some(option => option.value === value);
+      if (!exists) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      }
+    }
+
+    function parseSOWContent(text) {
+      const deliverablesSection = extractSection(text, ['Deliverables'], ['Project Timeline & Milestones', 'Timeline', 'Client Responsibilities', 'Vendor Responsibilities']);
+      const timelineSection = extractSection(text, ['Project Timeline & Milestones', 'Timeline'], ['Client Responsibilities', 'Vendor Responsibilities', 'Communication Plan', 'Pricing Model']);
+      const risksSection = extractSection(text, ['Risk Table', 'Risks', 'Risk Register'], ['QA', 'Quality', 'Data Security', 'Intellectual Property']);
+
+      return {
+        projectName: extractSingleValue(text, ['Project Name']),
+        client: extractSingleValue(text, ['Client']),
+        vendor: extractSingleValue(text, ['Vendor']),
+        startDate: extractSingleValue(text, ['Effective Date', 'Start Date']),
+        duration: extractSingleValue(text, ['Project Duration', 'Duration']),
+        objective: extractSingleValue(text, ['Objective', 'Project Objective']),
+        scope: {
+          inScope: parseSectionList(extractSection(text, ['In-Scope Activities'], ['Out-of-Scope Activities', 'Deliverables', 'Project Timeline & Milestones'])),
+          outOfScope: parseSectionList(extractSection(text, ['Out-of-Scope Activities'], ['Deliverables', 'Project Timeline & Milestones', 'Client Responsibilities']))
+        },
+        deliverables: parseSectionList(deliverablesSection),
+        timeline: {
+          raw: timelineSection,
+          milestones: parseSectionList(timelineSection)
+        },
+        roles: {
+          clientResponsibilities: parseSectionList(extractSection(text, ['Client Responsibilities'], ['Vendor Responsibilities', 'Engagement Model', 'Communication Plan'])),
+          vendorResponsibilities: parseSectionList(extractSection(text, ['Vendor Responsibilities'], ['Engagement Model', 'Communication Plan', 'Pricing Model']))
+        },
+        engagementModel: {
+          type: extractSingleValue(text, ['Type', 'Engagement Model Type']),
+          teamComposition: parseSectionList(extractSection(text, ['Team Composition'], ['Communication Plan', 'Pricing Model', 'Risk Table']))
+        },
+        communicationPlan: parseSectionList(extractSection(text, ['Communication Plan'], ['Pricing Model', 'Payment Terms', 'Risk Table'])),
+        pricing: {
+          pricingModel: extractSingleValue(text, ['Pricing Model']),
+          paymentTerms: extractSingleValue(text, ['Payment Terms'])
+        },
+        risks: parseSectionList(risksSection),
+        quality: parseSectionList(extractSection(text, ['QA', 'Quality'], ['Data Security', 'Intellectual Property'])),
+        security: parseSectionList(extractSection(text, ['Data Security', 'Security'], ['Intellectual Property'])),
+        intellectualProperty: parseSectionList(extractSection(text, ['Intellectual Property', 'IP'], [])),
+        rawText: text
+      };
+    }
+
+    function fillProjectFormFromSOW(parsed) {
+      if (parsed.projectName) document.getElementById('projName').value = parsed.projectName;
+      if (parsed.objective) document.getElementById('projDesc').value = parsed.objective;
+      const detectedDomain = detectDomain(parsed);
+      ensureDomainOption(detectedDomain);
+      document.getElementById('projDomain').value = detectedDomain;
+      document.getElementById('clientName').value = parsed.client || '';
+      document.getElementById('vendorName').value = parsed.vendor || '';
+      document.getElementById('duration').value = parsed.duration || '';
+      document.getElementById('milestones').value = (parsed.timeline?.milestones || []).join('\n');
+      document.getElementById('risks').value = (parsed.risks || []).join('\n');
+      document.getElementById('pricing').value = parsed.pricing?.pricingModel || '';
+    }
+
+    async function extractTextFromSOWFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'txt') {
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result || '');
+          reader.onerror = reject;
+          reader.readAsText(file);
         });
+      }
+      if (ext === 'pdf') {
+        if (typeof pdfjsLib === 'undefined') throw new Error('pdf.js unavailable');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.5.136/pdf.worker.min.js';
+        const buffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const pages = [];
+        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+          const page = await pdf.getPage(pageNumber);
+          const textContent = await page.getTextContent();
+          pages.push(textContent.items.map(item => item.str).join(' '));
+        }
+        return pages.join('\n');
+      }
+      if (ext === 'docx') {
+        if (typeof mammoth === 'undefined') throw new Error('mammoth unavailable');
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        return result.value || '';
+      }
+      throw new Error('Unsupported file type');
+    }
+
+    async function handleSOWUploadFromFiles(files) {
+      if (!files || !files.length) return;
+      const file = files[0];
+      currentSOWFile = file;
+      AIOrg.loadState();
+      AIOrg.clearFiles();
+      document.getElementById('docUploadSuccess').style.display = 'none';
+
+      const validExts = ['pdf', 'docx', 'txt'];
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!validExts.includes(ext)) {
+        showToast(`Unsupported file type: .${ext}`, 'error');
+        return;
+      }
+
+      const fileEntry = AIOrg.addFile(file);
+      renderUploadedFiles();
+      AIOrg.simulateUpload(fileEntry.id, () => {
+        renderUploadedFiles();
+      }, async () => {
+        renderUploadedFiles();
+        checkAllUploadsComplete();
+        try {
+          setSOWLoader(true, 'Analyzing SOW...');
+          const text = await extractTextFromSOWFile(file);
+          const parsed = parseSOWContent(text);
+          fillProjectFormFromSOW(parsed);
+          currentParsedSOWData = parsed;
+          localStorage.setItem("project_sow_data", JSON.stringify(parsed));
+          document.getElementById('docUploadSuccess').innerHTML = '<span class="doc-success-icon">✅</span> SOW parsed and fields auto-filled';
+          document.getElementById('docUploadSuccess').style.display = 'flex';
+          showToast('SOW parsed and fields auto-filled', 'success');
+        } catch (error) {
+          console.error(error);
+          currentParsedSOWData = null;
+          alert('Unable to extract SOW data');
+        } finally {
+          setSOWLoader(false);
+        }
       });
+    }
+
+    function processDocFiles(files) {
+      return handleSOWUploadFromFiles(files);
     }
 
     function renderUploadedFiles() {
@@ -759,6 +950,7 @@
     }
 
     function escapeHtml(str) { if(!str)return''; const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+    document.getElementById('sowFile')?.addEventListener('change', handleDocFileSelect);
 
     async function uploadRequirement() {
       const pid = getSelectedProject();
