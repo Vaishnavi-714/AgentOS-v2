@@ -7,6 +7,108 @@
   <link rel="stylesheet" href="../css/common.css">
 
   <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    .integration-card {
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+
+    .integration-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+    }
+
+    .integration-card-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .integration-add-btn {
+      padding: 9px 14px;
+      border-radius: 8px;
+      box-shadow: 0 8px 18px rgba(99,102,241,0.18);
+      transform: translateY(0);
+    }
+
+    .integration-add-btn:hover,
+    .integration-add-btn:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(99,102,241,0.28);
+    }
+
+    .integration-add-btn .arrow-icon {
+      font-size: 15px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .integration-summary {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-secondary);
+    }
+
+    .integration-summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .integration-summary-row strong {
+      color: var(--text-secondary);
+      font-family: var(--mono);
+      font-weight: 600;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .integration-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .integration-form-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .field-error {
+      color: var(--danger);
+      font-size: 11px;
+      margin-top: 5px;
+      min-height: 14px;
+    }
+
+    .setup-description {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 18px;
+    }
+
+    @media (max-width: 720px) {
+      .integration-form-grid { grid-template-columns: 1fr; }
+      .modal.integration-setup-modal {
+        width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="main-content" id="app">
@@ -34,6 +136,18 @@
         <div class="modal-footer" id="integDetailFooter"></div>
       </div>
     </div>
+
+    <!-- Integration Setup Modal -->
+    <div class="modal-overlay" id="integSetupModal" style="display:none">
+      <div class="modal integration-setup-modal" style="max-width:760px;">
+        <div class="modal-header">
+          <h3 class="modal-title" id="integSetupTitle">Add Integration</h3>
+          <button class="modal-close" onclick="closeModal('integSetupModal')" aria-label="Close setup">&times;</button>
+        </div>
+        <div class="modal-body" id="integSetupBody"></div>
+        <div class="modal-footer" id="integSetupFooter"></div>
+      </div>
+    </div>
   </div>
 
   <script src="../js/store.js"></script>
@@ -53,9 +167,188 @@
     NexusPermissions.enforcePageAccess('integrations');
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
 
-    function seedIntegrations() {
-      if (NexusStore.getIntegrations().length > 0) return;
-      NexusStore.setIntegrations([
+    const secretFieldNames = ['token', 'secret', 'password', 'accessKey', 'secretKey', 'apiToken', 'authenticationToken', 'botToken', 'clientSecret'];
+    const frequencyOptions = ['Manual', 'Every 15 minutes', 'Hourly', 'Daily'];
+
+    const integrationSchemas = {
+      github: {
+        title: 'GitHub',
+        description: 'Connect source repositories, pull requests, issues, webhooks, and branch protection checks.',
+        summary: [
+          { label: 'Repository', key: 'repositoryLink', formatter: repoName },
+          { label: 'Branch', key: 'defaultBranch' }
+        ],
+        fields: [
+          { key: 'repositoryLink', label: 'GitHub repository link', type: 'url', placeholder: 'https://github.com/org/repository', required: true, full: true },
+          { key: 'defaultBranch', label: 'Default branch', type: 'text', placeholder: 'main', required: true },
+          { key: 'token', label: 'Access token / GitHub app token', type: 'password', required: true },
+          { key: 'webhookUrl', label: 'Webhook URL', type: 'text', readonly: true, full: true, defaultValue: integration => `https://agent-os.local/webhooks/github/${integration.id.toLowerCase()}` },
+          { key: 'prAutoReview', label: 'Enable PR auto-review', type: 'toggle' },
+          { key: 'issueSync', label: 'Enable issue sync', type: 'toggle' },
+          { key: 'branchProtectionChecks', label: 'Enable branch protection checks', type: 'toggle' },
+          { key: 'syncFrequency', label: 'Sync frequency', type: 'select', options: frequencyOptions, defaultValue: 'Hourly' }
+        ]
+      },
+      jira: {
+        title: 'Jira',
+        description: 'Connect Atlassian Jira projects, boards, sprints, issue status, and planning data.',
+        summary: [
+          { label: 'Site', key: 'siteUrl' },
+          { label: 'Project', key: 'projectKey' }
+        ],
+        fields: [
+          { key: 'siteUrl', label: 'Jira site URL', type: 'url', placeholder: 'https://company.atlassian.net', required: true, full: true },
+          { key: 'projectKey', label: 'Project key', type: 'text', placeholder: 'PROJ', required: true },
+          { key: 'username', label: 'Email / username', type: 'text', required: true },
+          { key: 'apiToken', label: 'API token', type: 'password', required: true },
+          { key: 'bidirectionalIssueSync', label: 'Enable bi-directional issue sync', type: 'toggle' },
+          { key: 'sprintAutoPlanning', label: 'Enable sprint auto-planning', type: 'toggle' },
+          { key: 'syncIssueStatus', label: 'Sync issue status', type: 'toggle' },
+          { key: 'syncFrequency', label: 'Sync frequency', type: 'select', options: frequencyOptions, defaultValue: 'Hourly' }
+        ]
+      },
+      confluence: {
+        title: 'Confluence',
+        description: 'Connect Confluence spaces for architecture docs, decision records, and page synchronization.',
+        summary: [
+          { label: 'Site', key: 'siteUrl' },
+          { label: 'Space', key: 'spaceKey' }
+        ],
+        fields: [
+          { key: 'siteUrl', label: 'Confluence site URL', type: 'url', placeholder: 'https://company.atlassian.net/wiki', required: true, full: true },
+          { key: 'spaceKey', label: 'Space key', type: 'text', required: true },
+          { key: 'username', label: 'Email / username', type: 'text', required: true },
+          { key: 'apiToken', label: 'API token', type: 'password', required: true },
+          { key: 'autoPublishDecisionRecords', label: 'Auto-publish decision records', type: 'toggle' },
+          { key: 'architectureDocGeneration', label: 'Enable architecture doc generation', type: 'toggle' },
+          { key: 'pageSync', label: 'Enable page sync', type: 'toggle' },
+          { key: 'syncFrequency', label: 'Sync frequency', type: 'select', options: ['Manual', 'Hourly', 'Daily', 'Weekly'], defaultValue: 'Daily' }
+        ]
+      },
+      sonarqube: {
+        title: 'SonarQube',
+        description: 'Connect code quality scanning, quality gates, security hotspots, and technical debt tracking.',
+        summary: [
+          { label: 'Server', key: 'serverUrl' },
+          { label: 'Project', key: 'projectKey' }
+        ],
+        fields: [
+          { key: 'serverUrl', label: 'SonarQube server URL', type: 'url', required: true, full: true },
+          { key: 'projectKey', label: 'Project key', type: 'text', required: true },
+          { key: 'authenticationToken', label: 'Authentication token', type: 'password', required: true },
+          { key: 'qualityGateName', label: 'Quality gate name', type: 'text' },
+          { key: 'qualityGateChecks', label: 'Enable quality gate checks in CI/CD', type: 'toggle' },
+          { key: 'securityHotspotDetection', label: 'Enable security hotspot detection', type: 'toggle' },
+          { key: 'technicalDebtTracking', label: 'Enable technical debt tracking', type: 'toggle' },
+          { key: 'scanFrequency', label: 'Scan frequency', type: 'select', options: ['On push', 'Daily', 'Weekly', 'Manual'], defaultValue: 'On push' }
+        ]
+      },
+      slack: {
+        title: 'Slack',
+        description: 'Connect Slack workspaces for deployment notifications, workflow alerts, and agent activity updates.',
+        summary: [
+          { label: 'Workspace', key: 'workspaceUrl' },
+          { label: 'Channel', key: 'defaultChannel' }
+        ],
+        fields: [
+          { key: 'workspaceUrl', label: 'Slack workspace URL', type: 'url', required: true, full: true },
+          { key: 'botToken', label: 'Bot token', type: 'password', required: true },
+          { key: 'defaultChannel', label: 'Default channel', type: 'text', placeholder: '#engineering', required: true },
+          { key: 'deploymentNotifications', label: 'Enable deployment notifications', type: 'toggle' },
+          { key: 'workflowAlerts', label: 'Enable workflow alerts', type: 'toggle' },
+          { key: 'agentActivityUpdates', label: 'Enable agent activity updates', type: 'toggle' },
+          { key: 'notificationFrequency', label: 'Notification frequency', type: 'select', options: ['Instant', 'Hourly digest', 'Daily digest'], defaultValue: 'Instant' }
+        ]
+      },
+      teams: {
+        title: 'Microsoft Teams',
+        description: 'Connect Microsoft Teams channels for deployment notifications, workflow alerts, and agent updates.',
+        summary: [
+          { label: 'Team', key: 'teamId' },
+          { label: 'Channel', key: 'channelId' }
+        ],
+        fields: [
+          { key: 'tenantId', label: 'Tenant ID', type: 'text', required: true },
+          { key: 'teamId', label: 'Team ID', type: 'text', required: true },
+          { key: 'channelId', label: 'Channel ID', type: 'text', required: true },
+          { key: 'webhookUrl', label: 'Webhook URL', type: 'url', required: true, full: true },
+          { key: 'deploymentNotifications', label: 'Enable deployment notifications', type: 'toggle' },
+          { key: 'workflowAlerts', label: 'Enable workflow alerts', type: 'toggle' },
+          { key: 'agentActivityUpdates', label: 'Enable agent activity updates', type: 'toggle' },
+          { key: 'notificationFrequency', label: 'Notification frequency', type: 'select', options: ['Instant', 'Hourly digest', 'Daily digest'], defaultValue: 'Instant' }
+        ]
+      },
+      cicd: {
+        title: 'CI/CD',
+        description: 'Connect build pipelines, deployment tracking, rollout status, and rollback alerts.',
+        summary: [
+          { label: 'Provider', key: 'provider' },
+          { label: 'Environment', key: 'defaultEnvironment' }
+        ],
+        fields: [
+          { key: 'provider', label: 'Provider', type: 'select', options: ['GitHub Actions', 'GitLab CI', 'Jenkins', 'Azure DevOps', 'CircleCI'], required: true, defaultValue: 'GitHub Actions' },
+          { key: 'pipelineUrl', label: 'Pipeline URL', type: 'url', required: true, full: true },
+          { key: 'accessToken', label: 'Access token', type: 'password', required: true },
+          { key: 'defaultEnvironment', label: 'Default environment', type: 'select', options: ['Development', 'Staging', 'Production'], defaultValue: 'Staging' },
+          { key: 'buildStatusSync', label: 'Enable build status sync', type: 'toggle' },
+          { key: 'deploymentTracking', label: 'Enable deployment tracking', type: 'toggle' },
+          { key: 'rollbackAlerts', label: 'Enable rollback alerts', type: 'toggle' }
+        ]
+      },
+      cloud: {
+        title: 'Cloud',
+        description: 'Connect cloud accounts for cost monitoring, infrastructure health, and environment synchronization.',
+        summary: [
+          { label: 'Provider', key: 'cloudProvider' },
+          { label: 'Region', key: 'region' }
+        ],
+        fields: [
+          { key: 'cloudProvider', label: 'Cloud provider', type: 'select', options: ['AWS', 'Azure', 'Google Cloud'], required: true, defaultValue: 'AWS' },
+          { key: 'accountId', label: 'Account ID / Subscription ID / Project ID', type: 'text', required: true },
+          { key: 'region', label: 'Region', type: 'text', required: true },
+          { key: 'accessKey', label: 'Access key / Client ID', type: 'text', required: true },
+          { key: 'secretKey', label: 'Secret key / Client secret', type: 'password', required: true },
+          { key: 'costMonitoring', label: 'Enable cost monitoring', type: 'toggle' },
+          { key: 'infrastructureHealthChecks', label: 'Enable infrastructure health checks', type: 'toggle' },
+          { key: 'deploymentEnvironmentSync', label: 'Enable deployment environment sync', type: 'toggle' }
+        ]
+      },
+      enterprise: {
+        title: 'Enterprise system',
+        description: 'Connect enterprise systems for data synchronization, incidents, workflows, and operational records.',
+        summary: [
+          { label: 'System', key: 'systemType' },
+          { label: 'Base URL', key: 'baseUrl' }
+        ],
+        fields: [
+          { key: 'systemType', label: 'System type', type: 'select', options: ['ServiceNow', 'Salesforce', 'SAP', 'Workday', 'Custom REST API'], required: true, defaultValue: 'ServiceNow' },
+          { key: 'baseUrl', label: 'Base URL', type: 'url', required: true, full: true },
+          { key: 'clientId', label: 'Client ID / Username', type: 'text', required: true },
+          { key: 'clientSecret', label: 'Client secret / Password', type: 'password', required: true },
+          { key: 'apiVersion', label: 'API version', type: 'text' },
+          { key: 'dataSync', label: 'Enable data sync', type: 'toggle' },
+          { key: 'incidentWorkflowSync', label: 'Enable incident/workflow sync', type: 'toggle' },
+          { key: 'syncFrequency', label: 'Sync frequency', type: 'select', options: ['Manual', 'Hourly', 'Daily', 'Weekly'], defaultValue: 'Daily' }
+        ]
+      },
+      generic: {
+        title: 'Integration',
+        description: 'Connect this service to NEXUS workflows, alerts, synchronization, and operational telemetry.',
+        summary: [
+          { label: 'Endpoint', key: 'baseUrl' },
+          { label: 'Sync', key: 'syncFrequency' }
+        ],
+        fields: [
+          { key: 'baseUrl', label: 'Base URL', type: 'url', required: true, full: true },
+          { key: 'accessToken', label: 'Access token', type: 'password', required: true },
+          { key: 'syncFrequency', label: 'Sync frequency', type: 'select', options: ['Manual', 'Hourly', 'Daily', 'Weekly'], defaultValue: 'Daily' },
+          { key: 'dataSync', label: 'Enable data sync', type: 'toggle' },
+          { key: 'workflowAlerts', label: 'Enable workflow alerts', type: 'toggle' }
+        ]
+      }
+    };
+
+    const baselineIntegrations = [
         { id: 'INT-001', name: 'GitHub', icon: '🐙', category: 'Developer Tools', status: 'CONNECTED', description: 'Source code, PRs, issues, and webhooks', connected_at: new Date(Date.now() - 86400000*30).toISOString(), config: { org: 'nexus-platform', repos: 3, webhooks: ['push','pull_request','release'], api_calls_today: 1245 }, features: ['PR auto-review on push', 'Issue sync to backlog', 'Release auto-tagging', 'Branch protection rules'], health: 'HEALTHY', last_sync: new Date(Date.now() - 300000).toISOString() },
         { id: 'INT-002', name: 'Jira', icon: '📋', category: 'Developer Tools', status: 'CONNECTED', description: 'Project management, sprints, and issue tracking', connected_at: new Date(Date.now() - 86400000*25).toISOString(), config: { project: 'NEX', board: 'Scrum Board', issues_synced: 156, sprints_active: 2 }, features: ['Bi-directional issue sync', 'Sprint auto-planning', 'Story point estimation', 'Burndown chart data'], health: 'HEALTHY', last_sync: new Date(Date.now() - 600000).toISOString() },
         { id: 'INT-003', name: 'Slack', icon: '💬', category: 'Communication', status: 'CONNECTED', description: 'Team notifications, alerts, and bot commands', connected_at: new Date(Date.now() - 86400000*20).toISOString(), config: { workspace: 'nexus-team', channels: ['#deployments','#alerts','#code-review','#general'], messages_sent: 892 }, features: ['Deployment notifications', 'Escalation alerts', 'Build failure alerts', 'Slash commands (/nexus deploy)'], health: 'HEALTHY', last_sync: new Date(Date.now() - 60000).toISOString() },
@@ -67,11 +360,29 @@
         { id: 'INT-009', name: 'ServiceNow', icon: '🎫', category: 'Enterprise', status: 'DISCONNECTED', description: 'IT service management and incident tracking', connected_at: null, config: {}, features: ['Incident auto-creation', 'Change request workflows', 'CMDB sync', 'SLA monitoring'], health: 'N/A', last_sync: null },
         { id: 'INT-010', name: 'PagerDuty', icon: '📟', category: 'Monitoring', status: 'CONNECTED', description: 'On-call management and incident response', connected_at: new Date(Date.now() - 86400000*5).toISOString(), config: { services: 4, on_call_teams: 2, incidents_managed: 12 }, features: ['Auto-escalation to on-call', 'Incident acknowledgment sync', 'Schedule management', 'Postmortem integration'], health: 'HEALTHY', last_sync: new Date(Date.now() - 180000).toISOString() },
         { id: 'INT-011', name: 'Vault (HashiCorp)', icon: '🔐', category: 'Security', status: 'CONNECTED', description: 'Secrets management and encryption', connected_at: new Date(Date.now() - 86400000*35).toISOString(), config: { secrets_managed: 45, engines: ['kv','transit','pki'] }, features: ['Dynamic secrets rotation', 'Encryption as a service', 'PKI certificate management', 'Audit logging'], health: 'HEALTHY', last_sync: new Date(Date.now() - 60000).toISOString() },
-        { id: 'INT-012', name: 'Salesforce', icon: '☁️', category: 'Enterprise', status: 'DISCONNECTED', description: 'CRM integration for customer data and analytics', connected_at: null, config: {}, features: ['Customer data sync', 'Support ticket integration', 'Usage analytics', 'License management'], health: 'N/A', last_sync: null }
-      ]);
+        { id: 'INT-012', name: 'Salesforce', icon: '☁️', category: 'Enterprise', status: 'DISCONNECTED', description: 'CRM integration for customer data and analytics', connected_at: null, config: {}, features: ['Customer data sync', 'Support ticket integration', 'Usage analytics', 'License management'], health: 'N/A', last_sync: null },
+        { id: 'INT-013', name: 'CI/CD', icon: '🚀', category: 'DevOps', status: 'DISCONNECTED', description: 'Build pipelines, deployment tracking, and rollback alerts', connected_at: null, config: {}, features: ['Build status sync', 'Deployment tracking', 'Rollback alerts', 'Environment promotion checks'], health: 'N/A', last_sync: null }
+    ];
+
+    function seedIntegrations() {
+      if (NexusStore.getIntegrations().length > 0) return;
+      NexusStore.setIntegrations(baselineIntegrations);
+    }
+
+    function ensureBaselineIntegrations() {
+      const integrations = NexusStore.getIntegrations();
+      let changed = false;
+      baselineIntegrations.forEach(base => {
+        if (!integrations.some(i => i.id === base.id || i.name === base.name)) {
+          integrations.push(base);
+          changed = true;
+        }
+      });
+      if (changed) NexusStore.setIntegrations(integrations);
     }
 
     seedIntegrations();
+    ensureBaselineIntegrations();
 
     function render() {
       const integrations = NexusStore.getIntegrations();
@@ -98,7 +409,7 @@
               const statusColor = i.status === 'CONNECTED' ? '#10b981' : '#6b7280';
               const healthColor = { HEALTHY: '#10b981', DEGRADED: '#f59e0b', DOWN: '#ef4444', 'N/A': '#6b7280' }[i.health];
               return `
-              <div class="card" style="cursor:pointer;transition:border-color 0.2s;" onclick="openIntegDetail('${i.id}')">
+              <div class="card integration-card" onclick="openIntegDetail('${i.id}')" tabindex="0" onkeydown="handleCardKey(event, '${i.id}')">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
                   <span style="font-size:28px;">${i.icon}</span>
                   <div style="flex:1;">
@@ -114,7 +425,13 @@
                   ${i.features.slice(0,2).map(f => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg-tertiary);color:var(--text-muted);">${f}</span>`).join('')}
                   ${i.features.length > 2 ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg-tertiary);color:var(--text-muted);">+${i.features.length-2} more</span>` : ''}
                 </div>
+                ${renderIntegrationSummary(i)}
                 ${i.last_sync ? `<div style="font-size:10px;color:var(--text-muted);margin-top:8px;">Last sync: ${formatTime(i.last_sync)}</div>` : ''}
+                <div class="integration-card-footer">
+                  <button type="button" class="btn btn-primary btn-sm integration-add-btn" onclick="openIntegrationSetup(event, '${i.id}')" aria-label="Add ${i.name} integration">
+                    <span>Add Integration</span><span class="arrow-icon" aria-hidden="true">→</span>
+                  </button>
+                </div>
               </div>`;
             }).join('')}
           </div>
@@ -153,10 +470,10 @@
         ${Object.keys(integ.config).length > 0 ? `
         <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;margin-bottom:16px;">
           <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Configuration</div>
-          ${Object.entries(integ.config).map(([key, val]) => `
+          ${Object.entries(integ.config).filter(([key]) => !isSecretKey(key)).map(([key, val]) => `
             <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);font-size:12px;">
-              <span style="color:var(--text-muted);">${key.replace(/_/g,' ')}</span>
-              <span style="font-weight:600;font-family:var(--font-mono);">${Array.isArray(val) ? val.join(', ') : val}</span>
+              <span style="color:var(--text-muted);">${esc(key.replace(/_/g,' '))}</span>
+              <span style="font-weight:600;font-family:var(--mono);">${esc(Array.isArray(val) ? val.join(', ') : val)}</span>
             </div>
           `).join('')}
         </div>
@@ -189,7 +506,7 @@
       document.getElementById('integDetailFooter').innerHTML = `
         <div style="display:flex;gap:8px;width:100%;justify-content:flex-end;">
           ${integ.status === 'DISCONNECTED' ? `
-            <button class="btn btn-primary" onclick="connectIntegration('${integ.id}')">🔗 Connect</button>
+            <button class="btn btn-primary" onclick="openIntegrationSetup(null, '${integ.id}')">Add Integration <span aria-hidden="true">→</span></button>
           ` : `
             <button class="btn btn-outline" onclick="disconnectIntegration('${integ.id}')">Disconnect</button>
             <button class="btn btn-primary" onclick="syncIntegration('${integ.id}')">🔄 Sync Now</button>
@@ -197,30 +514,180 @@
         </div>
       `;
 
-      document.getElementById('integDetailModal').style.display = 'flex';
+      showModal('integDetailModal');
     }
 
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function showModal(id) {
+      const modal = document.getElementById(id);
+      modal.style.display = 'flex';
+      requestAnimationFrame(() => modal.classList.add('show'));
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      modal.classList.remove('show');
+      setTimeout(() => { modal.style.display = 'none'; }, 160);
+    }
+
+    function handleCardKey(event, integId) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openIntegDetail(integId);
+      }
+    }
+
+    function openIntegrationSetup(event, integId) {
+      if (event) event.stopPropagation();
+      const integration = NexusStore.getIntegrations().find(i => i.id === integId);
+      if (!integration) return;
+      const schema = getIntegrationSchema(integration);
+      document.getElementById('integSetupTitle').textContent = `Add ${integration.name} Integration`;
+      document.getElementById('integSetupBody').innerHTML = `
+        <p class="setup-description">${schema.description}</p>
+        <form id="integrationSetupForm" class="integration-form-grid" novalidate>
+          ${schema.fields.map(field => renderSetupField(field, integration)).join('')}
+        </form>
+      `;
+      document.getElementById('integSetupFooter').innerHTML = `
+        <button class="btn btn-outline" type="button" onclick="closeModal('integSetupModal')">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveIntegrationSetup('${integration.id}')">Save / Connect</button>
+      `;
+      closeModal('integDetailModal');
+      showModal('integSetupModal');
+      const firstInput = document.querySelector('#integrationSetupForm input:not([readonly]), #integrationSetupForm select');
+      if (firstInput) setTimeout(() => firstInput.focus(), 180);
+    }
+
+    function renderSetupField(field, integration) {
+      const config = integration.config || {};
+      const rawDefault = typeof field.defaultValue === 'function' ? field.defaultValue(integration) : field.defaultValue;
+      const storedValue = config[field.key] ?? rawDefault ?? '';
+      const value = field.type === 'password' ? '' : storedValue;
+      const required = field.required ? 'required' : '';
+      const readonly = field.readonly ? 'readonly' : '';
+      const common = `id="setup_${field.key}" name="${field.key}" ${required} ${readonly}`;
+      const label = `${field.label}${field.required ? ' *' : ''}`;
+      if (field.type === 'toggle') {
+        return `
+          <div class="toggle-row ${field.full ? 'full' : ''}" style="margin-bottom:0;">
+            <div>
+              <div class="toggle-row-label">${field.label}</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" ${common} ${value ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `;
+      }
+      if (field.type === 'select') {
+        return `
+          <div class="form-group ${field.full ? 'full' : ''}">
+            <label class="form-label" for="setup_${field.key}">${label}</label>
+            <select class="form-select" ${common}>
+              ${(field.options || []).map(option => `<option value="${esc(option)}" ${option === value ? 'selected' : ''}>${esc(option)}</option>`).join('')}
+            </select>
+            <div class="field-error" id="error_${field.key}"></div>
+          </div>
+        `;
+      }
+      return `
+        <div class="form-group ${field.full ? 'full' : ''}">
+          <label class="form-label" for="setup_${field.key}">${label}</label>
+          <input class="form-input" type="${field.type || 'text'}" ${common} value="${esc(value)}" placeholder="${esc(field.type === 'password' && storedValue ? 'Stored securely - enter to replace' : field.placeholder || '')}">
+          <div class="field-error" id="error_${field.key}"></div>
+        </div>
+      `;
+    }
+
+    function saveIntegrationSetup(integId) {
+      const integrations = NexusStore.getIntegrations();
+      const integ = integrations.find(i => i.id === integId);
+      if (!integ) return;
+      const schema = getIntegrationSchema(integ);
+      const form = document.getElementById('integrationSetupForm');
+      let valid = true;
+      const nextConfig = { ...(integ.config || {}) };
+
+      schema.fields.forEach(field => {
+        const input = form.querySelector(`[name="${field.key}"]`);
+        const error = document.getElementById(`error_${field.key}`);
+        if (error) error.textContent = '';
+        const value = field.type === 'toggle' ? input.checked : input.value.trim();
+        const hasStoredSecret = field.type === 'password' && Boolean(nextConfig[field.key]);
+        if (field.required && !value && !hasStoredSecret) {
+          valid = false;
+          if (error) error.textContent = `${field.label} is required.`;
+          input.setAttribute('aria-invalid', 'true');
+        } else {
+          input.removeAttribute('aria-invalid');
+        }
+        if (field.type !== 'password' || value) nextConfig[field.key] = value;
+      });
+
+      if (!valid) {
+        showToast('Please complete the required fields', 'warning');
+        return;
+      }
+
+      const now = new Date().toISOString();
+      integ.status = 'CONNECTED';
+      integ.health = 'HEALTHY';
+      integ.connected_at = integ.connected_at || now;
+      integ.last_sync = now;
+      integ.config = nextConfig;
+      NexusStore.setIntegrations(integrations);
+      NexusEventBus.notify('integration', 'Integration Connected', `${integ.name} successfully connected`, {});
+      closeModal('integSetupModal');
+      render();
+      showToast(`${integ.name} integration saved`, 'success');
+    }
+
+    function getIntegrationSchema(integration) {
+      const normalized = integration.name.toLowerCase();
+      if (normalized.includes('github')) return integrationSchemas.github;
+      if (normalized.includes('jira')) return integrationSchemas.jira;
+      if (normalized.includes('confluence')) return integrationSchemas.confluence;
+      if (normalized.includes('sonarqube')) return integrationSchemas.sonarqube;
+      if (normalized.includes('slack')) return integrationSchemas.slack;
+      if (normalized.includes('microsoft teams')) return integrationSchemas.teams;
+      if (normalized.includes('ci/cd') || normalized.includes('cicd')) return integrationSchemas.cicd;
+      if (integration.category === 'Cloud & Infrastructure') return integrationSchemas.cloud;
+      if (integration.category === 'Enterprise') return integrationSchemas.enterprise;
+      return integrationSchemas.generic;
+    }
+
+    function renderIntegrationSummary(integration) {
+      const schema = getIntegrationSchema(integration);
+      const rows = (schema.summary || [])
+        .map(item => {
+          const raw = integration.config?.[item.key];
+          const value = item.formatter ? item.formatter(raw) : raw;
+          if (!value || isSecretKey(item.key)) return '';
+          return `<div class="integration-summary-row"><span>${item.label}</span><strong title="${esc(value)}">${esc(value)}</strong></div>`;
+        })
+        .filter(Boolean);
+      return rows.length ? `<div class="integration-summary">${rows.join('')}</div>` : '';
+    }
+
+    function isSecretKey(key) {
+      return secretFieldNames.some(secret => key.toLowerCase().includes(secret.toLowerCase()));
+    }
+
+    function repoName(value) {
+      if (!value) return '';
+      return value.replace(/\/$/, '').split('/').slice(-2).join('/');
+    }
+
+    function esc(value) {
+      if (value === null || value === undefined) return '';
+      const div = document.createElement('div');
+      div.textContent = String(value);
+      return div.innerHTML;
+    }
 
     function connectIntegration(integId) {
-      showLoading('Authenticating and connecting...');
-      setTimeout(() => {
-        const integrations = NexusStore.getIntegrations();
-        const integ = integrations.find(i => i.id === integId);
-        if (integ) {
-          integ.status = 'CONNECTED';
-          integ.health = 'HEALTHY';
-          integ.connected_at = new Date().toISOString();
-          integ.last_sync = new Date().toISOString();
-          integ.config = { status: 'Newly connected', setup_pending: true };
-          NexusStore.setIntegrations(integrations);
-          NexusEventBus.notify('integration', 'Integration Connected', `${integ.name} successfully connected`, {});
-        }
-        hideLoading();
-        closeModal('integDetailModal');
-        render();
-        showToast(`${integ?.name} connected successfully!`, 'success');
-      }, 2000);
+      openIntegrationSetup(null, integId);
     }
 
     function disconnectIntegration(integId) {

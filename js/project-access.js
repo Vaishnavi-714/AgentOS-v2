@@ -1,13 +1,19 @@
+const PROJECT_ROLE_LABELS = [
+  'Executive & Strategic',
+  'Governance & Admin',
+  'Product & Delivery',
+  'Technical Execution',
+  'QA / Testing',
+  'Release / DevOps',
+  'Workspace / Universal'
+];
+
+function projectRoleValue(label) {
+  return label.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/(^_|_$)/g, '');
+}
+
 const ProjectAccessUI = {
-  roles: [
-    { value: 'EXECUTIVE_STRATEGIC', label: 'Executive & Strategic' },
-    { value: 'GOVERNANCE_ADMIN', label: 'Governance & Admin' },
-    { value: 'PRODUCT_DELIVERY', label: 'Product & Delivery' },
-    { value: 'TECHNICAL_EXECUTION', label: 'Technical Execution' },
-    { value: 'QA_TESTING', label: 'QA / Testing' },
-    { value: 'RELEASE_DEVOPS', label: 'Release / DevOps' },
-    { value: 'WORKSPACE_UNIVERSAL', label: 'Workspace / Universal' }
-  ],
+  roles: PROJECT_ROLE_LABELS.map(label => ({ value: projectRoleValue(label), label })),
 
   legacyRoleMap: {
     'Executive & Strategic': 'EXECUTIVE_STRATEGIC',
@@ -35,6 +41,14 @@ const ProjectAccessUI = {
     if (this.roles.some(role => role.value === value)) return value;
     if (this.legacyRoleMap[value]) return this.legacyRoleMap[value];
     return '';
+  },
+
+  isVisibleField(field) {
+    if (!field) return false;
+    if (field.type === 'hidden') return false;
+    if (field.hidden) return false;
+    if (field.closest('[hidden], [aria-hidden="true"]')) return false;
+    return field.offsetParent !== null || field.getClientRects().length > 0;
   },
 
   getCurrentTenantId() {
@@ -90,7 +104,7 @@ const ProjectAccessUI = {
       <div class="form-group">
         <label class="form-label">Assign Existing Tenant Users</label>
         <div class="permission-note">Select tenant users and assign exactly one project role. Roles are scoped only to this project.</div>
-        <div class="rt-validation err project-assignment-error" style="display:none">Assign at least one tenant user.</div>
+        <div class="rt-validation err project-assignment-error" style="display:none">Select at least one tenant user.</div>
         <div class="table-container">
           <table>
             <thead><tr><th>Assign</th><th>User</th><th>Tenant Role</th><th>Project Role</th></tr></thead>
@@ -130,6 +144,8 @@ const ProjectAccessUI = {
     const select = container.querySelector(`.create-project-role[data-user-id="${input.dataset.userId}"]`);
     if (!select) return;
     select.disabled = !input.checked;
+    const assignmentError = container.querySelector('.project-assignment-error');
+    if (assignmentError && input.checked) assignmentError.style.display = 'none';
     if (!input.checked) {
       select.value = '';
       this.clearRoleError(input.dataset.userId);
@@ -169,19 +185,23 @@ const ProjectAccessUI = {
     const checked = [...container.querySelectorAll('.project-create-user:checked')];
     if (!checked.length) {
       if (assignmentError) assignmentError.style.display = 'flex';
-      showToast('Assign at least one tenant user.', 'error');
       return { valid: false, assignments: [] };
     }
     let valid = true;
     checked.forEach(input => {
       const select = container.querySelector(`.create-project-role[data-user-id="${input.dataset.userId}"]`);
-      if (!select?.value) {
+      const role = this.normalizeProjectRole(select?.value || '');
+      if (!role) {
         valid = false;
         const error = container.querySelector(`.project-role-error[data-user-id="${input.dataset.userId}"]`);
-        if (error) error.style.display = 'flex';
+        if (error) {
+          error.textContent = 'Select a project role for each assigned user.';
+          error.style.display = 'flex';
+        }
+      } else {
+        select.value = role;
       }
     });
-    if (!valid) showToast('Select one project role for every assigned user.', 'error');
     return { valid, assignments: valid ? this.getCreateProjectAssignments(containerId) : [] };
   },
 
@@ -199,28 +219,70 @@ const ProjectAccessUI = {
     error.style.display = message ? 'flex' : 'none';
   },
 
+  clearCreateProjectFieldError(fieldId) {
+    this.setCreateProjectFieldError(fieldId, '');
+  },
+
+  bindCreateProjectValidationClearing() {
+    ['projName', 'projKey', 'projCode', 'projDesc', 'sowFile'].forEach(id => {
+      const field = document.getElementById(id);
+      if (!field || field.dataset.validationClearBound === 'true') return;
+      field.dataset.validationClearBound = 'true';
+      const eventName = field.type === 'file' ? 'change' : 'input';
+      field.addEventListener(eventName, () => this.clearCreateProjectFieldError(id));
+    });
+    const container = document.getElementById('projectMemberAssignments');
+    if (!container || container.dataset.validationClearBound === 'true') return;
+    container.dataset.validationClearBound = 'true';
+    container.addEventListener('change', event => {
+      if (event.target.classList.contains('project-create-user')) {
+        const assignmentError = container.querySelector('.project-assignment-error');
+        if (assignmentError && container.querySelectorAll('.project-create-user:checked').length) {
+          assignmentError.style.display = 'none';
+        }
+      }
+      if (event.target.classList.contains('create-project-role')) {
+        this.clearRoleError(event.target.dataset.userId);
+      }
+    });
+  },
+
   validateCreateProjectForm() {
-    ['projName', 'projDesc', 'projDomain'].forEach(id => this.setCreateProjectFieldError(id, ''));
+    this.bindCreateProjectValidationClearing();
+    ['projName', 'projKey', 'projCode', 'projDesc', 'sowFile'].forEach(id => this.setCreateProjectFieldError(id, ''));
     const name = document.getElementById('projName')?.value.trim() || '';
     const description = document.getElementById('projDesc')?.value.trim() || '';
-    const domain = document.getElementById('projDomain')?.value || '';
+    const domainField = document.getElementById('projDomain');
+    const domain = this.isVisibleField(domainField) ? domainField.value : 'General';
+    const projectKeyField = document.getElementById('projKey') || document.getElementById('projCode');
+    const projectKey = this.isVisibleField(projectKeyField) ? projectKeyField.value.trim() : '';
+    const sowField = document.getElementById('sowFile');
+    const sowRequired = Boolean(sowField?.dataset.required === 'true' || sowField?.closest('.form-group')?.querySelector('.form-label')?.textContent.includes('*'));
     let valid = true;
     if (!name) {
       this.setCreateProjectFieldError('projName', 'Project name is required.');
+      valid = false;
+    }
+    if (projectKeyField && this.isVisibleField(projectKeyField) && !projectKey) {
+      this.setCreateProjectFieldError(projectKeyField.id, 'Project key is required.');
       valid = false;
     }
     if (!description) {
       this.setCreateProjectFieldError('projDesc', 'Description is required.');
       valid = false;
     }
-    if (!domain) {
+    if (domainField && this.isVisibleField(domainField) && !domain) {
       this.setCreateProjectFieldError('projDomain', 'Domain is required.');
+      valid = false;
+    }
+    if (sowRequired && !sowField?.files?.length) {
+      this.setCreateProjectFieldError('sowFile', 'SOW document is required.');
       valid = false;
     }
     const assignmentValidation = this.validateCreateProjectAssignments();
     valid = valid && assignmentValidation.valid;
     if (!valid) showToast('Please fix project creation validation errors.', 'error');
-    return { valid, name, description, domain, assignments: assignmentValidation.assignments };
+    return { valid, name, projectKey, description, domain, assignments: assignmentValidation.assignments };
   },
 
   renderProjectAccessPanels(projectId) {

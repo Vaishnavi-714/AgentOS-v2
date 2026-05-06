@@ -469,7 +469,10 @@
     function openModal(id) {
       if (id === 'createProjectModal' && !ProjectAccessUI.guardCreateProject()) return;
       document.getElementById(id).classList.add('show');
-      if (id === 'createProjectModal') ProjectAccessUI.renderCreateProjectMembers();
+      if (id === 'createProjectModal') {
+        ProjectAccessUI.renderCreateProjectMembers();
+        ProjectAccessUI.bindCreateProjectValidationClearing();
+      }
     }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
@@ -798,6 +801,7 @@
 
       const projectData = {
         name: validation.name,
+        projectKey: validation.projectKey,
         description: validation.description,
         domain: validation.domain,
         tenantId: tenant?.tenant_id || tenant?.id,
@@ -832,7 +836,7 @@
           projectName: project.name
         }));
       }
-      showToast('Project created with generated setup', 'success');
+      showToast('Project created successfully.', 'success');
       renderAll();
       selectProject(project.id);
     }
@@ -1085,7 +1089,8 @@
       if (parsed.objective) document.getElementById('projDesc').value = parsed.objective;
       const detectedDomain = detectDomain(parsed);
       ensureDomainOption(detectedDomain);
-      document.getElementById('projDomain').value = detectedDomain;
+      const domainField = document.getElementById('projDomain');
+      if (domainField) domainField.value = detectedDomain;
       document.getElementById('clientName').value = parsed.client || '';
       document.getElementById('vendorName').value = parsed.vendor || '';
       document.getElementById('duration').value = parsed.duration || '';

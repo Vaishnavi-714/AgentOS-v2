@@ -83,7 +83,7 @@ const MockAPI = {
       });
     }
     const project = {
-      id, name: data.name, description: data.description, domain: data.domain,
+      id, name: data.name, projectKey: data.projectKey || '', description: data.description, domain: data.domain,
       techStack: data.techStack || [], modules: data.modules || [],
       status: 'CREATED', pipelineStatus: 'NOT_STARTED',
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),

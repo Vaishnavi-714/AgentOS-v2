@@ -235,23 +235,12 @@
       <div id="tokenUsageContainer"></div>
     </div>
 
-    <!-- Grid: Git + Code Review side by side -->
-    <div class="grid grid-2">
-      <!-- Section 4: Git Integration -->
-      <div class="card settings-section">
-        <div class="card-header">
-          <h3 class="card-title">🔗 Git Integration</h3>
-        </div>
-        <div id="gitContainer"></div>
+    <!-- Section 4: Code Review Settings -->
+    <div class="card settings-section">
+      <div class="card-header">
+        <h3 class="card-title">🔍 Code Review Settings</h3>
       </div>
-
-      <!-- Section 5: Code Review Settings -->
-      <div class="card settings-section">
-        <div class="card-header">
-          <h3 class="card-title">🔍 Code Review Settings</h3>
-        </div>
-        <div id="codeReviewContainer"></div>
-      </div>
+      <div id="codeReviewContainer"></div>
     </div>
 
     <!-- Grid: Environment + Security side by side -->
@@ -305,15 +294,6 @@
         rateLimit: 60,
         currentUsage: 312400
       },
-      git: {
-        provider: 'github',
-        username: '',
-        repoUrl: '',
-        defaultBranch: 'main',
-        pat: '',
-        autoPush: false,
-        prCreation: false
-      },
       codeReview: {
         autoReview: true,
         reviewApi: 'openai',
@@ -347,6 +327,7 @@
           merged[k] = stored[k];
         }
       });
+      delete merged['git'];
       return merged;
     }
 
@@ -354,6 +335,7 @@
 
     function saveAllSettings() {
       collectFormState();
+      delete CFG['git'];
       NexusStore.setSettings(CFG);
       NexusStore.addLog({ type: 'SYSTEM', message: 'Workspace settings saved', agent: 'system' });
       showToast('All settings saved successfully', 'success');
@@ -400,14 +382,6 @@
       if (gl) CFG.tokenUsage.globalLimit = parseInt(gl.value) || 500000;
       if (rl) CFG.tokenUsage.rateLimit = parseInt(rl.value) || 60;
       if (pao) CFG.tokenUsage.perAgentOverride = pao.checked;
-      // Git
-      CFG.git.provider = document.getElementById('gitProvider')?.value || 'github';
-      CFG.git.username = document.getElementById('gitUsername')?.value || '';
-      CFG.git.repoUrl = document.getElementById('gitRepoUrl')?.value || '';
-      CFG.git.defaultBranch = document.getElementById('gitBranch')?.value || 'main';
-      CFG.git.pat = document.getElementById('gitPat')?.value || '';
-      CFG.git.autoPush = document.getElementById('toggle_autoPush')?.checked || false;
-      CFG.git.prCreation = document.getElementById('toggle_prCreation')?.checked || false;
       // Code Review
       CFG.codeReview.autoReview = document.getElementById('toggle_autoReview')?.checked || false;
       CFG.codeReview.reviewApi = document.getElementById('reviewApi')?.value || 'openai';
@@ -628,56 +602,7 @@
         </div>`;
     }
 
-    // ===== SECTION 4: GIT INTEGRATION =====
-    function renderGit() {
-      const g = CFG.git;
-      document.getElementById('gitContainer').innerHTML = `
-        <div class="form-group">
-          <label class="form-label">Git Provider</label>
-          <select class="form-select" id="gitProvider">
-            <option value="github" ${g.provider==='github'?'selected':''}>GitHub</option>
-            <option value="gitlab" ${g.provider==='gitlab'?'selected':''}>GitLab</option>
-            <option value="bitbucket" ${g.provider==='bitbucket'?'selected':''}>Bitbucket</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Git Username / ID</label>
-          <input type="text" class="form-input" id="gitUsername" value="${esc(g.username)}" placeholder="your-username">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Repository URL</label>
-          <input type="text" class="form-input" id="gitRepoUrl" value="${esc(g.repoUrl)}" placeholder="https://github.com/org/repo">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Default Branch</label>
-          <select class="form-select" id="gitBranch">
-            <option value="main" ${g.defaultBranch==='main'?'selected':''}>main</option>
-            <option value="dev" ${g.defaultBranch==='dev'?'selected':''}>dev</option>
-            <option value="develop" ${g.defaultBranch==='develop'?'selected':''}>develop</option>
-            <option value="master" ${g.defaultBranch==='master'?'selected':''}>master</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Personal Access Token</label>
-          <input type="password" class="form-input" id="gitPat" value="${esc(g.pat)}" placeholder="ghp_...">
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-row-label">Auto Push after Code Review</div>
-            <div class="toggle-row-sub">Automatically push approved code to repository</div>
-          </div>
-          ${tog('toggle_autoPush', g.autoPush)}
-        </div>
-        <div class="toggle-row">
-          <div>
-            <div class="toggle-row-label">Enable PR Creation</div>
-            <div class="toggle-row-sub">Create pull requests for reviewed changes</div>
-          </div>
-          ${tog('toggle_prCreation', g.prCreation)}
-        </div>`;
-    }
-
-    // ===== SECTION 5: CODE REVIEW =====
+    // ===== SECTION 4: CODE REVIEW =====
     function renderCodeReview() {
       const cr = CFG.codeReview;
       document.getElementById('codeReviewContainer').innerHTML = `
@@ -777,7 +702,6 @@
       renderApiKeys();
       renderAgentMappings();
       renderTokenUsage();
-      renderGit();
       renderCodeReview();
       renderEnvironment();
       renderSecurity();
