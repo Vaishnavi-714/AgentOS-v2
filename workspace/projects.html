@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Projects</title>
   <link rel="stylesheet" href="../css/common.css">
-  <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
 
   <link rel="stylesheet" href="../css/theme.css">
   <style>
@@ -124,7 +123,7 @@
       </div>
       <div class="page-actions">
         <div id="projectSelectorContainer" style="display:inline-block"></div>
-        <button class="btn btn-primary" onclick="openModal('createProjectModal')">+ New Project</button>
+        <button class="btn btn-primary" data-create-project-action="header" onclick="openModal('createProjectModal')">+ New Project</button>
       </div>
     </div>
 
@@ -152,6 +151,8 @@
         <div class="card"><div class="card-header"><h3 class="card-title">📊 Progress</h3></div><div id="overviewProgress"></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title">👥 Team</h3></div><div id="overviewTeam"></div></div>
       </div>
+      <div id="projectSetupSection"></div>
+      <div id="projectTeamRolesSection"></div>
       <div class="card" style="margin-top:16px"><div class="card-header"><h3 class="card-title">📜 Activity</h3></div><div id="overviewActivity" class="timeline"></div></div>
     </div>
 
@@ -242,9 +243,7 @@
       <div class="modal-body">
         <div class="form-group"><label class="form-label">Project Name</label><input type="text" id="projName" class="form-input" placeholder="e.g., E-Commerce Platform"></div>
         <div class="form-group"><label class="form-label">Description</label><textarea id="projDesc" class="form-textarea" placeholder="Describe the project scope..."></textarea></div>
-        <div class="form-group"><label class="form-label">Domain</label>
-          <select id="projDomain" class="form-select"><option value="E-Commerce">E-Commerce</option><option value="Healthcare">Healthcare</option><option value="Finance">Finance</option><option value="Education">Education</option><option value="SaaS">SaaS</option></select>
-        </div>
+        <div id="projectMemberAssignments"></div>
         <!-- SOW Upload Section -->
         <div class="form-group">
           <label class="form-label">📄 SOW Upload</label>
@@ -268,7 +267,7 @@
           <input type="hidden" id="pricing">
         </div>
       </div>
-      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProjectWithAI()">🚀 Create Project</button></div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('createProjectModal')">Cancel</button><button class="btn btn-primary" onclick="createProjectWithAI()">Create Project</button></div>
     </div>
   </div>
 
@@ -309,6 +308,7 @@
   <script src="../js/mock-api.js"></script>
   <script src="../js/state.js"></script>
   <script src="../js/permissions.js"></script>
+  <script src="../js/project-access.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
   <script src="../js/ai-org-generator.js"></script>
@@ -319,11 +319,16 @@
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('projects');
+    ProjectAccessUI.applyProjectPageChrome();
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
     let currentSOWFile = null;
     let currentParsedSOWData = null;
 
-    function openModal(id) { document.getElementById(id).classList.add('show'); }
+    function openModal(id) {
+      if (id === 'createProjectModal' && !ProjectAccessUI.guardCreateProject()) return;
+      document.getElementById(id).classList.add('show');
+      if (id === 'createProjectModal') ProjectAccessUI.renderCreateProjectMembers();
+    }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
     const projId = createProjectSelector('projectSelectorContainer', () => renderAll());
@@ -339,7 +344,7 @@
     }
 
     function renderProjectListing() {
-      const projects = NexusStore.getProjects();
+      const projects = ProjectAccessUI.getVisibleProjects();
       const agents = NexusStore.getAgents();
       const escalations = NexusStore.getEscalations();
 
@@ -350,8 +355,11 @@
         <div class="stat-card"><span class="stat-label">Escalations</span><span class="stat-value">${escalations.filter(e=>e.status==='PENDING').length}</span></div>
       `;
 
+      const hasProjects = projects.length > 0;
+      ProjectAccessUI.syncCreateProjectEntryPoints(hasProjects);
+      ProjectAccessUI.syncProjectSelectorVisibility(hasProjects);
       document.getElementById('projectCards').innerHTML = projects.length === 0 ?
-        `<div class="empty-state"><div class="empty-state-icon">📂</div><h3 class="empty-state-title">No Projects Yet</h3><p class="empty-state-text">Create your first project to get started</p><button class="btn btn-primary" onclick="openModal('createProjectModal')">+ Create Project</button></div>` :
+        `<div class="empty-state"><div class="empty-state-icon">📂</div><h3 class="empty-state-title">No Projects Yet</h3><p class="empty-state-text">${NexusPermissions.canCreateProject() ? 'Create your first project to get started' : 'No assigned projects yet'}</p>${NexusPermissions.canCreateProject() ? `<button class="btn btn-primary" data-create-project-action="empty" onclick="openModal('createProjectModal')">+ Create Project</button>` : ''}</div>` :
         `<div class="grid grid-2">${projects.map(p => {
           const pipeline = NexusStore.getPipeline(p.id);
           const tasks = NexusStore.getTasks(p.id);
@@ -404,6 +412,7 @@
           ${statusBadge(a.status)}
         </div>
       `).join('');
+      ProjectAccessUI.renderProjectAccessPanels(pid);
 
       const logs = NexusStore.getLogs().filter(l => l.message && l.message.includes(pid)).slice(0, 8);
       document.getElementById('overviewActivity').innerHTML = logs.map(l => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(l.message)}</p><span style="font-size:11px;color:var(--text-muted)">${formatTime(l.timestamp)}</span></div>`).join('') || '<p style="color:var(--text-muted);font-size:12px;padding:12px">No activity</p>';
@@ -542,19 +551,20 @@
     }
 
     async function createProjectWithAI() {
-      const name = document.getElementById('projName').value.trim();
-      if (!name) { showToast('Project name required', 'error'); return; }
+      if (!ProjectAccessUI.guardCreateProject()) return;
+      const validation = ProjectAccessUI.validateCreateProjectForm();
+      if (!validation.valid) return;
       const sowFile = currentSOWFile || document.getElementById('sowFile').files[0];
-      if (!sowFile) {
-        alert("SOW document is required");
-        return;
-      }
+      const tenant = TenantState.getCurrentTenant();
 
       const projectData = {
-        name,
-        description: document.getElementById('projDesc').value.trim(),
-        domain: document.getElementById('projDomain').value,
-        sow: sowFile.name,
+        name: validation.name,
+        description: validation.description,
+        domain: validation.domain,
+        tenantId: tenant?.tenant_id || tenant?.id,
+        assignedUsers: validation.assignments,
+        members: validation.assignments,
+        sow: sowFile ? sowFile.name : null,
         sowData: currentParsedSOWData || null
       };
 
@@ -569,9 +579,9 @@
       if (!result.success) { showToast('Failed to create project', 'error'); return; }
       const project = result.project;
       sessionStorage.setItem('nexus_selected_project', project.id);
-
-      // Show AI loading overlay
-      showAILoadingOverlay(project);
+      showToast('Project created with generated setup', 'success');
+      renderAll();
+      selectProject(project.id);
     }
 
     // Legacy createProject function for backward compatibility

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS — Invite Users</title>
+  <link rel="stylesheet" href="../css/common.css">
+
+  <link rel="stylesheet" href="../css/theme.css">
+</head>
+<body>
+  <div class="main-content" id="app">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Invite Users</h1>
+        <p class="page-subtitle">Add tenant users and assign tenant-level Admin or Member access</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="submitInvites()">Send Invitations</button>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Invite Multiple Users</h3>
+        </div>
+        <div id="inviteRows"></div>
+        <button class="btn btn-outline btn-sm" onclick="handleAddInviteUser()">Add Another User</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Team Members</h3>
+        </div>
+        <div id="tenantUsersSummary"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Invitation Status</h3>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Email</th><th>Tenant Role</th><th>Status</th><th>Invited Date</th></tr></thead>
+          <tbody id="invitationTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/store.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/mock-api.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/permissions.js"></script>
+  <script src="../js/app.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    const _role = localStorage.getItem("role");
+    if (_role !== "tenant") { window.location.href = "../index.html"; }
+    seedNexusData();
+    createNavigation('invite-users');
+
+    if (!NexusPermissions.canInviteUsers()) {
+      showToast('Only the original tenant admin can invite users.', 'error');
+      setTimeout(() => window.location.href = 'dashboard.html', 800);
+    }
+
+    function esc(value) {
+      const div = document.createElement('div');
+      div.textContent = value || '';
+      return div.innerHTML;
+    }
+
+    function tenantId() {
+      const tenant = TenantState.getCurrentTenant();
+      return tenant?.tenant_id || tenant?.id;
+    }
+
+    function handleAddInviteUser(email = '', tenantRole = 'member') {
+      const rows = document.getElementById('inviteRows');
+      const row = document.createElement('div');
+      row.className = 'invite-row';
+      row.innerHTML = `
+        <input type="email" class="form-input invite-email" placeholder="user@company.com" value="${esc(email)}">
+        <select class="form-select invite-role">
+          <option value="member" ${tenantRole === 'member' ? 'selected' : ''}>Member</option>
+          <option value="admin" ${tenantRole === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="this.closest('.invite-row').remove()">Remove</button>
+      `;
+      rows.appendChild(row);
+    }
+
+    function renderInvitations() {
+      const id = tenantId();
+      const users = TenantState.getTenantUsers(id);
+      const invitations = TenantState.getTenantInvitations(id);
+      document.getElementById('tenantUsersSummary').innerHTML = users.map(user => `
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <strong style="font-size:13px;color:var(--text-primary)">${esc(user.name)}</strong>
+            <div style="font-size:11px;color:var(--text-muted)">${esc(user.email)}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="tag">${user.isTenantOwner ? 'Tenant Admin' : user.tenantRole === 'admin' ? 'Admin' : 'Member'}</span>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${esc(user.invitationStatus)}</div>
+          </div>
+        </div>
+      `).join('') || '<p style="font-size:12px;color:var(--text-muted)">No users found</p>';
+
+      document.getElementById('invitationTable').innerHTML = invitations.map(inv => `
+        <tr>
+          <td>${esc(inv.email)}</td>
+          <td><span class="tag">${inv.tenantRole === 'admin' ? 'Admin' : 'Member'}</span></td>
+          <td>${statusBadge(inv.invitationStatus.toUpperCase())}</td>
+          <td>${formatTime(inv.invitedAt)}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No invitations sent yet</td></tr>';
+    }
+
+    function submitInvites() {
+      if (!NexusPermissions.canInviteUsers()) {
+        showToast('Only the original tenant admin can invite users.', 'error');
+        return;
+      }
+      const id = tenantId();
+      const rows = [...document.querySelectorAll('.invite-row')];
+      const payload = rows.map(row => ({
+        email: row.querySelector('.invite-email').value.trim().toLowerCase(),
+        tenantRole: row.querySelector('.invite-role').value
+      })).filter(item => item.email);
+
+      if (!payload.length) {
+        showToast('Add at least one email address.', 'error');
+        return;
+      }
+
+      const invalid = payload.find(item => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email));
+      if (invalid) {
+        showToast('Please enter valid email addresses.', 'error');
+        return;
+      }
+
+      payload.forEach(item => {
+        const invitation = TenantState.addTenantInvitation(id, item);
+        const existing = TenantState.findTenantUserByEmail(id, item.email);
+        if (!existing) {
+          TenantState.addTenantUser(id, {
+            id: TenantState.generateUserId(),
+            tenantId: id,
+            name: item.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            email: item.email,
+            tenantRole: item.tenantRole,
+            invitationStatus: 'pending',
+            status: 'PENDING',
+            createdAt: invitation.invitedAt
+          });
+        } else {
+          TenantState.updateTenantUser(id, existing.id, {
+            tenantRole: item.tenantRole,
+            role: item.tenantRole === 'admin' ? 'Admin' : 'Member',
+            invitationStatus: existing.invitationStatus || 'pending'
+          });
+        }
+      });
+
+      const tenant = TenantState.getCurrentTenant();
+      TenantState.updateTenant(id, { users: TenantState.getTenantUsers(id).length });
+      NexusStore.addLog({ type: 'USERS', message: `${payload.length} invitation(s) sent for ${tenant?.name || id}`, agent: 'system' });
+      document.getElementById('inviteRows').innerHTML = '';
+      handleAddInviteUser();
+      renderInvitations();
+      showToast('Invitation email simulated and queued.', 'success');
+    }
+
+    handleAddInviteUser();
+    renderInvitations();
+  </script>
+  <script src="../js/theme.js"></script>
+</body>
+</html>

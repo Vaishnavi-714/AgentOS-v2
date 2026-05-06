@@ -92,11 +92,17 @@ body {
 .user-info { display: flex; flex-direction: column; }
 .user-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .user-role { font-size: 11px; color: var(--text-muted); }
+.nav-account-action,
 .nav-logout {
   width: 100%; padding: 8px; border: 1px solid var(--border);
   border-radius: var(--radius); background: transparent; color: var(--text-secondary);
   font-size: 12px; cursor: pointer; transition: all 0.2s;
 }
+.nav-account-action {
+  display: block; text-align: center; text-decoration: none; margin-bottom: 8px;
+}
+.nav-account-action:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-light); }
+.nav-account-action.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
 .nav-logout:hover { background: var(--danger); color: white; border-color: var(--danger); }
 
 /* Main Content Area */
@@ -480,6 +486,67 @@ section, div[id$='-section'] {
 }
 .checkbox-label:hover { border-color: var(--accent); }
 .checkbox-label input[type="checkbox"] { accent-color: var(--accent); }
+
+.permission-note {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.project-access-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.project-access-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  padding: 14px;
+}
+
+.project-access-panel h4 {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.project-access-panel textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.role-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-checkbox-grid .checkbox-label {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
+.invite-row {
+  display: grid;
+  grid-template-columns: 1fr 160px auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1000px) {
+  .project-access-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .invite-row { grid-template-columns: 1fr; }
+}
 
 /* Filter bar */
 .filter-bar {

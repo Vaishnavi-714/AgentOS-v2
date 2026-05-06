@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Login</title>
   <link rel="stylesheet" href="css/common.css">
-  <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
 
   <link rel="stylesheet" href="css/theme.css">
 </head>
@@ -34,8 +33,9 @@
       <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
         <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Demo Credentials</p>
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" onclick="fillDemo('admin@infosys.com','admin123')">Infosys Admin</button>
-          <button class="btn btn-outline btn-sm" onclick="fillDemo('admin@tcs.com','admin123')">TCS Admin</button>
+          <button class="btn btn-outline btn-sm" onclick="fillDemo('rajesh.kumar@infosys.com','admin123')">Infosys Tenant Admin</button>
+          <button class="btn btn-outline btn-sm" onclick="fillDemo('sneha.patel@infosys.com','admin123')">Infosys Member</button>
+          <button class="btn btn-outline btn-sm" onclick="fillDemo('priya.sharma@tcs.com','admin123')">TCS Tenant Admin</button>
           <button class="btn btn-outline btn-sm" onclick="fillDemo('admin@nexus.com','admin123')">System Admin</button>
         </div>
         <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border);">
@@ -125,13 +125,44 @@
         return;
       }
 
+      let tenantUser = TenantState.findTenantUserByEmail(tenant.tenant_id, email);
+      if (!tenantUser) {
+        errorEl.textContent = 'No active user or invitation was found for this tenant.';
+        errorEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Sign In to NEXUS';
+        return;
+      }
+      if (tenantUser.invitationStatus === 'expired') {
+        errorEl.textContent = 'This invitation has expired. Contact your tenant administrator.';
+        errorEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Sign In to NEXUS';
+        return;
+      }
+      if (tenantUser.invitationStatus === 'pending') {
+        TenantState.acceptInvitationForEmail(tenant.tenant_id, email);
+        tenantUser = TenantState.findTenantUserByEmail(tenant.tenant_id, email);
+      }
+
       TenantState.loginAsTenantUser(email, tenant);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("role", "tenant");
-      // Set NexusStore user for nav/permissions
-      const userName = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      NexusStore.setUser({ id: 'tenant_user_' + Date.now(), name: userName, role: 'Human Orchestrator', avatar: '👤', loginAt: new Date().toISOString() });
-      NexusStore.addLog({ type: 'AUTH', message: `${userName} logged into ${tenant.name}`, agent: 'system' });
+      const roleLabel = tenantUser.isTenantOwner ? 'Tenant Admin' : tenantUser.tenantRole === 'admin' ? 'Admin' : 'Member';
+      NexusStore.setUser({
+        id: tenantUser.id,
+        tenantId: tenant.tenant_id,
+        name: tenantUser.name,
+        email: tenantUser.email,
+        tenantRole: tenantUser.tenantRole,
+        isTenantOwner: tenantUser.isTenantOwner,
+        role: roleLabel,
+        avatar: '👤',
+        loginAt: new Date().toISOString()
+      });
+      TenantState.setCurrentTenantUser({ ...tenantUser, last_login: new Date().toISOString() });
+      TenantState.updateTenantUser(tenant.tenant_id, tenantUser.id, { last_login: new Date().toISOString(), status: 'ACTIVE' });
+      NexusStore.addLog({ type: 'AUTH', message: `${tenantUser.name} logged into ${tenant.name}`, agent: 'system' });
       window.location.href = 'workspace/dashboard.html';
     }
   </script>

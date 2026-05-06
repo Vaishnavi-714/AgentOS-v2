@@ -11,6 +11,8 @@ function createNavigation(activePage) {
   const user = NexusStore.getUser();
   const systemState = NexusStore.getSystemState();
   const role = TenantState.getRole();
+  const tenantUser = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenantUser() : null;
+  const tenantRoleLabel = tenantUser ? (tenantUser.isTenantOwner ? 'Tenant Admin' : tenantUser.tenantRole === 'admin' ? 'Admin' : 'Member') : (user?.role || '');
 
 
   // ─── Master Navigation Structure ───
@@ -32,6 +34,7 @@ function createNavigation(activePage) {
   ];
 
   const filteredControlItems = controlNavItems;
+  const canInviteUsers = typeof NexusPermissions !== 'undefined' && NexusPermissions.canInviteUsers();
 
   const pendingEscalations = NexusStore.getEscalations().filter(e => e.status === 'PENDING').length;
   const unreadNotifs = (NexusStore.getNotifications() || []).filter(n => !n.read).length;
@@ -59,7 +62,7 @@ function createNavigation(activePage) {
           ${item.id === 'support' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
         </a>
       `).join('')}
-      <div class="nav-section-divider">Control Plane</div>
+      <div class="nav-section-divider">Control Panel</div>
       ${filteredControlItems.map(item => `
         <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}">
           <span class="nav-icon">${item.icon}</span>
@@ -73,9 +76,10 @@ function createNavigation(activePage) {
         <span class="user-avatar">${user?.avatar || '👤'}</span>
         <div class="user-info">
           <span class="user-name">${user?.name || 'Guest'}</span>
-          <span class="user-role">${user?.role || ''}</span>
+          <span class="user-role">${tenantRoleLabel}</span>
         </div>
       </div>
+      ${canInviteUsers ? `<a href="invite-users.html" class="nav-account-action ${activePage === 'invite-users' ? 'active' : ''}">Invite Users</a>` : ''}
       <button class="nav-logout" onclick="handleLogout()">Logout</button>
     </div>
   `;
@@ -93,7 +97,7 @@ function createNavigation(activePage) {
         tenantLabel.innerHTML = `
           <label class="tenant-switcher-label">ROLE</label>
           <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; padding: 6px 0;">
-            <span>👨‍💻</span> Tenant User / Developer <span style="font-size: 11px; color: var(--text-muted);">🔒</span>
+            <span>${tenantRoleLabel || 'Tenant User'}</span>
           </div>
         `;
       }
@@ -115,8 +119,12 @@ function handleLogout() {
 function createProjectSelector(containerId, onChange) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const projects = NexusStore.getProjects();
-  const selected = sessionStorage.getItem('nexus_selected_project') || (projects[0]?.id || '');
+  const projects = typeof NexusPermissions !== 'undefined'
+    ? NexusPermissions.getVisibleProjects(NexusStore.getProjects())
+    : NexusStore.getProjects();
+  const saved = sessionStorage.getItem('nexus_selected_project');
+  const selected = projects.some(p => p.id === saved) ? saved : (projects[0]?.id || '');
+  if (selected) sessionStorage.setItem('nexus_selected_project', selected);
 
   container.innerHTML = `
     <select id="projectSelect" class="project-select" onchange="window._onProjectChange && window._onProjectChange(this.value)">
@@ -133,7 +141,14 @@ function createProjectSelector(containerId, onChange) {
 }
 
 function getSelectedProject() {
-  return sessionStorage.getItem('nexus_selected_project') || NexusStore.getProjects()[0]?.id || '';
+  const projects = typeof NexusPermissions !== 'undefined'
+    ? NexusPermissions.getVisibleProjects(NexusStore.getProjects())
+    : NexusStore.getProjects();
+  const saved = sessionStorage.getItem('nexus_selected_project');
+  if (projects.some(p => p.id === saved)) return saved;
+  const fallback = projects[0]?.id || '';
+  if (fallback) sessionStorage.setItem('nexus_selected_project', fallback);
+  return fallback;
 }
 
 // Toast notifications

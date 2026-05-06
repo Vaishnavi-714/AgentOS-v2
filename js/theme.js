@@ -16,6 +16,15 @@
     return getStoredTheme() || getPreferredTheme();
   }
 
+  function getCurrentPageName() {
+    const path = window.location.pathname || '';
+    return path.split('/').pop() || 'index.html';
+  }
+
+  function canShowThemeToggle() {
+    return ['landing.html', 'settings.html'].includes(getCurrentPageName());
+  }
+
   function setTheme(theme, persist) {
     docEl.dataset.theme = theme;
     if (persist) {
@@ -113,6 +122,10 @@
   }
 
   function mountToggle() {
+    if (!canShowThemeToggle()) {
+      document.querySelector('.theme-toggle-slot')?.remove();
+      return;
+    }
     const target = getMountTarget();
     if (!target) return;
 

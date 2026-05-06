@@ -6,7 +6,6 @@
   <title>NEXUS — Register Tenant</title>
   <meta name="description" content="Register a new tenant on the NEXUS Agent-OS multi-tenant platform.">
   <link rel="stylesheet" href="css/common.css">
-  <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
 
   <link rel="stylesheet" href="css/theme.css">
   <style>
@@ -162,6 +161,63 @@
     .rt-validation.err { color: var(--danger); }
     .rt-validation.checking { color: var(--text-muted); }
 
+    /* --- Subscription checkout step --- */
+    .rt-step-title-block { margin-bottom: 18px; }
+    .rt-step-title { font-size: 26px; line-height: 1.15; font-weight: 800; color: var(--text-primary); letter-spacing: 0; }
+    .rt-step-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+    .rt-subscription-shell { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .rt-billing-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .rt-billing-toggle { display: inline-flex; padding: 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-tertiary); gap: 4px; }
+    .rt-billing-option {
+      border: none; border-radius: 999px; padding: 8px 14px; background: transparent; color: var(--text-secondary);
+      font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .rt-billing-option.active { background: var(--accent); color: #fff; box-shadow: 0 8px 18px rgba(99,102,241,0.22); }
+    .rt-save-badge, .rt-plan-badge, .rt-selected-pill, .rt-trial-pill {
+      display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; font-size: 11px; font-weight: 800;
+    }
+    .rt-save-badge { padding: 5px 9px; background: #10b98118; color: var(--success); border: 1px solid #10b98130; }
+    .rt-plan-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .rt-plan-card {
+      border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card);
+      padding: 16px; cursor: pointer; transition: all 0.2s; position: relative; display: flex; flex-direction: column; min-height: 360px;
+    }
+    .rt-plan-card:hover { border-color: var(--border-light); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .rt-plan-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.14), var(--shadow); }
+    .rt-plan-topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-height: 26px; }
+    .rt-plan-badge { padding: 4px 8px; background: var(--purple); color: #fff; }
+    .rt-selected-pill { padding: 4px 8px; background: var(--accent-bg); color: var(--accent); border: 1px solid rgba(99,102,241,0.25); }
+    .rt-plan-name { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-top: 6px; }
+    .rt-plan-audience { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.7px; margin-top: 4px; }
+    .rt-plan-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 10px; min-height: 54px; }
+    .rt-plan-price { margin-top: 14px; font-size: 24px; font-weight: 850; color: var(--text-primary); }
+    .rt-plan-billing { color: var(--text-muted); font-size: 12px; font-weight: 600; margin-left: 3px; }
+    .rt-plan-features { list-style: none; padding: 0; margin: 14px 0 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .rt-plan-features li { font-size: 12px; color: var(--text-secondary); line-height: 1.35; display: flex; gap: 7px; }
+    .rt-plan-features li::before { content: "✓"; color: var(--success); font-weight: 900; flex-shrink: 0; }
+    .rt-plan-card .btn { width: 100%; justify-content: center; margin-top: auto; }
+    .rt-feature-panel, .rt-payment-panel {
+      border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card);
+      padding: 18px; box-shadow: var(--shadow-sm);
+    }
+    .rt-panel-title { font-size: 15px; font-weight: 800; color: var(--text-primary); margin-bottom: 6px; }
+    .rt-panel-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+    .rt-trial-pill { padding: 7px 10px; background: #3b82f618; color: #60a5fa; border: 1px solid #3b82f640; margin-bottom: 12px; }
+    .rt-method-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+    .rt-method-card {
+      border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 8px; background: var(--bg-tertiary);
+      color: var(--text-secondary); font-size: 12px; font-weight: 700; text-align: center; cursor: pointer; transition: all 0.2s;
+    }
+    .rt-method-card.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+    .rt-form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .rt-inline-action { display: flex; gap: 8px; align-items: flex-end; }
+    .rt-transfer-box { border: 1px dashed var(--border-light); border-radius: var(--radius); padding: 14px; background: var(--bg-tertiary); }
+    .rt-terms-row { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
+    .rt-terms-row input { margin-top: 2px; accent-color: var(--accent); }
+    .rt-error-list { display: none; border: 1px solid #ef444430; background: #ef444415; color: var(--danger); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; line-height: 1.6; margin-top: 12px; }
+    .rt-error-list.show { display: block; }
+    .rt-checkout-due { font-size: 28px; font-weight: 850; color: var(--accent); }
+
     /* Feature toggles row */
     .rt-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
     .rt-feature-item {
@@ -287,6 +343,8 @@
       .rt-layout { grid-template-columns: 1fr; }
       .rt-summary { position: static; }
       .rt-card-grid { grid-template-columns: 1fr; }
+      .rt-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .rt-method-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .rt-feature-grid { grid-template-columns: 1fr; }
       .rt-feature-item:nth-child(odd) { padding-right: 0; border-right: none; }
       .rt-feature-item:nth-child(even) { padding-left: 0; }
@@ -298,6 +356,7 @@
       .rt-steps { flex-wrap: wrap; gap: 4px; }
       .rt-step { padding: 6px 8px; font-size: 11px; }
       .rt-step-line { width: 20px; }
+      .rt-plan-grid, .rt-form-grid-2, .rt-method-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -361,13 +420,9 @@
       <div class="rt-content">
         <!-- Step Progress -->
         <div class="rt-steps">
-          <div class="rt-step active" id="rtStep1"><span class="rt-step-num">1</span> Registration</div>
+          <div class="rt-step active" id="rtStep1"><span class="rt-step-num">1</span> Tenant Details</div>
           <div class="rt-step-line" id="rtLine1"></div>
-          <div class="rt-step" id="rtStep2"><span class="rt-step-num">2</span> Provisioning</div>
-          <div class="rt-step-line" id="rtLine2"></div>
-          <div class="rt-step" id="rtStep3"><span class="rt-step-num">3</span> User Setup</div>
-          <div class="rt-step-line" id="rtLine3"></div>
-          <div class="rt-step" id="rtStep4"><span class="rt-step-num">4</span> Go Live</div>
+          <div class="rt-step" id="rtStep2"><span class="rt-step-num">2</span> Subscription Plan & Payment</div>
         </div>
 
         <!-- 2-Column Layout -->
@@ -376,7 +431,7 @@
           <div class="rt-form-col">
 
             <!-- 1. Basic Tenant Info -->
-            <div class="rt-card">
+            <div class="rt-card" data-rt-step="1">
               <div class="rt-card-header">
                 <span class="rt-card-icon">🏢</span>
                 <div>
@@ -405,20 +460,12 @@
                     <div class="rt-hint">Email domain for user authentication</div>
                     <div id="fDomainVal"></div>
                   </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">Initial Status</label>
-                    <select class="rt-select" id="fStatus" onchange="rtUpdate()">
-                      <option value="REGISTERED">🟡 Registered (Pending Setup)</option>
-                      <option value="ACTIVE">🟢 Active (Immediate Access)</option>
-                    </select>
-                    <div class="rt-hint">Set tenant to active for instant access</div>
-                  </div>
                 </div>
               </div>
             </div>
 
             <!-- 2. Organization Details -->
-            <div class="rt-card">
+            <div class="rt-card" data-rt-step="1">
               <div class="rt-card-header">
                 <span class="rt-card-icon">🏛️</span>
                 <div>
@@ -478,7 +525,7 @@
             </div>
 
             <!-- 3. Primary Contact -->
-            <div class="rt-card">
+            <div class="rt-card" data-rt-step="1">
               <div class="rt-card-header">
                 <span class="rt-card-icon">👤</span>
                 <div>
@@ -512,241 +559,34 @@
               </div>
             </div>
 
-            <!-- 4. Identity & SSO Setup -->
-            <div class="rt-card">
-              <div class="rt-card-header">
-                <span class="rt-card-icon">🔐</span>
-                <div>
-                  <div class="rt-card-title">Identity & SSO Setup</div>
-                  <div class="rt-card-desc">Authentication and single sign-on configuration</div>
-                </div>
+            <div data-rt-step="2">
+              <div class="rt-step-title-block">
+                <div class="rt-step-title">Subscription Plan & Payment</div>
+                <div class="rt-step-subtitle">Choose a plan, select billing, and complete payment to activate your tenant.</div>
               </div>
-              <div class="rt-card-body">
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Auth Provider</label>
-                    <select class="rt-select" id="fAuthProvider" onchange="rtUpdate()">
-                      <option value="nexus">NEXUS Built-in</option>
-                      <option value="okta">Okta</option>
-                      <option value="azure-ad">Azure AD</option>
-                      <option value="google">Google Workspace</option>
-                      <option value="auth0">Auth0</option>
-                    </select>
+
+              <div class="rt-subscription-shell">
+                <div class="rt-feature-panel">
+                  <div class="rt-billing-row">
+                    <div>
+                      <div class="rt-panel-title">Select Plan</div>
+                      <div class="rt-panel-sub">Compare plans and choose the right access level for this tenant.</div>
+                    </div>
+                    <div class="rt-billing-toggle" role="radiogroup" aria-label="Billing cycle">
+                      <button type="button" class="rt-billing-option" id="billingMonthly" role="radio" aria-checked="false" onclick="setBillingCycle('monthly')">Monthly</button>
+                      <button type="button" class="rt-billing-option active" id="billingYearly" role="radio" aria-checked="true" onclick="setBillingCycle('yearly')">Yearly <span class="rt-save-badge">Save up to 16%</span></button>
+                    </div>
                   </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">SSO Protocol</label>
-                    <select class="rt-select" id="fSSOProtocol" onchange="rtUpdate()">
-                      <option value="none">None</option>
-                      <option value="SAML">SAML 2.0</option>
-                      <option value="OIDC">OpenID Connect</option>
-                    </select>
-                  </div>
+                  <div class="rt-plan-grid" id="rtPlanCards"></div>
                 </div>
-                <div class="rt-fg">
-                  <label class="rt-label">SSO Metadata URL</label>
-                  <input type="url" class="rt-input" id="fSSOMetadata" placeholder="https://idp.example.com/.well-known/openid-configuration" oninput="rtUpdate()">
-                  <div class="rt-hint">Required only if SSO is configured above</div>
-                </div>
+
+                <div class="rt-feature-panel" id="rtSelectedPlanFeatures"></div>
+                <div class="rt-payment-panel" id="rtPaymentPanel"></div>
+                <div class="rt-error-list" id="rtStep2Errors" aria-live="polite"></div>
               </div>
             </div>
 
-            <!-- 5. Subscription Details -->
-            <div class="rt-card">
-              <div class="rt-card-header">
-                <span class="rt-card-icon">💎</span>
-                <div>
-                  <div class="rt-card-title">Subscription Details</div>
-                  <div class="rt-card-desc">Plan selection and billing configuration</div>
-                </div>
-              </div>
-              <div class="rt-card-body">
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Subscription Plan <span class="rt-required">*</span></label>
-                    <select class="rt-select" id="fPlan" onchange="rtUpdate()">
-                      <option value="BASIC">🔹 Basic — $29/mo (50 users, 5 agents)</option>
-                      <option value="STANDARD" selected>⭐ Standard — $99/mo (200 users, 15 agents)</option>
-                      <option value="PREMIUM">💎 Premium — $299/mo (1000 users, 50 agents)</option>
-                    </select>
-                  </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">Billing Cycle</label>
-                    <select class="rt-select" id="fBilling" onchange="rtUpdate()">
-                      <option value="monthly">Monthly</option>
-                      <option value="annual" selected>Annual (save 15%)</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="rt-fg" id="fPlanSummaryWrap" style="margin-top:4px"></div>
-              </div>
-            </div>
-
-            <!-- 6. Localization -->
-            <div class="rt-card">
-              <div class="rt-card-header">
-                <span class="rt-card-icon">🌍</span>
-                <div>
-                  <div class="rt-card-title">Localization & Region</div>
-                  <div class="rt-card-desc">Data residency and timezone settings</div>
-                </div>
-              </div>
-              <div class="rt-card-body">
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Primary Region <span class="rt-required">*</span></label>
-                    <select class="rt-select" id="fRegion" onchange="rtUpdate()">
-                      <option value="AP-SOUTH-1">🇮🇳 Asia Pacific — Mumbai (ap-south-1)</option>
-                      <option value="US-EAST-1">🇺🇸 US East — Virginia (us-east-1)</option>
-                      <option value="US-WEST-2">🇺🇸 US West — Oregon (us-west-2)</option>
-                      <option value="EU-WEST-1">🇮🇪 Europe — Ireland (eu-west-1)</option>
-                      <option value="EU-CENTRAL-1">🇩🇪 Europe — Frankfurt (eu-central-1)</option>
-                      <option value="AP-SOUTHEAST-1">🇸🇬 Asia Pacific — Singapore (ap-southeast-1)</option>
-                    </select>
-                    <div class="rt-hint">Determines where tenant data is stored</div>
-                  </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">Timezone</label>
-                    <select class="rt-select" id="fTimezone" onchange="rtUpdate()">
-                      <option value="Asia/Kolkata">Asia/Kolkata (IST, UTC+5:30)</option>
-                      <option value="America/New_York">America/New_York (EST, UTC-5)</option>
-                      <option value="America/Los_Angeles">America/Los_Angeles (PST, UTC-8)</option>
-                      <option value="Europe/London">Europe/London (GMT, UTC+0)</option>
-                      <option value="Europe/Berlin">Europe/Berlin (CET, UTC+1)</option>
-                      <option value="Asia/Singapore">Asia/Singapore (SGT, UTC+8)</option>
-                      <option value="Asia/Tokyo">Asia/Tokyo (JST, UTC+9)</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Language</label>
-                    <select class="rt-select" id="fLanguage" onchange="rtUpdate()">
-                      <option value="en">English</option>
-                      <option value="es">Español</option>
-                      <option value="de">Deutsch</option>
-                      <option value="fr">Français</option>
-                      <option value="ja">日本語</option>
-                      <option value="hi">हिन्दी</option>
-                    </select>
-                  </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">Currency</label>
-                    <select class="rt-select" id="fCurrency" onchange="rtUpdate()">
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
-                      <option value="GBP">GBP (£)</option>
-                      <option value="INR">INR (₹)</option>
-                      <option value="JPY">JPY (¥)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 7. System Metadata -->
-            <div class="rt-card">
-              <div class="rt-card-header">
-                <span class="rt-card-icon">🗄️</span>
-                <div>
-                  <div class="rt-card-title">System Metadata</div>
-                  <div class="rt-card-desc">Internal tags, notes, and tracking info</div>
-                </div>
-              </div>
-              <div class="rt-card-body">
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Tenant ID</label>
-                    <input type="text" class="rt-input" id="fTenantId" readonly style="opacity:0.7">
-                    <div class="rt-hint">Auto-generated unique identifier</div>
-                  </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">Source / Channel</label>
-                    <select class="rt-select" id="fSource" onchange="rtUpdate()">
-                      <option value="admin-console">Admin Console</option>
-                      <option value="sales">Sales Team</option>
-                      <option value="self-signup">Self-Signup</option>
-                      <option value="partner">Partner Referral</option>
-                      <option value="api">API</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="rt-fg">
-                  <label class="rt-label">Internal Notes</label>
-                  <textarea class="rt-textarea" id="fNotes" placeholder="Add any internal notes about this tenant registration..." oninput="rtUpdate()"></textarea>
-                </div>
-              </div>
-            </div>
-
-            <!-- 8. Initial Configuration -->
-            <div class="rt-card">
-              <div class="rt-card-header">
-                <span class="rt-card-icon">🎛️</span>
-                <div>
-                  <div class="rt-card-title">Initial Configuration</div>
-                  <div class="rt-card-desc">Feature toggles and platform capabilities</div>
-                </div>
-              </div>
-              <div class="rt-card-body">
-                <div class="rt-feature-grid">
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">SSO Enabled</div>
-                      <div class="rt-feature-sub">Single sign-on integration</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogSSO" onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">MFA Required</div>
-                      <div class="rt-feature-sub">Multi-factor authentication</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogMFA" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">Audit Logging</div>
-                      <div class="rt-feature-sub">Track all user actions</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogAudit" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">API Access</div>
-                      <div class="rt-feature-sub">REST API & webhook access</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogAPI" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">Custom Branding</div>
-                      <div class="rt-feature-sub">White-label UI options</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogBrand" onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">Data Export</div>
-                      <div class="rt-feature-sub">CSV & JSON data exports</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogExport" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">AI Agent Pipeline</div>
-                      <div class="rt-feature-sub">Autonomous agent workflows</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogPipeline" checked onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                  <div class="rt-feature-item">
-                    <div>
-                      <div class="rt-feature-label">Sandbox Environment</div>
-                      <div class="rt-feature-sub">Isolated test workspace</div>
-                    </div>
-                    <label class="toggle-switch"><input type="checkbox" id="fTogSandbox" onchange="rtUpdate()"><span class="toggle-slider"></span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <input type="hidden" id="fTenantId">
 
           </div><!-- /form-col -->
 
@@ -769,18 +609,26 @@
             <!-- Live Summary -->
             <div class="rt-summary-card">
               <div class="rt-summary-header">
-                <span class="rt-summary-title">📄 Registration Summary</span>
+                <span class="rt-summary-title" id="rtLiveSummaryTitle">Registration Summary</span>
                 <span id="rtStatusBadge" class="rt-status-badge rt-status-draft">● Draft</span>
               </div>
               <div class="rt-summary-body" id="rtSummaryBody">
                 <!-- filled by JS -->
               </div>
               <div class="rt-summary-actions">
-                <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="rtSubmit()" id="rtSubmitBtn" disabled>
-                  🏢 Create Tenant
+                <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="rtNextStep()" id="rtNextBtn">
+                  Continue to Subscription
                 </button>
-                <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="rtPreviewJSON()">
-                  { } Preview JSON
+                <button class="btn btn-outline" style="width:100%;justify-content:center;display:none" onclick="rtPrevStep()" id="rtBackBtn">
+                  Back to Tenant Details
+                </button>
+                <label class="rt-terms-row" id="rtTermsWrap" style="display:none">
+                  <input type="checkbox" id="fTermsAccepted" onchange="setTermsAccepted(this.checked)">
+                  <span>I agree to the Terms of Service and Privacy Policy.</span>
+                </label>
+                <div class="rt-validation err" id="rtTermsError" style="display:none">Terms acceptance is required.</div>
+                <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="rtSubmit()" id="rtSubmitBtn" disabled>
+                  Create Tenant
                 </button>
               </div>
             </div>
@@ -816,6 +664,7 @@
   <script src="js/data.js"></script>
   <script src="js/mock-api.js"></script>
   <script src="js/state.js"></script>
+  <script src="js/subscription-pricing.js"></script>
   <script>
     // ======== AUTH & MODE ========
     const _isAdmin = TenantState.isLoggedIn() && TenantState.isSystemAdmin();
@@ -837,6 +686,7 @@
 
     // Pre-fill tenant ID
     document.getElementById('fTenantId').value = TenantState.generateTenantId();
+    let rtCurrentStep = 1;
 
     // ======== HELPERS ========
     function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -847,44 +697,90 @@
       setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
     }
 
-    // ======== PLAN INFO ========
-    const PLANS = {
-      BASIC:    { icon: '🔹', label: 'Basic',    price: 29,  users: 50,   agents: 5,   storage: 10,  api: 10000, projects: 5 },
-      STANDARD: { icon: '⭐', label: 'Standard', price: 99,  users: 200,  agents: 15,  storage: 50,  api: 100000, projects: 20 },
-      PREMIUM:  { icon: '💎', label: 'Premium',  price: 299, users: 1000, agents: 50,  storage: 500, api: 1000000, projects: 100 },
+    function detectLocaleContext() {
+      const locale = navigator.language || 'en-US';
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      const regionMap = [
+        { match: /^Asia\/Kolkata/, region: 'AP-SOUTH-1' },
+        { match: /^Asia\/Singapore/, region: 'AP-SOUTHEAST-1' },
+        { match: /^Asia\//, region: 'AP-SOUTHEAST-1' },
+        { match: /^Europe\/(Berlin|Paris|Rome|Madrid|Amsterdam)/, region: 'EU-CENTRAL-1' },
+        { match: /^Europe\//, region: 'EU-WEST-1' },
+        { match: /^America\/(Los_Angeles|Vancouver|Phoenix|Denver)/, region: 'US-WEST-2' },
+        { match: /^America\//, region: 'US-EAST-1' }
+      ];
+      const detected = regionMap.find(item => item.match.test(timezone));
+      const localeRegion = (locale.split('-')[1] || '').toUpperCase();
+      const fallbackByLocale = { IN: 'AP-SOUTH-1', SG: 'AP-SOUTHEAST-1', GB: 'EU-WEST-1', DE: 'EU-CENTRAL-1', FR: 'EU-WEST-1', US: 'US-EAST-1', CA: 'US-EAST-1' };
+      return {
+        locale,
+        timezone,
+        region: detected?.region || fallbackByLocale[localeRegion] || 'US-EAST-1'
+      };
+    }
+
+    // ======== SUBSCRIPTION CHECKOUT STATE ========
+    const BANK_TRANSFER_REFERENCE = 'NEXUS-' + document.getElementById('fTenantId').value;
+    const rtRegistrationState = {
+      subscription: {
+        plan: 'business',
+        billingCycle: 'yearly',
+        trialEnabled: true,
+        selectedPaymentMethod: 'card',
+        paymentStatus: 'pending'
+      },
+      paymentDetails: {
+        cardNumber: '',
+        cardholderName: '',
+        expiry: '',
+        cvv: '',
+        country: '',
+        state: '',
+        billingAddress: '',
+        upiId: '',
+        selectedBank: '',
+        selectedWallet: '',
+        bankTransferReference: BANK_TRANSFER_REFERENCE
+      },
+      termsAccepted: false
     };
+
+    const PAYMENT_METHODS = [
+      { id: 'card', label: 'Credit / Debit Card' },
+      { id: 'upi', label: 'UPI' },
+      { id: 'netBanking', label: 'Net Banking' },
+      { id: 'wallet', label: 'Wallet' },
+      { id: 'bankTransfer', label: 'Bank Transfer' }
+    ];
+
+    const BANK_OPTIONS = ['State Bank of India', 'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Mahindra Bank', 'Bank of Baroda', 'Other Bank'];
+    const WALLET_OPTIONS = ['Paytm', 'PhonePe', 'Google Pay', 'Amazon Pay', 'Mobikwik'];
+
+    function currentPlan() {
+      return NexusSubscriptionPricing.getPlan(rtRegistrationState.subscription.plan);
+    }
+
+    function refreshPricingState() {
+      const sub = rtRegistrationState.subscription;
+      const plan = currentPlan();
+      sub.trialEnabled = Boolean(plan.hasTrial || plan.trial);
+      const pricing = NexusSubscriptionPricing.calculate(sub.plan, sub.billingCycle, sub.trialEnabled);
+      if (sub.plan === 'free') sub.paymentStatus = 'not_required';
+      else if (sub.paymentStatus !== 'trial_started') sub.paymentStatus = 'pending';
+      return pricing;
+    }
 
     // ======== GATHER FORM DATA ========
     function gatherForm() {
-      const plan = document.getElementById('fPlan').value;
-      const billing = document.getElementById('fBilling').value;
-      const p = PLANS[plan];
-      const monthlyPrice = billing === 'annual' ? Math.round(p.price * 0.85) : p.price;
-      const features = [];
-      const toggles = {
-        sso: document.getElementById('fTogSSO').checked,
-        mfa: document.getElementById('fTogMFA').checked,
-        audit: document.getElementById('fTogAudit').checked,
-        api: document.getElementById('fTogAPI').checked,
-        branding: document.getElementById('fTogBrand').checked,
-        export: document.getElementById('fTogExport').checked,
-        pipeline: document.getElementById('fTogPipeline').checked,
-        sandbox: document.getElementById('fTogSandbox').checked,
-      };
-      if (toggles.sso) features.push('SSO');
-      if (toggles.mfa) features.push('MFA');
-      if (toggles.audit) features.push('Audit');
-      if (toggles.api) features.push('API');
-      if (toggles.branding) features.push('Branding');
-      if (toggles.export) features.push('Export');
-      if (toggles.pipeline) features.push('Pipeline');
-      if (toggles.sandbox) features.push('Sandbox');
+      const localeContext = detectLocaleContext();
+      const pricing = refreshPricingState();
+      const plan = currentPlan();
 
       return {
         tenant_name: document.getElementById('fTenantName').value.trim(),
         slug: document.getElementById('fTenantSlug').value.trim(),
         domain: document.getElementById('fDomain').value.trim(),
-        status: document.getElementById('fStatus').value,
+        status: 'ACTIVE',
         org_type: document.getElementById('fOrgType').value,
         industry: document.getElementById('fIndustry').value,
         company_size: document.getElementById('fCompanySize').value,
@@ -894,19 +790,16 @@
         admin_email: document.getElementById('fAdminEmail').value.trim(),
         job_title: document.getElementById('fJobTitle').value.trim(),
         phone: document.getElementById('fPhone').value.trim(),
-        auth_provider: document.getElementById('fAuthProvider').value,
-        sso_protocol: document.getElementById('fSSOProtocol').value,
-        sso_metadata: document.getElementById('fSSOMetadata').value.trim(),
-        plan, billing, monthlyPrice,
-        planInfo: p,
-        region: document.getElementById('fRegion').value,
-        timezone: document.getElementById('fTimezone').value,
-        language: document.getElementById('fLanguage').value,
-        currency: document.getElementById('fCurrency').value,
+        subscription: structuredClone(rtRegistrationState.subscription),
+        paymentDetails: structuredClone(rtRegistrationState.paymentDetails),
+        termsAccepted: rtRegistrationState.termsAccepted,
+        plan,
+        pricing,
         tenant_id: document.getElementById('fTenantId').value,
-        source: document.getElementById('fSource').value,
-        notes: document.getElementById('fNotes').value.trim(),
-        features, toggles,
+        gateway_ref: 'MOCK-' + Date.now().toString(36).toUpperCase(),
+        detectedLocale: localeContext.locale,
+        detectedTimezone: localeContext.timezone,
+        detectedRegion: localeContext.region,
       };
     }
 
@@ -985,8 +878,6 @@
       { id: 'fDescription', label: 'Description' },
       { id: 'fJobTitle',    label: 'Job Title' },
       { id: 'fPhone',       label: 'Phone' },
-      { id: 'fSSOMetadata', label: 'SSO URL' },
-      { id: 'fNotes',       label: 'Notes' },
     ];
     function calcProgress() {
       let filled = 0; let total = REQ_FIELDS.length + OPT_FIELDS.length;
@@ -1008,24 +899,25 @@
       });
       document.getElementById('rtFieldChecks').innerHTML = checks.join('');
 
-      // Enable/disable submit
-      const reqOk = REQ_FIELDS.every(f => document.getElementById(f.id).value.trim());
-      document.getElementById('rtSubmitBtn').disabled = !reqOk;
+      const step1Ok = REQ_FIELDS.every(f => document.getElementById(f.id).value.trim());
+      const step2Ok = Boolean(rtRegistrationState.subscription.plan && rtRegistrationState.subscription.billingCycle);
+      document.getElementById('rtNextBtn').disabled = !step1Ok;
+      document.getElementById('rtSubmitBtn').disabled = !step1Ok;
 
       // Status badge
       const badge = document.getElementById('rtStatusBadge');
-      if (reqOk) { badge.className = 'rt-status-badge rt-status-ready'; badge.innerHTML = '● Ready'; }
+      if (step1Ok && step2Ok) { badge.className = 'rt-status-badge rt-status-ready'; badge.innerHTML = '● Ready'; }
       else { badge.className = 'rt-status-badge rt-status-draft'; badge.innerHTML = '● Draft'; }
     }
 
     // ======== LIVE SUMMARY ========
     function renderSummary() {
       const d = gatherForm();
-      const p = d.planInfo;
-      const regionLabels = {
-        'AP-SOUTH-1': '🇮🇳 Mumbai', 'US-EAST-1': '🇺🇸 Virginia', 'US-WEST-2': '🇺🇸 Oregon',
-        'EU-WEST-1': '🇮🇪 Ireland', 'EU-CENTRAL-1': '🇩🇪 Frankfurt', 'AP-SOUTHEAST-1': '🇸🇬 Singapore'
-      };
+      if (rtCurrentStep === 2) {
+        renderCheckoutSummary(d);
+        return;
+      }
+      document.getElementById('rtLiveSummaryTitle').textContent = 'Registration Summary';
       document.getElementById('rtSummaryBody').innerHTML = `
         <div class="rt-summary-section">
           <div class="rt-summary-section-label">Tenant Info</div>
@@ -1042,106 +934,295 @@
           ${d.job_title ? `<div class="rt-summary-row"><span class="rt-summary-key">Title</span><span class="rt-summary-val">${esc(d.job_title)}</span></div>` : ''}
         </div>
         <div class="rt-summary-section">
-          <div class="rt-summary-section-label">Plan & Region</div>
-          <div class="rt-summary-row"><span class="rt-summary-key">Plan</span><span class="rt-summary-val">${p.icon} ${p.label}</span></div>
-          <div class="rt-summary-row"><span class="rt-summary-key">Cost</span><span class="rt-summary-val">$${d.monthlyPrice}/mo${d.billing==='annual'?' (annual)':''}</span></div>
-          <div class="rt-summary-row"><span class="rt-summary-key">Limits</span><span class="rt-summary-val" style="font-size:11px">👥${p.users} · 🤖${p.agents} · 🔌${p.api.toLocaleString()}</span></div>
-          <div class="rt-summary-row"><span class="rt-summary-key">Region</span><span class="rt-summary-val">${regionLabels[d.region] || d.region}</span></div>
-        </div>
-        <div class="rt-summary-section">
-          <div class="rt-summary-section-label">Enabled Features</div>
-          <div class="rt-summary-features">
-            ${['SSO','MFA','Audit','API','Branding','Export','Pipeline','Sandbox'].map(f => {
-              const on = d.features.includes(f);
-              return `<span class="rt-summary-badge ${on?'':'off'}">${on?'✓':'✕'} ${f}</span>`;
-            }).join('')}
-          </div>
+          <div class="rt-summary-section-label">Next Step</div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Step 2</span><span class="rt-summary-val">Subscription Plan & Payment</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Default Plan</span><span class="rt-summary-val">Business · Yearly</span></div>
         </div>
       `;
     }
 
-    // ======== PLAN SUMMARY LINE ========
-    function renderPlanSummary() {
-      const plan = document.getElementById('fPlan').value;
-      const billing = document.getElementById('fBilling').value;
-      const p = PLANS[plan];
-      const monthly = billing === 'annual' ? Math.round(p.price * 0.85) : p.price;
-      const annual = monthly * 12;
-      document.getElementById('fPlanSummaryWrap').innerHTML = `
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 16px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:var(--radius)">
-          <span style="font-size:28px">${p.icon}</span>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:700;color:var(--text-primary)">${p.label} Plan</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">👥 ${p.users} users · 🤖 ${p.agents} agents · 💾 ${p.storage}GB · 🔌 ${p.api.toLocaleString()} API/mo</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:20px;font-weight:800;color:var(--accent)">$${monthly}<span style="font-size:11px;color:var(--text-muted)">/mo</span></div>
-            ${billing==='annual'?`<div style="font-size:11px;color:var(--success)">Save $${(p.price-monthly)*12}/yr</div>`:''}
-          </div>
+    function renderCheckoutSummary(d = gatherForm()) {
+      const sub = d.subscription;
+      const plan = d.plan;
+      const pricing = d.pricing;
+      const format = NexusSubscriptionPricing.formatINR.bind(NexusSubscriptionPricing);
+      const isTrial = Boolean((plan.hasTrial || plan.trial) && sub.trialEnabled);
+      const isFreePlan = plan.id === 'free';
+      const period = sub.billingCycle === 'monthly' ? '/ month' : '/ year';
+      const planPrice = isFreePlan ? format(pricing.planPrice) : `${format(pricing.planPrice)} ${period}`;
+      const dueToday = format(pricing.dueToday);
+      const firstBilling = pricing.firstBillingDate ? NexusSubscriptionPricing.formatDate(pricing.firstBillingDate) : 'Not applicable';
+      const renewal = isFreePlan ? format(pricing.renewalAmount) : `${format(pricing.renewalAmount)} ${period}`;
+      document.getElementById('rtLiveSummaryTitle').textContent = rtCurrentStep === 2 ? 'Checkout Summary' : 'Registration Summary';
+      document.getElementById('rtSummaryBody').innerHTML = `
+        <div class="rt-summary-section">
+          <div class="rt-summary-section-label">Selected Plan</div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Plan</span><span class="rt-summary-val">${esc(plan.name)}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Billing</span><span class="rt-summary-val">${sub.billingCycle === 'monthly' ? 'Monthly' : 'Yearly'}</span></div>
+        </div>
+        <div class="rt-summary-section">
+          <div class="rt-summary-section-label">Payment Due</div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Plan price</span><span class="rt-summary-val">${planPrice}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Free trial</span><span class="rt-summary-val">${isTrial ? '30 days' : 'Not applicable'}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Taxes</span><span class="rt-summary-val">Calculated at checkout</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Due today</span><span class="rt-summary-val rt-checkout-due">${dueToday}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">First billing date</span><span class="rt-summary-val">${firstBilling}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Renewal amount</span><span class="rt-summary-val">${renewal}</span></div>
         </div>
       `;
+    }
+
+    function priceLabel(plan) {
+      const cycle = rtRegistrationState.subscription.billingCycle;
+      const price = NexusSubscriptionPricing.getPlanPrice(plan.id, cycle);
+      return NexusSubscriptionPricing.formatINR(price);
+    }
+
+    function setBillingCycle(cycle) {
+      rtRegistrationState.subscription.billingCycle = cycle;
+      rtUpdate();
+    }
+
+    function selectPlan(planId) {
+      const sub = rtRegistrationState.subscription;
+      sub.plan = planId;
+      const plan = NexusSubscriptionPricing.getPlan(planId);
+      sub.trialEnabled = Boolean(plan.hasTrial || plan.trial);
+      if (planId === 'free') sub.paymentStatus = 'not_required';
+      else sub.paymentStatus = 'pending';
+      rtUpdate();
+    }
+
+    function selectPaymentMethod(method) {
+      rtRegistrationState.subscription.selectedPaymentMethod = method;
+      rtUpdate();
+    }
+
+    function setTermsAccepted(accepted) {
+      rtRegistrationState.termsAccepted = Boolean(accepted);
+      document.getElementById('rtTermsError').style.display = accepted ? 'none' : 'flex';
+      rtUpdate();
+    }
+
+    function updatePaymentDetail(key, value) {
+      rtRegistrationState.paymentDetails[key] = value;
+      clearStep2Errors();
+    }
+
+    function clearStep2Errors() {
+      const el = document.getElementById('rtStep2Errors');
+      if (el) {
+        el.classList.remove('show');
+        el.innerHTML = '';
+      }
+    }
+
+    function showStep2Errors(errors) {
+      const el = document.getElementById('rtStep2Errors');
+      if (!el) return;
+      el.innerHTML = errors.map(error => `<div>${esc(error)}</div>`).join('');
+      el.classList.toggle('show', errors.length > 0);
+    }
+
+    function renderPlanCards() {
+      const sub = rtRegistrationState.subscription;
+      document.getElementById('billingMonthly').classList.toggle('active', sub.billingCycle === 'monthly');
+      document.getElementById('billingYearly').classList.toggle('active', sub.billingCycle === 'yearly');
+      document.getElementById('billingMonthly').setAttribute('aria-checked', String(sub.billingCycle === 'monthly'));
+      document.getElementById('billingYearly').setAttribute('aria-checked', String(sub.billingCycle === 'yearly'));
+      document.getElementById('rtPlanCards').innerHTML = NexusSubscriptionPricing.plans.map(plan => {
+        const selected = plan.id === sub.plan;
+        return `
+          <article class="rt-plan-card ${selected ? 'selected' : ''}" tabindex="0" role="radio" aria-checked="${selected}" onclick="selectPlan('${plan.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectPlan('${plan.id}')}">
+            <div class="rt-plan-topline">
+              ${plan.badge ? `<span class="rt-plan-badge">${plan.badge}</span>` : '<span></span>'}
+              ${selected ? '<span class="rt-selected-pill">✓ Selected</span>' : ''}
+            </div>
+            <div class="rt-plan-name">${esc(plan.name)}</div>
+            <div class="rt-plan-audience">${esc(plan.audience)}</div>
+            <p class="rt-plan-desc">${esc(plan.description)}</p>
+            <div class="rt-plan-price">${priceLabel(plan)}<span class="rt-plan-billing">${plan.billingText[sub.billingCycle]}</span></div>
+            <ul class="rt-plan-features">${plan.features.slice(0, 5).map(feature => `<li>${esc(feature)}</li>`).join('')}</ul>
+            <button type="button" class="btn ${selected ? 'btn-primary' : 'btn-outline'}" onclick="event.stopPropagation();selectPlan('${plan.id}')">${esc(plan.button)}</button>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderSelectedPlanFeatures() {
+      const plan = currentPlan();
+      document.getElementById('rtSelectedPlanFeatures').innerHTML = `
+        <div class="rt-panel-title">${esc(plan.name)} plan features</div>
+        <div class="rt-panel-sub">${esc(plan.description)}</div>
+        ${(plan.hasTrial || plan.trial) ? `
+          <div class="rt-trial-pill">Free 30-day trial</div>
+          <div class="rt-hint" style="margin-bottom:12px">Free 30 day trial, cancel any time. We’ll remind you before your trial ends.</div>
+        ` : ''}
+        <ul class="rt-plan-features" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin-bottom:0">
+          ${plan.features.map(feature => `<li>${esc(feature)}</li>`).join('')}
+        </ul>
+      `;
+    }
+
+    function renderPaymentPanel() {
+      const sub = rtRegistrationState.subscription;
+      const plan = currentPlan();
+      if (plan.id === 'free') {
+        document.getElementById('rtPaymentPanel').innerHTML = `
+          <div class="rt-panel-title">Complete Registration</div>
+          <div class="rt-panel-sub">The Free plan does not require a payment method. Due today is ${NexusSubscriptionPricing.formatINR(0)}.</div>
+        `;
+        return;
+      }
+      document.getElementById('rtPaymentPanel').innerHTML = `
+        <div class="rt-panel-title">Payment Method</div>
+        <div class="rt-panel-sub">This prototype stores mocked payment details only. No real payment gateway is connected.</div>
+        <div class="rt-method-grid" role="radiogroup" aria-label="Payment method">
+          ${PAYMENT_METHODS.map(method => `
+            <button type="button" class="rt-method-card ${sub.selectedPaymentMethod === method.id ? 'active' : ''}" role="radio" aria-checked="${sub.selectedPaymentMethod === method.id}" onclick="selectPaymentMethod('${method.id}')">${esc(method.label)}</button>
+          `).join('')}
+        </div>
+        ${renderPaymentFields()}
+      `;
+    }
+
+    function renderPaymentFields() {
+      const details = rtRegistrationState.paymentDetails;
+      const method = rtRegistrationState.subscription.selectedPaymentMethod;
+      if (method === 'card') {
+        return `
+          <div class="rt-form-grid-2">
+            <div class="rt-fg"><label class="rt-label" for="payCardNumber">Card number <span class="rt-required">*</span></label><input id="payCardNumber" class="rt-input" placeholder="1234 1234 1234 1234" value="${esc(details.cardNumber)}" oninput="updatePaymentDetail('cardNumber', this.value)"></div>
+            <div class="rt-fg"><label class="rt-label" for="payCardName">Cardholder name <span class="rt-required">*</span></label><input id="payCardName" class="rt-input" placeholder="Name on card" value="${esc(details.cardholderName)}" oninput="updatePaymentDetail('cardholderName', this.value)"></div>
+            <div class="rt-fg"><label class="rt-label" for="payExpiry">Expiry date <span class="rt-required">*</span></label><input id="payExpiry" class="rt-input" placeholder="MM/YY" value="${esc(details.expiry)}" oninput="updatePaymentDetail('expiry', this.value)"></div>
+            <div class="rt-fg"><label class="rt-label" for="payCvv">CVV <span class="rt-required">*</span></label><input id="payCvv" class="rt-input" placeholder="123" value="${esc(details.cvv)}" oninput="updatePaymentDetail('cvv', this.value)"></div>
+            <div class="rt-fg"><label class="rt-label" for="payCountry">Country <span class="rt-required">*</span></label><input id="payCountry" class="rt-input" value="${esc(details.country)}" oninput="updatePaymentDetail('country', this.value)"></div>
+            <div class="rt-fg"><label class="rt-label" for="payState">State / Province / Region <span class="rt-required">*</span></label><input id="payState" class="rt-input" value="${esc(details.state)}" oninput="updatePaymentDetail('state', this.value)"></div>
+          </div>
+          <div class="rt-fg"><label class="rt-label" for="payBillingAddress">Billing address optional</label><textarea id="payBillingAddress" class="rt-textarea" oninput="updatePaymentDetail('billingAddress', this.value)">${esc(details.billingAddress)}</textarea></div>
+        `;
+      }
+      if (method === 'upi') {
+        return `
+          <div class="rt-inline-action">
+            <div class="rt-fg" style="flex:1"><label class="rt-label" for="payUpi">UPI ID <span class="rt-required">*</span></label><input id="payUpi" class="rt-input" placeholder="name@upi" value="${esc(details.upiId)}" oninput="updatePaymentDetail('upiId', this.value)"><div class="rt-hint">You will receive a payment request on your UPI app.</div></div>
+            <button type="button" class="btn btn-outline" onclick="showToast('UPI ID verified for demo checkout', 'success')">Verify UPI</button>
+          </div>
+        `;
+      }
+      if (method === 'netBanking') {
+        return `<div class="rt-fg"><label class="rt-label" for="payBank">Select bank <span class="rt-required">*</span></label><select id="payBank" class="rt-select" onchange="updatePaymentDetail('selectedBank', this.value)"><option value="">Select bank</option>${BANK_OPTIONS.map(bank => `<option value="${esc(bank)}" ${details.selectedBank === bank ? 'selected' : ''}>${esc(bank)}</option>`).join('')}</select></div>`;
+      }
+      if (method === 'wallet') {
+        return `<div class="rt-fg"><label class="rt-label" for="payWallet">Select wallet <span class="rt-required">*</span></label><select id="payWallet" class="rt-select" onchange="updatePaymentDetail('selectedWallet', this.value)"><option value="">Select wallet</option>${WALLET_OPTIONS.map(wallet => `<option value="${esc(wallet)}" ${details.selectedWallet === wallet ? 'selected' : ''}>${esc(wallet)}</option>`).join('')}</select></div>`;
+      }
+      return `
+        <div class="rt-transfer-box">
+          <div class="rt-summary-row"><span class="rt-summary-key">Account Name</span><span class="rt-summary-val">NEXUS Technologies</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Account Number</span><span class="rt-summary-val">000000000000</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">IFSC</span><span class="rt-summary-val">NEXU0000001</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Bank</span><span class="rt-summary-val">Demo Bank</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Reference</span><span class="rt-summary-val">${esc(details.bankTransferReference)}</span></div>
+          <div class="rt-hint" style="margin-top:10px">After transfer, your tenant will be activated after payment verification.</div>
+        </div>
+      `;
+    }
+
+    function finalButtonText() {
+      const plan = rtRegistrationState.subscription.plan;
+      if (plan === 'pro' || plan === 'business' || plan === 'enterprise') return 'Complete Registration & Start Trial';
+      return 'Complete Registration';
     }
 
     // ======== MASTER UPDATE ========
+    function rtRenderStep() {
+      document.querySelectorAll('[data-rt-step]').forEach(card => {
+        card.style.display = Number(card.dataset.rtStep) === rtCurrentStep ? '' : 'none';
+      });
+      document.getElementById('rtStep1').className = rtCurrentStep === 1 ? 'rt-step active' : 'rt-step done';
+      document.getElementById('rtLine1').className = rtCurrentStep === 2 ? 'rt-step-line active' : 'rt-step-line';
+      document.getElementById('rtStep2').className = rtCurrentStep === 2 ? 'rt-step active' : 'rt-step';
+      document.getElementById('rtNextBtn').style.display = rtCurrentStep === 1 ? 'flex' : 'none';
+      document.getElementById('rtBackBtn').style.display = rtCurrentStep === 2 ? 'flex' : 'none';
+      document.getElementById('rtSubmitBtn').style.display = rtCurrentStep === 2 ? 'flex' : 'none';
+    }
+
+    function rtNextStep() {
+      if (!REQ_FIELDS.every(f => document.getElementById(f.id).value.trim())) {
+        showToast('Please complete required tenant details', 'error');
+        return;
+      }
+      if (!rtValidateName() || !rtValidateDomain() || !rtValidateEmail()) {
+        showToast('Please fix validation errors', 'error');
+        return;
+      }
+      rtCurrentStep = 2;
+      rtUpdate();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function rtPrevStep() {
+      rtCurrentStep = 1;
+      rtUpdate();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     function rtUpdate() {
       // Auto slug
       const name = document.getElementById('fTenantName').value.trim();
       document.getElementById('fTenantSlug').value = name ? slugify(name) : '';
 
+      rtRenderStep();
       renderProgress();
+      refreshPricingState();
+      if (rtCurrentStep === 2) {
+        renderPlanCards();
+        renderSelectedPlanFeatures();
+        renderPaymentPanel();
+        document.getElementById('rtTermsWrap').style.display = 'flex';
+        document.getElementById('rtSubmitBtn').textContent = finalButtonText();
+      } else {
+        document.getElementById('rtTermsWrap').style.display = 'none';
+        document.getElementById('rtTermsError').style.display = 'none';
+        document.getElementById('rtSubmitBtn').textContent = 'Create Tenant';
+      }
       renderSummary();
-      renderPlanSummary();
     }
 
     // ======== JSON PREVIEW ========
     function rtBuildPayload() {
       const d = gatherForm();
       return {
+        id: d.tenant_id,
         tenant_id: d.tenant_id,
         name: d.tenant_name,
         slug: d.slug,
         domain: d.domain,
         status: d.status,
-        subscription: d.plan,
-        billing_cycle: d.billing,
-        organization: {
-          type: d.org_type,
-          industry: d.industry,
-          size: d.company_size,
-          website: d.website || undefined,
-          description: d.description || undefined,
-        },
-        admin: {
+        organizationType: d.org_type,
+        industry: d.industry,
+        companySize: d.company_size,
+        website: d.website || undefined,
+        description: d.description || undefined,
+        primaryAdmin: {
           name: d.admin_name,
           email: d.admin_email,
-          job_title: d.job_title || undefined,
+          jobTitle: d.job_title || undefined,
           phone: d.phone || undefined,
         },
-        identity: {
-          auth_provider: d.auth_provider,
-          sso_protocol: d.sso_protocol,
-          sso_metadata_url: d.sso_metadata || undefined,
+        subscription: d.subscription,
+        paymentDetails: d.paymentDetails,
+        termsAccepted: d.termsAccepted,
+        paymentStatus: d.subscription.paymentStatus,
+        payment: {
+          method: d.subscription.selectedPaymentMethod,
+          gatewayReference: d.gateway_ref,
+          mocked: true
         },
-        localization: {
-          region: d.region,
-          timezone: d.timezone,
-          language: d.language,
-          currency: d.currency,
-        },
-        features: d.toggles,
-        metadata: {
-          source: d.source,
-          notes: d.notes || undefined,
-          created_at: new Date().toISOString(),
-          created_by: (_user && _user.name) || 'System Admin',
-        },
-        resource_limits: {
-          users: d.planInfo.users,
-          agents: d.planInfo.agents,
-          projects: d.planInfo.projects,
-          storage_gb: d.planInfo.storage,
-          api_calls_monthly: d.planInfo.api,
-        },
+        detectedLocale: d.detectedLocale,
+        detectedTimezone: d.detectedTimezone,
+        detectedRegion: d.detectedRegion,
+        createdAt: new Date().toISOString()
       };
     }
 
@@ -1158,6 +1239,49 @@
     // Close modal on backdrop click
     document.getElementById('rtModal').addEventListener('click', function(e) { if (e.target === this) rtCloseModal(); });
 
+    function validateStep2() {
+      const errors = [];
+      const sub = rtRegistrationState.subscription;
+      const details = rtRegistrationState.paymentDetails;
+      if (!sub.plan) errors.push('Select a subscription plan.');
+      if (!sub.billingCycle) errors.push('Select a billing cycle.');
+      if (!rtRegistrationState.termsAccepted) errors.push('Accept the Terms of Service and Privacy Policy.');
+
+      if (sub.plan !== 'free') {
+        if (!sub.selectedPaymentMethod) errors.push('Select a payment method.');
+        if (sub.selectedPaymentMethod === 'card') {
+          if (!details.cardNumber.trim()) errors.push('Enter card number.');
+          if (!details.cardholderName.trim()) errors.push('Enter cardholder name.');
+          if (!details.expiry.trim()) errors.push('Enter expiry date.');
+          if (!details.cvv.trim()) errors.push('Enter CVV.');
+          if (!details.country.trim()) errors.push('Enter country.');
+          if (!details.state.trim()) errors.push('Enter state, province, or region.');
+        }
+        if (sub.selectedPaymentMethod === 'upi' && !/^[\w.-]+@[\w.-]+$/.test(details.upiId.trim())) errors.push('Enter a valid UPI ID.');
+        if (sub.selectedPaymentMethod === 'netBanking' && !details.selectedBank) errors.push('Select a bank.');
+        if (sub.selectedPaymentMethod === 'wallet' && !details.selectedWallet) errors.push('Select a wallet.');
+      }
+
+      document.getElementById('rtTermsError').style.display = rtRegistrationState.termsAccepted ? 'none' : 'flex';
+      showStep2Errors(errors);
+      return errors.length === 0;
+    }
+
+    function applyMockPaymentStatus() {
+      const sub = rtRegistrationState.subscription;
+      if (sub.plan === 'free') {
+        sub.paymentStatus = 'not_required';
+        return;
+      }
+      sub.paymentStatus = 'trial_started';
+    }
+
+    function successMessageForCurrentFlow() {
+      const sub = rtRegistrationState.subscription;
+      if (sub.plan === 'pro' || sub.plan === 'business' || sub.plan === 'enterprise') return 'Tenant registered successfully. Your 30-day trial has started.';
+      return 'Tenant registered successfully.';
+    }
+
     // ======== SUBMIT ========
     async function rtSubmit() {
       const d = gatherForm();
@@ -1168,6 +1292,23 @@
       if (!rtValidateName() || !rtValidateDomain() || !rtValidateEmail()) {
         showToast('Please fix validation errors', 'error'); return;
       }
+      if (!validateStep2()) {
+        showToast('Please complete subscription and payment details', 'error'); return;
+      }
+      applyMockPaymentStatus();
+      const completedData = gatherForm();
+      const isFreePlan = completedData.subscription.plan === 'free';
+      const savedSubscription = {
+        plan: completedData.subscription.plan,
+        billingCycle: completedData.subscription.billingCycle,
+        planPrice: completedData.pricing.planPrice,
+        trialEnabled: Boolean(completedData.plan.hasTrial || completedData.plan.trial),
+        dueToday: completedData.pricing.dueToday,
+        firstBillingDate: completedData.pricing.firstBillingDate ? completedData.pricing.firstBillingDate.toISOString() : null,
+        renewalAmount: completedData.pricing.renewalAmount,
+        selectedPaymentMethod: isFreePlan ? 'not_required' : completedData.subscription.selectedPaymentMethod,
+        paymentStatus: isFreePlan ? 'not_required' : 'trial_started'
+      };
 
       const overlay = document.getElementById('rtSubmitOverlay');
       const status = document.getElementById('rtSubmitStatus');
@@ -1177,11 +1318,10 @@
 
       const steps = [
         { msg: 'Validating tenant information...', sub: 'Checking domain availability and uniqueness', t: 700 },
-        { msg: 'Creating tenant record...', sub: 'Generating tenant ID and configuration', t: 800 },
-        { msg: 'Provisioning infrastructure...', sub: 'Setting up isolated data store and compute', t: 1000 },
-        { msg: 'Creating admin account...', sub: 'Configuring admin user with full permissions', t: 600 },
-        { msg: 'Applying feature toggles...', sub: 'Enabling SSO, MFA, and platform features', t: 500 },
-        { msg: 'Finalizing setup...', sub: 'Running post-provisioning checks', t: 400 },
+        { msg: 'Creating tenant record...', sub: 'Generating tenant ID', t: 800 },
+        { msg: 'Storing subscription and payment...', sub: 'Recording mocked checkout details', t: 700 },
+        { msg: 'Creating tenant admin account...', sub: 'Configuring original tenant admin permissions', t: 600 },
+        { msg: 'Finalizing registration...', sub: 'Completing tenant activation flow', t: 400 },
       ];
 
       for (const step of steps) {
@@ -1192,33 +1332,66 @@
 
       // Actually create the tenant
       const newTenant = {
-        tenant_id: d.tenant_id,
-        name: d.tenant_name,
-        domain: d.domain,
-        status: d.status,
-        subscription: d.plan,
+        id: completedData.tenant_id,
+        tenant_id: completedData.tenant_id,
+        name: completedData.tenant_name,
+        slug: completedData.slug,
+        domain: completedData.domain,
+        status: completedData.status,
+        subscription: savedSubscription.plan,
+        subscriptionDetails: savedSubscription,
+        billing_cycle: savedSubscription.billingCycle,
+        paymentStatus: savedSubscription.paymentStatus,
+        payment: {
+          method: savedSubscription.selectedPaymentMethod,
+          gatewayReference: completedData.gateway_ref,
+          mocked: true
+        },
+        paymentDetails: completedData.paymentDetails,
+        termsAccepted: completedData.termsAccepted,
         users: 1, projects: 0, agents: 0, storage_used: 0, api_usage: 0, escalations: 0,
-        region: d.region,
+        region: completedData.detectedRegion,
+        detectedLocale: completedData.detectedLocale,
+        detectedTimezone: completedData.detectedTimezone,
+        detectedRegion: completedData.detectedRegion,
         created_at: new Date().toISOString(),
-        admin_name: d.admin_name,
-        admin_email: d.admin_email,
-        tenant_type: d.org_type,
+        createdAt: new Date().toISOString(),
+        admin_name: completedData.admin_name,
+        admin_email: completedData.admin_email,
+        primaryAdmin: {
+          name: completedData.admin_name,
+          email: completedData.admin_email,
+          jobTitle: completedData.job_title,
+          phone: completedData.phone
+        },
+        tenant_type: completedData.org_type,
+        organizationType: completedData.org_type,
+        industry: completedData.industry,
+        companySize: completedData.company_size,
+        website: completedData.website,
+        description: completedData.description,
       };
       TenantState.addTenant(newTenant);
-      TenantState.addTenantUser(newTenant.tenant_id, {
+      const adminUser = TenantState.addTenantUser(newTenant.tenant_id, {
         id: TenantState.generateUserId(),
-        name: d.admin_name,
-        email: d.admin_email,
+        tenantId: newTenant.tenant_id,
+        name: completedData.admin_name,
+        email: completedData.admin_email,
+        tenantRole: 'admin',
         role: 'Admin',
+        invitationStatus: 'accepted',
         status: 'ACTIVE',
+        isTenantOwner: true,
+        isOriginalTenantAdmin: true,
+        createdAt: new Date().toISOString(),
         last_login: new Date().toISOString(),
       });
-      NexusStore.addLog({ type: 'SYSTEM', message: 'Tenant ' + d.tenant_name + ' (' + d.tenant_id + ') created via Admin Console', agent: 'system' });
+      NexusStore.addLog({ type: 'SYSTEM', message: 'Tenant ' + completedData.tenant_name + ' (' + completedData.tenant_id + ') created via Admin Console', agent: 'system' });
 
       // Success state
       spinner.style.display = 'none';
-      status.textContent = 'Tenant Created Successfully!';
-      sub.textContent = d.tenant_name + ' (' + d.tenant_id + ') is now live';
+      status.textContent = successMessageForCurrentFlow();
+      sub.textContent = completedData.tenant_name + ' (' + completedData.tenant_id + ') registration is complete';
       const check = document.createElement('div');
       check.className = 'rt-submit-check';
       check.textContent = '✅';
@@ -1230,7 +1403,26 @@
       document.getElementById('rtStep2').className = 'rt-step active';
 
       await new Promise(r => setTimeout(r, 2000));
-      window.location.href = _isAdmin ? 'admin/admin-console.html' : 'index.html';
+      if (_isAdmin) {
+        window.location.href = 'admin/admin-console.html';
+      } else {
+        TenantState.loginAsTenantUser(adminUser.email, newTenant);
+        TenantState.setCurrentTenantUser(adminUser);
+        NexusStore.setUser({
+          id: adminUser.id,
+          tenantId: newTenant.tenant_id,
+          name: adminUser.name,
+          email: adminUser.email,
+          tenantRole: 'admin',
+          isTenantOwner: true,
+          role: 'Tenant Admin',
+          avatar: '👤',
+          loginAt: new Date().toISOString()
+        });
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("role", "tenant");
+        window.location.href = 'workspace/dashboard.html';
+      }
     }
 
     // ======== LOGOUT ========

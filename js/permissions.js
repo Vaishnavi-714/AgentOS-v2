@@ -1,5 +1,15 @@
 // NEXUS Enterprise RBAC + ABAC Permission Engine
 const NexusPermissions = {
+  projectRoles: [
+    'Executive & Strategic',
+    'Governance & Admin',
+    'Product & Delivery',
+    'Technical Execution',
+    'QA / Testing',
+    'Release / DevOps',
+    'Workspace / Universal'
+  ],
+
   // Map domain/display roles to RBAC tiers
   roleMap: {
     'Admin': 'Admin',
@@ -77,6 +87,7 @@ const NexusPermissions = {
     if (!user) return false;
     // System admins can access everything
     if (TenantState.isSystemAdmin()) return true;
+    if (page === 'invite-users') return this.canInviteUsers(user);
     const role = this._resolveRole(user.role);
     const allowed = this.roleAccess[role] || [];
     return allowed.includes(page);
@@ -86,6 +97,10 @@ const NexusPermissions = {
     const user = NexusStore.getUser();
     if (!user) return false;
     if (TenantState.isSystemAdmin()) return true;
+    if (feature === 'invite_users') return this.canInviteUsers(user);
+    if (feature === 'create_project') return this.canCreateProject(user);
+    if (feature === 'assign_project_roles') return this.canAssignProjectRoles(user);
+    if (feature === 'edit_project_setup') return this.canEditProjectSetup(user);
     const role = this._resolveRole(user.role);
     const allowed = this.featureAccess[role] || [];
     return allowed.includes(feature);
@@ -94,6 +109,75 @@ const NexusPermissions = {
   getCurrentRole() {
     const user = NexusStore.getUser();
     return user ? this._resolveRole(user.role) : 'Viewer';
+  },
+
+  getCurrentTenantUser() {
+    if (typeof TenantState === 'undefined') return NexusStore.getUser();
+    return TenantState.getCurrentTenantUser() || NexusStore.getUser();
+  },
+
+  getTenantRole(user = this.getCurrentTenantUser()) {
+    return String(user?.tenantRole || '').toLowerCase();
+  },
+
+  isOriginalTenantAdmin(user = this.getCurrentTenantUser()) {
+    return this.getTenantRole(user) === 'admin' && Boolean(user?.isTenantOwner || user?.isOriginalTenantAdmin);
+  },
+
+  isTenantAdmin(user = this.getCurrentTenantUser()) {
+    return this.getTenantRole(user) === 'admin';
+  },
+
+  canInviteUsers(user = this.getCurrentTenantUser()) {
+    if (!user || TenantState.isSystemAdmin()) return false;
+    return this.isOriginalTenantAdmin(user);
+  },
+
+  canCreateProject(user = this.getCurrentTenantUser()) {
+    return this.isTenantAdmin(user);
+  },
+
+  canEditProjectSetup(user = this.getCurrentTenantUser()) {
+    return this.isTenantAdmin(user);
+  },
+
+  canAssignProjectRoles(user = this.getCurrentTenantUser()) {
+    return this.isTenantAdmin(user);
+  },
+
+  canEditOrgStructure(user = this.getCurrentTenantUser()) {
+    return this.canEditProjectSetup(user);
+  },
+
+  canEditWorkflows(user = this.getCurrentTenantUser()) {
+    return this.canEditProjectSetup(user);
+  },
+
+  canEditAgents(user = this.getCurrentTenantUser()) {
+    return this.canEditProjectSetup(user);
+  },
+
+  canViewProject(user = this.getCurrentTenantUser(), project) {
+    if (!project) return false;
+    if (TenantState.isSystemAdmin()) return true;
+    const currentTenant = TenantState.getCurrentTenant();
+    const tenantId = currentTenant?.tenant_id || currentTenant?.id;
+    if (tenantId && project.tenantId && project.tenantId !== tenantId) return false;
+    if (this.isTenantAdmin(user)) return true;
+    const members = Array.isArray(project.members) ? project.members : [];
+    return members.some(m => m.userId === user?.id || m.email?.toLowerCase() === user?.email?.toLowerCase());
+  },
+
+  getVisibleProjects(projects = NexusStore.getProjects(), user = this.getCurrentTenantUser()) {
+    const currentTenant = TenantState.getCurrentTenant();
+    const tenantId = currentTenant?.tenant_id || currentTenant?.id;
+    return (projects || []).filter(project => {
+      if (!project) return false;
+      if (TenantState.isSystemAdmin()) return true;
+      if (tenantId && project.tenantId && project.tenantId !== tenantId) return false;
+      if (tenantId && !project.tenantId) return this.isTenantAdmin(user);
+      return this.canViewProject(user, project);
+    });
   },
 
   // Check if a specific agent type should see a module

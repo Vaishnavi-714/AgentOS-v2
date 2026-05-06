@@ -4,6 +4,54 @@ const MockAPI = {
     return new Promise(resolve => setTimeout(resolve, ms + Math.random() * 400));
   },
 
+  _generateProjectSetup(data, projectId) {
+    const domain = data.domain || 'General';
+    const workflowBase = domain === 'Healthcare'
+      ? ['Requirements to Backlog Pipeline', 'Security Review', 'Release Readiness']
+      : ['Requirements to Backlog Pipeline', 'Architecture Review', 'Quality Gate Review'];
+    const agentBase = domain === 'Finance' || domain === 'Healthcare'
+      ? ['Business Analyst', 'Product Manager', 'Security / DevOps Agent', 'QA Agent']
+      : ['Business Analyst', 'Product Manager', 'Module Architect', 'QA Agent'];
+    const orgStructure = [
+      'Human Orchestrator',
+      'Executive & Strategic',
+      'Governance & Admin',
+      'Product & Delivery',
+      'Technical Execution',
+      'QA / Testing',
+      'Release / DevOps',
+      'Workspace / Universal'
+    ].join(' > ');
+
+    return {
+      orgStructure,
+      selectedWorkflows: workflowBase,
+      selectedAgents: agentBase,
+      orgLevels: [
+        { id: 'lvl_1', label: 'Human Orchestrator', agents: [{ agent_id: '_human_', name: 'Human Orchestrator', role: 'Final Authority' }] },
+        { id: 'lvl_2', label: 'Strategy & Governance', agents: [{ agent_id: 'agent_pm_001', name: 'Product Manager', role: 'Product & Delivery' }] },
+        { id: 'lvl_3', label: 'Execution & Quality', agents: [{ agent_id: 'agent_qa_001', name: 'QA Agent', role: 'QA / Testing' }] }
+      ],
+      workflows: workflowBase.map((name, index) => ({
+        id: `WF-${projectId}-${index + 1}`,
+        name,
+        trigger: index === 0 ? 'Manual' : 'On Milestone',
+        status: 'ACTIVE',
+        _templateId: `auto_${index + 1}`
+      })),
+      agents: agentBase.map((name, index) => ({
+        agent_id: `agent_${projectId}_${index + 1}`,
+        agent_name: name,
+        role: name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, ''),
+        status: 'ACTIVE',
+        lifecycle: 'CONFIGURED',
+        module_scope: 'global',
+        _projectId: projectId,
+        _agentType: 'auto'
+      }))
+    };
+  },
+
   // Auth
   async login(username, password) {
     await this._delay(800);
@@ -20,15 +68,46 @@ const MockAPI = {
   async createProject(data) {
     await this._delay(1000);
     const id = 'proj_' + Date.now().toString(36);
+    const setup = this._generateProjectSetup(data, id);
+    const currentTenant = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenant() : null;
+    const currentUser = NexusStore.getUser();
+    const members = Array.isArray(data.members) ? data.members.map(m => ({ ...m, projectId: id })) : [];
+    if (currentUser?.id && !members.some(m => m.userId === currentUser.id)) {
+      members.unshift({
+        userId: currentUser.id,
+        projectId: id,
+        email: currentUser.email || '',
+        name: currentUser.name || '',
+        tenantRole: currentUser.tenantRole === 'admin' || currentUser.role === 'Tenant Admin' ? 'Admin' : 'Member',
+        projectRole: 'WORKSPACE_UNIVERSAL'
+      });
+    }
     const project = {
       id, name: data.name, description: data.description, domain: data.domain,
       techStack: data.techStack || [], modules: data.modules || [],
       status: 'CREATED', pipelineStatus: 'NOT_STARTED',
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-      createdBy: NexusStore.getUser()?.id || 'unknown',
+      createdBy: currentUser?.id || 'unknown',
+      tenantId: data.tenantId || currentTenant?.tenant_id || currentTenant?.id || 'TNT-001',
+      assignedUsers: members,
+      members,
+      orgStructure: data.orgStructure || setup.orgStructure,
+      selectedWorkflows: data.selectedWorkflows || setup.selectedWorkflows,
+      selectedAgents: data.selectedAgents || setup.selectedAgents,
       testCases: []
     };
     NexusStore.saveProject(project);
+    NexusStore.setProjectOrgStructure(id, {
+      levels: setup.orgLevels,
+      updatedAt: new Date().toISOString(),
+      _aiGenerated: true
+    });
+    NexusStore.setProjectWorkflows(id, setup.workflows);
+    NexusStore.setProjectAgents(id, setup.agents);
+    if (typeof TenantState !== 'undefined') {
+      const tenantProjectCount = NexusStore.getProjects().filter(p => p.tenantId === project.tenantId).length;
+      TenantState.updateTenant(project.tenantId, { projects: tenantProjectCount, agents: setup.agents.length });
+    }
     NexusStore.addLog({ type: 'PROJECT', message: `Project "${project.name}" created`, agent: 'human_orchestrator' });
     return { success: true, project };
   },

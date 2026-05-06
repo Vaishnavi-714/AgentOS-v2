@@ -19,6 +19,16 @@ function seedNexusData() {
       status: 'ACTIVE', pipelineStatus: 'COMPLETED', createdAt: '2024-01-10T09:00:00Z', updatedAt: '2024-01-15T15:00:00Z',
       modules: ['auth', 'payments', 'orders', 'inventory', 'notifications'],
       createdBy: 'user_001',
+      tenantId: 'TNT-001',
+      members: [
+        { userId: 'USR-001', projectId: 'proj_001', tenantRole: 'Admin', projectRole: 'EXECUTIVE_STRATEGIC' },
+        { userId: 'USR-002', projectId: 'proj_001', tenantRole: 'Member', projectRole: 'TECHNICAL_EXECUTION' },
+        { userId: 'USR-003', projectId: 'proj_001', tenantRole: 'Member', projectRole: 'PRODUCT_DELIVERY' },
+        { userId: 'USR-004', projectId: 'proj_001', tenantRole: 'Member', projectRole: 'QA_TESTING' }
+      ],
+      orgStructure: null,
+      selectedWorkflows: [],
+      selectedAgents: [],
       testCases: []
     },
     {
@@ -27,6 +37,15 @@ function seedNexusData() {
       status: 'IN_PROGRESS', pipelineStatus: 'STAGE_6', createdAt: '2024-02-01T10:00:00Z', updatedAt: '2024-02-05T11:00:00Z',
       modules: ['patients', 'appointments', 'telemedicine', 'billing'],
       createdBy: 'user_001',
+      tenantId: 'TNT-001',
+      members: [
+        { userId: 'USR-001', projectId: 'proj_002', tenantRole: 'Admin', projectRole: 'EXECUTIVE_STRATEGIC' },
+        { userId: 'USR-002', projectId: 'proj_002', tenantRole: 'Member', projectRole: 'PRODUCT_DELIVERY' },
+        { userId: 'USR-003', projectId: 'proj_002', tenantRole: 'Member', projectRole: 'QA_TESTING' }
+      ],
+      orgStructure: null,
+      selectedWorkflows: [],
+      selectedAgents: [],
       testCases: []
     }
   ];
@@ -443,6 +462,56 @@ function ensureNexusExtensionData() {
   });
 
   NexusStore.getProjects().forEach(project => {
+    let projectChanged = false;
+    if (!project.tenantId) {
+      project.tenantId = 'TNT-001';
+      projectChanged = true;
+    }
+    if (!Array.isArray(project.members)) {
+      project.members = [
+        { userId: 'USR-001', projectId: project.id, tenantRole: 'Admin', projectRole: 'EXECUTIVE_STRATEGIC' },
+        { userId: 'USR-002', projectId: project.id, tenantRole: 'Member', projectRole: project.id === 'proj_002' ? 'PRODUCT_DELIVERY' : 'TECHNICAL_EXECUTION' }
+      ];
+      projectChanged = true;
+    }
+    project.members = project.members.map(member => ({
+      ...member,
+      projectRole: member.projectRole || (member.projectRoles || [])[0]
+    }));
+    project.assignedUsers = project.members;
+    if (!Array.isArray(project.selectedWorkflows)) {
+      project.selectedWorkflows = ['Requirements to Backlog Pipeline', 'Quality Gate Review'];
+      projectChanged = true;
+    }
+    if (!Array.isArray(project.selectedAgents)) {
+      project.selectedAgents = ['Business Analyst', 'Product Manager', 'QA Agent'];
+      projectChanged = true;
+    }
+    if (!project.orgStructure) {
+      project.orgStructure = 'Human Orchestrator > Leadership > Product & Delivery > Technical Execution > QA / Testing > Release / DevOps';
+      projectChanged = true;
+    }
+    if (projectChanged) {
+      project.updatedAt = project.updatedAt || new Date().toISOString();
+      NexusStore.saveProject(project);
+    }
+    if (!NexusStore.getProjectOrgStructure(project.id)) {
+      NexusStore.setProjectOrgStructure(project.id, {
+        levels: [
+          { id: 'lvl_1', label: 'Human Orchestrator', agents: [{ agent_id: '_human_', name: 'Human Orchestrator', role: 'Final Authority' }] },
+          { id: 'lvl_2', label: 'Leadership', agents: [{ agent_id: 'agent_pm_001', name: 'Product Manager', role: 'Product & Delivery' }] },
+          { id: 'lvl_3', label: 'Execution', agents: [{ agent_id: 'agent_qa_001', name: 'QA Agent', role: 'QA / Testing' }] }
+        ],
+        updatedAt: new Date().toISOString(),
+        _aiGenerated: true
+      });
+    }
+    if (!NexusStore.getProjectWorkflows(project.id).length) {
+      NexusStore.setProjectWorkflows(project.id, [
+        { id: 'WF-default-1', name: 'Requirements to Backlog Pipeline', trigger: 'Manual', status: 'ACTIVE', _templateId: 'default_req_pipeline' },
+        { id: 'WF-default-2', name: 'Quality Gate Review', trigger: 'On Task Complete', status: 'ACTIVE', _templateId: 'default_quality_gate' }
+      ]);
+    }
     ensureBacklogAndTestCaseShape(project.id);
   });
 }

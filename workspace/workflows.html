@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Workflows</title>
   <link rel="stylesheet" href="../css/common.css">
-  <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
 
   <link rel="stylesheet" href="../css/theme.css">
   <style>
@@ -253,6 +252,11 @@
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('workflows');
+    const canEditProjectWorkflows = NexusPermissions.canEditWorkflows();
+    if (!canEditProjectWorkflows) {
+      document.querySelector('.page-actions').style.display = 'none';
+      document.getElementById('wfBuilder-section').innerHTML = '<div class="permission-note">Only admins can edit workflows.</div>';
+    }
 
     function openModal(id) { document.getElementById(id).classList.add('show'); }
     function closeModal(id) { document.getElementById(id).classList.remove('show'); }
@@ -282,7 +286,7 @@
 
     // ─── Project Selector ───
     function initProjectSelector() {
-      const projects = NexusStore.getProjects() || [];
+      const projects = NexusPermissions.getVisibleProjects(NexusStore.getProjects() || []);
       const sel = document.getElementById('projectSelector');
       if (!projects.length) {
         document.getElementById('noProjectState').style.display = 'block';
@@ -325,10 +329,18 @@
     }
 
     function setProjectWorkflows(wfs) {
+      if (!NexusPermissions.canEditWorkflows()) {
+        showToast('Only admins can edit workflows.', 'error');
+        return;
+      }
       NexusStore.setProjectWorkflows(selectedProjectId, wfs);
     }
 
     function saveProjectWorkflow(wf) {
+      if (!NexusPermissions.canEditWorkflows()) {
+        showToast('Only admins can edit workflows.', 'error');
+        return;
+      }
       NexusStore.saveProjectWorkflow(selectedProjectId, wf);
     }
 
@@ -376,9 +388,9 @@
               <span>⏱️ ${t.avgDuration}</span><span>✅ ${t.successRate}%</span><span>🚀 ${t.useCount.toLocaleString()}</span>
             </div>
             <div class="tc-actions">
-              ${isUsed
+              ${canEditProjectWorkflows ? (isUsed
                 ? `<button class="btn btn-primary btn-sm" onclick="openDeployTemplate('${t.templateId}')">+ Add Another</button>`
-                : `<button class="btn btn-primary btn-sm" onclick="openDeployTemplate('${t.templateId}')">⚡ Use Template</button>`}
+                : `<button class="btn btn-primary btn-sm" onclick="openDeployTemplate('${t.templateId}')">Use Template</button>`) : ''}
               <button class="btn btn-outline btn-sm" onclick="previewTemplate('${t.templateId}')">Details</button>
             </div>
           </div>`;
@@ -386,6 +398,7 @@
     }
 
     function openDeployTemplate(templateId) {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can edit workflows.', 'error'); return; }
       const t = WORKFLOW_TEMPLATES.find(w => w.templateId === templateId);
       if (!t) return;
       pendingTemplate = t;
@@ -420,6 +433,7 @@
     }
 
     function confirmDeployTemplate() {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can edit workflows.', 'error'); return; }
       if (!pendingTemplate) return;
       const t = pendingTemplate;
       const name = document.getElementById('deployWfName').value.trim() || t.name;
@@ -512,15 +526,16 @@
               ${wf.lastRun ? `<span>Last: ${formatTime(wf.lastRun)}</span>` : '<span>Never run</span>'}
             </div>
             <div style="display:flex;gap:6px">
-              <button class="btn btn-primary btn-sm" onclick="executeWorkflow('${wf.id}')">▶ Run</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleWfStatus('${wf.id}')">${wf.status==='ACTIVE'?'⏸ Pause':'▶ Resume'}</button>
-              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeWorkflow('${wf.id}')">✕</button>
+              ${canEditProjectWorkflows ? `<button class="btn btn-primary btn-sm" onclick="executeWorkflow('${wf.id}')">Run</button>
+              <button class="btn btn-outline btn-sm" onclick="toggleWfStatus('${wf.id}')">${wf.status==='ACTIVE'?'Pause':'Resume'}</button>
+              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeWorkflow('${wf.id}')">Remove</button>` : '<span class="tag">Read only</span>'}
             </div>
           </div>`;
       }).join('') || '<div class="empty-state"><div class="empty-state-icon">⚡</div><h3 class="empty-state-title">No workflows in this project</h3><p class="empty-state-text">Use a template or build a custom workflow</p></div>';
     }
 
     function toggleWfStatus(wfId) {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can edit workflows.', 'error'); return; }
       const wfs = getProjectWorkflows();
       const wf = wfs.find(w => w.id === wfId);
       if (!wf) return;
@@ -531,16 +546,21 @@
     }
 
     function removeWorkflow(wfId) {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can edit workflows.', 'error'); return; }
       if (!confirm('Remove this workflow?')) return;
       NexusStore.removeProjectWorkflow(selectedProjectId, wfId);
       showToast('Workflow removed', 'info');
       renderAll();
     }
 
-    function executeWorkflow(id) { showToast('Workflow ' + id + ' started', 'success'); }
+    function executeWorkflow(id) {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can run workflows.', 'error'); return; }
+      showToast('Workflow ' + id + ' started', 'success');
+    }
 
     // ─── Custom Workflow Builder ───
     function addCustomStep(type) {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can edit workflows.', 'error'); return; }
       const labels = { agent:'🤖 Agent Step', gate:'🛡️ Quality Gate', transform:'⚙️ Transform', condition:'🔀 Condition', notification:'📢 Notification' };
       customSteps.push({ type, name: labels[type]||'Step', action:'', agent:'' });
       renderCustomSteps();
@@ -579,6 +599,7 @@
     }
 
     function createCustomWorkflow() {
+      if (!NexusPermissions.canEditWorkflows()) { showToast('Only admins can edit workflows.', 'error'); return; }
       const name = document.getElementById('cwfName').value.trim();
       if (!name) { showToast('Workflow name is required', 'error'); return; }
       if (!customSteps.length) { showToast('Add at least one step', 'error'); return; }

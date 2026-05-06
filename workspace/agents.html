@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NEXUS — Agent Management</title>
   <link rel="stylesheet" href="../css/common.css">
-  <script>try{const theme=localStorage.getItem("theme");if(theme==="light"||theme==="dark"){document.documentElement.dataset.theme=theme;}}catch(e){}</script>
 
   <link rel="stylesheet" href="../css/theme.css">
   <style>
@@ -603,7 +602,7 @@
             <h3 class="card-title">🏗️ Org Structure Builder</h3>
             <div class="page-actions">
               <button class="btn btn-outline btn-sm" onclick="addOrgLevel()">+ Add Level</button>
-              <button class="btn btn-outline btn-sm" id="saveOrgBtn" onclick="saveOrgStructure(); showToast('Structure saved!','success')">💾 Save Structure</button>
+              <button class="btn btn-outline btn-sm" id="saveOrgBtn" onclick="if(NexusPermissions.canEditOrgStructure()){saveOrgStructure(); showToast('Structure saved!','success')}">Save Structure</button>
             </div>
           </div>
           <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Drag agents from the pool into levels to build your project's org hierarchy. Top = highest authority, bottom = execution layer.</p>
@@ -775,6 +774,14 @@
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('agents');
+    const canEditProjectAgents = NexusPermissions.canEditAgents();
+    if (!canEditProjectAgents) {
+      document.querySelector('.page-actions').style.display = 'none';
+      document.querySelectorAll('#tab-custom-section, #editStructureBtn, #saveOrgBtn, button[onclick="addOrgLevel()"], button[onclick="openPromptModal()"]').forEach(el => {
+        if (el.id === 'tab-custom-section') el.innerHTML = '<div class="permission-note">Only admins can edit agents.</div>';
+        else el.style.display = 'none';
+      });
+    }
 
     // ─── State ───
     let selectedProjectId = null;
@@ -1035,7 +1042,7 @@
 
     // ─── Project Selector ───
     function initProjectSelector() {
-      const projects = NexusStore.getProjects() || [];
+      const projects = NexusPermissions.getVisibleProjects(NexusStore.getProjects() || []);
       const sel = document.getElementById('projectSelector');
       if (!projects.length) {
         document.getElementById('noProjectState').style.display = 'block';
@@ -1089,6 +1096,10 @@
     }
 
     function saveAgentToProject(agent) {
+      if (!NexusPermissions.canEditAgents()) {
+        showToast('Only admins can edit agents.', 'error');
+        return;
+      }
       NexusStore.saveProjectAgent(selectedProjectId, agent);
       NexusStore.saveAgent(agent);
     }
@@ -1142,9 +1153,9 @@
               <span>🛡️ ${t.ceiling.risk_sensitivity}</span>
             </div>
             <div class="mc-actions">
-              ${isDeployed
+              ${canEditProjectAgents ? (isDeployed
                 ? `<button class="btn btn-primary btn-sm" onclick="openDeployModal('${t.templateId}')">+ Deploy Another</button>`
-                : `<button class="btn btn-primary btn-sm" onclick="openDeployModal('${t.templateId}')">🚀 Deploy</button>`}
+                : `<button class="btn btn-primary btn-sm" onclick="openDeployModal('${t.templateId}')">Deploy</button>`) : ''}
               <button class="btn btn-outline btn-sm" onclick="previewAgent('${t.templateId}')">Details</button>
             </div>
           </div>`;
@@ -1152,6 +1163,10 @@
     }
 
     function openDeployModal(templateId) {
+      if (!NexusPermissions.canEditAgents()) {
+        showToast('Only admins can edit agents.', 'error');
+        return;
+      }
       const t = PREDEFINED_AGENTS.find(a => a.templateId === templateId);
       if (!t) return;
       pendingDeployTemplate = t;
@@ -1192,6 +1207,10 @@
     }
 
     async function confirmDeploy() {
+      if (!NexusPermissions.canEditAgents()) {
+        showToast('Only admins can edit agents.', 'error');
+        return;
+      }
       if (!pendingDeployTemplate) return;
       const t = pendingDeployTemplate;
       const instanceName = document.getElementById('deployInstanceName').value.trim() || t.name;
@@ -1283,14 +1302,15 @@
             </div>
             <div style="display:flex;gap:6px;margin-top:8px">
               <button class="btn btn-outline btn-sm" onclick="openAgentWorkspacePanel('${a.agent_id}')">Workspace</button>
-              <button class="btn btn-outline btn-sm" onclick="toggleAgentStatus('${a.agent_id}')">${a.status==='ACTIVE'?'⏸ Pause':'▶ Resume'}</button>
-              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeAgent('${a.agent_id}')">✕</button>
+              ${canEditProjectAgents ? `<button class="btn btn-outline btn-sm" onclick="toggleAgentStatus('${a.agent_id}')">${a.status==='ACTIVE'?'Pause':'Resume'}</button>
+              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeAgent('${a.agent_id}')">Remove</button>` : '<span class="tag">Read only</span>'}
             </div>
           </div>`;
       }).join('') || '<div class="empty-state"><div class="empty-state-icon">🤖</div><h3 class="empty-state-title">No agents in this project</h3><p class="empty-state-text">Deploy from Marketplace or build a custom agent</p></div>';
     }
 
     function toggleAgentStatus(agentId) {
+      if (!NexusPermissions.canEditAgents()) { showToast('Only admins can edit agents.', 'error'); return; }
       const agent = NexusStore.getProjectAgent(selectedProjectId, agentId);
       if (!agent) return;
       agent.status = agent.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
@@ -1301,6 +1321,7 @@
     }
 
     function removeAgent(agentId) {
+      if (!NexusPermissions.canEditAgents()) { showToast('Only admins can edit agents.', 'error'); return; }
       if (!confirm('Remove this agent from the project?')) return;
       NexusStore.removeProjectAgent(selectedProjectId, agentId);
       orgLevels.forEach(level => { level.agents = level.agents.filter(a => a.agent_id !== agentId); });
@@ -1324,6 +1345,7 @@
     }
 
     async function createCustomAgent() {
+      if (!NexusPermissions.canEditAgents()) { showToast('Only admins can edit agents.', 'error'); return; }
       const name = document.getElementById('customAgentName').value.trim();
       const role = document.getElementById('customAgentRole').value.trim();
       if (!name||!role) { showToast('Agent name and role required','error'); return; }
@@ -1375,10 +1397,15 @@
     }
 
     function saveOrgStructure() {
+      if (!NexusPermissions.canEditOrgStructure()) {
+        showToast('Only admins can edit org structure.', 'error');
+        return;
+      }
       NexusStore.setProjectOrgStructure(selectedProjectId, { levels: orgLevels, updatedAt: new Date().toISOString() });
     }
 
     function addOrgLevel() {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       const label = prompt('Enter level name (e.g., "DevOps Layer"):');
       if (!label || !label.trim()) return;
       orgLevels.push({ id: 'lvl_' + Date.now(), label: label.trim(), agents: [] });
@@ -1388,6 +1415,7 @@
     }
 
     function removeOrgLevel(levelIdx) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       if (orgLevels[levelIdx].agents.length > 0) {
         if (!confirm('This level has agents. Remove anyway?')) return;
       }
@@ -1397,12 +1425,14 @@
     }
 
     function removeAgentFromOrg(levelIdx, agentId) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       orgLevels[levelIdx].agents = orgLevels[levelIdx].agents.filter(a => a.agent_id !== agentId);
       saveOrgStructure();
       renderOrgBuilder();
     }
 
     function moveOrgLevel(idx, dir) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       const newIdx = idx + dir;
       if (newIdx < 0 || newIdx >= orgLevels.length) return;
       const temp = orgLevels[idx];
@@ -1413,6 +1443,7 @@
     }
 
     function renameOrgLevel(idx) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       const current = orgLevels[idx].label;
       const newLabel = prompt('Rename level:', current);
       if (!newLabel || !newLabel.trim()) return;
@@ -1432,7 +1463,7 @@
 
       // Agent Pool
       document.getElementById('orgAgentPool').innerHTML = availableAgents.length ? availableAgents.map(a => `
-        <div class="org-pool-item" draggable="true" ondragstart="onDragStart(event,'${a.agent_id}')">
+        <div class="org-pool-item" draggable="${canEditProjectAgents ? 'true' : 'false'}" ${canEditProjectAgents ? `ondragstart="onDragStart(event,'${a.agent_id}')"` : ''}>
           <span class="opi-icon">${a._icon||a._customIcon||'🤖'}</span>
           <div><div class="opi-name">${escapeHtml(a.agent_name)}</div><div class="opi-role">${a.role.replace(/_/g,' ')}</div></div>
         </div>
@@ -1443,12 +1474,12 @@
         <div class="org-level-row" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${idx})" id="orgLevel_${idx}">
           <div class="org-level-label">
             <span onclick="renameOrgLevel(${idx})" style="cursor:pointer" title="Click to rename">${escapeHtml(level.label)}</span>
-            ${idx > 0 ? `
+            ${canEditProjectAgents && idx > 0 ? `
               <button onclick="moveOrgLevel(${idx},-1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;margin-left:4px" title="Move up">▲</button>
               <button onclick="moveOrgLevel(${idx},1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px" title="Move down">▼</button>
               <button onclick="removeOrgLevel(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;margin-left:4px" title="Remove level">✕</button>
             ` : ''}
-            ${isEditMode ? `<button class="org-add-role-btn" onclick="addRoleToLevel(${idx})" style="margin-left:8px">+ Add Role</button>` : ''}
+            ${canEditProjectAgents && isEditMode ? `<button class="org-add-role-btn" onclick="addRoleToLevel(${idx})" style="margin-left:8px">+ Add Role</button>` : ''}
           </div>
           ${level.agents.length ? level.agents.map((a, aIdx) => `
             <div class="org-placed-node ${isEditMode ? 'editable' : ''} ${a._aiGenerated ? 'ai-node' : ''}" data-org-node="${idx}-${aIdx}" ${isEditMode && a.agent_id !== '_human_' ? `onclick="inlineRenameRole(${idx},${aIdx})"` : ''}>
@@ -1457,7 +1488,7 @@
                 <span class="org-node-name-text"><strong>${escapeHtml(a.name)}</strong></span>
                 <br><span style="font-size:10px;color:var(--text-muted)">${escapeHtml(a.role)}</span>
               </div>
-              ${a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="event.stopPropagation();${isEditMode ? `deleteRoleFromOrg(${idx},${aIdx})` : `removeAgentFromOrg(${idx},'${a.agent_id}')`}">✕</button>` : ''}
+              ${canEditProjectAgents && a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="event.stopPropagation();${isEditMode ? `deleteRoleFromOrg(${idx},${aIdx})` : `removeAgentFromOrg(${idx},'${a.agent_id}')`}">✕</button>` : ''}
             </div>
           `).join('') : '<div style="font-size:11px;color:var(--text-muted);padding:8px;border:1px dashed var(--border);border-radius:var(--radius)">Drop agents here...</div>'}
         </div>
@@ -1467,10 +1498,12 @@
 
     // ─── Drag & Drop ───
     function onDragStart(e, agentId) {
+      if (!NexusPermissions.canEditOrgStructure()) return;
       dragData = agentId;
       e.dataTransfer.effectAllowed = 'move';
     }
     function onDragOver(e) {
+      if (!NexusPermissions.canEditOrgStructure()) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
       e.currentTarget.classList.add('drop-target');
@@ -1479,6 +1512,7 @@
       e.currentTarget.classList.remove('drop-target');
     }
     function onDrop(e, levelIdx) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       e.preventDefault();
       e.currentTarget.classList.remove('drop-target');
       if (!dragData) return;
@@ -1622,6 +1656,7 @@
     }
 
     function editWorkspaceFile(fileName) {
+      if (!NexusPermissions.canEditAgents()) { showToast('Only admins can edit agents.', 'error'); return; }
       activeWorkspaceEditFile = fileName;
       renderWorkspacePanel();
       const textarea = document.getElementById('workspaceEditorTextarea');
@@ -1632,6 +1667,7 @@
     }
 
     function saveWorkspaceFile(fileName) {
+      if (!NexusPermissions.canEditAgents()) { showToast('Only admins can edit agents.', 'error'); return; }
       if (!activeWorkspaceAgentName) return;
       const workspaceData = getAgentWorkspaceData(activeWorkspaceAgentName);
       const textarea = document.getElementById('workspaceEditorTextarea');
@@ -1646,7 +1682,8 @@
       if (!activeWorkspaceAgentName) return;
       const context = getWorkspaceAgentContext(activeWorkspaceAgentId || currentDetailAgentRef || { agentName: activeWorkspaceAgentName });
       const workspaceData = getAgentWorkspaceData(activeWorkspaceAgentName);
-      const isEditing = activeWorkspaceEditFile === activeWorkspaceFile;
+      const canEditWorkspace = NexusPermissions.canEditAgents();
+      const isEditing = canEditWorkspace && activeWorkspaceEditFile === activeWorkspaceFile;
       const content = workspaceData[activeWorkspaceFile] || '';
       const roleLabel = (context?.role || 'agent').replace(/_/g, ' ');
       document.getElementById('workspacePanelTitle').textContent = activeWorkspaceAgentName + ' Workspace';
@@ -1658,7 +1695,7 @@
             ${context?.agentId ? `<span class="tag">${escapeHtml(context.agentId)}</span>` : ''}
             ${statusBadge(context?.status || 'ACTIVE')}
           </div>
-          <div style="font-size:12px;color:var(--text-muted)">Editable workspace files are stored locally and reused for this agent name on every visit.</div>
+          <div style="font-size:12px;color:var(--text-muted)">${canEditWorkspace ? 'Editable workspace files are stored locally and reused for this agent name on every visit.' : 'Only admins can edit this section.'}</div>
         </div>`;
       document.getElementById('workspacePanelTabs').innerHTML = WORKSPACE_FILES.map(f =>
         `<div class="workspace-tab ${activeWorkspaceFile===f?'active':''}" onclick="switchWorkspaceFile('${f}')">${WORKSPACE_LABELS[f]}</div>`
@@ -1672,8 +1709,8 @@
             </div>
             <div class="workspace-actions">
               <span class="workspace-status-badge ${isEditing ? 'editing' : ''}">${isEditing ? 'Editing' : 'Read only'}</span>
-              <button class="btn btn-outline btn-sm" onclick="editWorkspaceFile('${activeWorkspaceFile}')">Edit</button>
-              <button class="btn btn-primary btn-sm" onclick="saveWorkspaceFile('${activeWorkspaceFile}')">Save</button>
+              ${canEditWorkspace ? `<button class="btn btn-outline btn-sm" onclick="editWorkspaceFile('${activeWorkspaceFile}')">Edit</button>
+              <button class="btn btn-primary btn-sm" onclick="saveWorkspaceFile('${activeWorkspaceFile}')">Save</button>` : ''}
             </div>
           </div>
           <textarea id="workspaceEditorTextarea" class="workspace-textarea" ${isEditing ? '' : 'readonly'}>${escapeHtml(content)}</textarea>
@@ -1728,6 +1765,7 @@
     }
 
     function regenerateFromPrompt() {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       const mode = AIOrg._state.promptMode;
       let prompt;
       if (mode === 'auto') {
@@ -1842,6 +1880,7 @@
     }
 
     function toggleEditMode() {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       isEditMode = !isEditMode;
       const btn = document.getElementById('editStructureBtn');
       btn.textContent = isEditMode ? '🔒 Lock Structure' : '✏️ Edit Structure';
@@ -1877,6 +1916,7 @@
     }
 
     function addRoleToLevel(levelIdx) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       const roleName = prompt('Enter role name:');
       if (!roleName || !roleName.trim()) return;
       const icons = ['🤖', '👤', '💼', '⚙️', '🔧', '📊', '🎯', '🛡️'];
@@ -1894,6 +1934,7 @@
     }
 
     function deleteRoleFromOrg(levelIdx, agentIdx) {
+      if (!NexusPermissions.canEditOrgStructure()) { showToast('Only admins can edit org structure.', 'error'); return; }
       const agent = orgLevels[levelIdx].agents[agentIdx];
       if (agent.agent_id === '_human_') { showToast('Cannot remove Human Orchestrator', 'error'); return; }
       orgLevels[levelIdx].agents.splice(agentIdx, 1);
