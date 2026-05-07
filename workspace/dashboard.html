@@ -130,6 +130,7 @@
         <div id="projectSelectorContainer" style="display:inline-block"></div>
         <button class="btn btn-primary" data-create-project-action="header" onclick="openModal('createProjectModal')">+ New Project</button>
         <button class="btn btn-outline btn-sm" onclick="resetData()">Reset Demo Data</button>
+        <button class="btn btn-outline btn-sm" id="inviteUsersHeaderBtn" onclick="openInviteUsersModal()">Add Collaborators</button>
       </div>
     </div>
 
@@ -339,6 +340,7 @@
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
     createNavigation('dashboard');
+    document.getElementById('inviteUsersHeaderBtn').style.display = NexusPermissions.canInviteUsers() ? 'inline-flex' : 'none';
     ProjectAccessUI.applyProjectPageChrome();
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
     let currentSOWFile = null;

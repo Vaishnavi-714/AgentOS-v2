@@ -79,7 +79,6 @@ function createNavigation(activePage) {
           <span class="user-role">${tenantRoleLabel}</span>
         </div>
       </div>
-      ${canInviteUsers ? `<a href="invite-users.html" class="nav-account-action ${activePage === 'invite-users' ? 'active' : ''}">Invite Users</a>` : ''}
       <button class="nav-logout" onclick="handleLogout()">Logout</button>
     </div>
   `;
@@ -177,6 +176,493 @@ function showLoading(text = 'Processing...') {
 function hideLoading() {
   const overlay = document.getElementById('loadingOverlay');
   if (overlay) overlay.classList.remove('show');
+}
+
+const InviteUsersModal = {
+  filters: [
+    { id: 'all', label: 'All' },
+    { id: 'sentPending', label: 'Pending Invitations' },
+    { id: 'sentAccepted', label: 'Accepted Invitations' }
+  ],
+  state: {
+    rows: [],
+    filter: 'all',
+    search: '',
+    editId: null,
+    editErrors: {}
+  }
+};
+
+function getInviteTenantId() {
+  const tenant = TenantState.getCurrentTenant();
+  return tenant?.tenant_id || tenant?.id || '';
+}
+
+function getInviteCurrentUser() {
+  return TenantState.getCurrentTenantUser() || NexusStore.getUser();
+}
+
+function ensureInviteUsersModal() {
+  if (document.getElementById('inviteUsersModal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'inviteUsersModal';
+  modal.className = 'modal-overlay invite-users-overlay';
+  modal.onclick = handleInviteUsersOverlayClick;
+  modal.innerHTML = `
+    <div class="modal invite-users-modal" role="dialog" aria-modal="true" aria-labelledby="inviteUsersTitle" onclick="event.stopPropagation()">
+      <div class="modal-header invite-modal-header">
+        <div>
+          <h3 class="modal-title" id="inviteUsersTitle">Add Collaborators</h3>
+          <p class="invite-modal-subtitle">Add tenant users and assign tenant-level access</p>
+        </div>
+        <button class="modal-close" aria-label="Close Collaborate" onclick="closeInviteUsersModal()">&times;</button>
+      </div>
+      <div class="modal-body invite-modal-body">
+        <div class="invite-section">
+          <div class="invite-section-header">
+            <div>
+              <h4 class="invite-section-title">New Invitations</h4>
+              <p class="invite-section-subtitle">Add one or more people, then choose tenant Admin or Member access.</p>
+            </div>
+            <button class="btn btn-outline btn-sm" type="button" onclick="addInviteModalRow()">Add Another User</button>
+          </div>
+          <div id="inviteModalRows"></div>
+        </div>
+
+        <div class="invite-section invite-status-section">
+          <div class="invite-section-header">
+            <div>
+              <h4 class="invite-section-title">Team Members</h4>
+              <p class="invite-section-subtitle">Track pending and accepted invitations without leaving this page.</p>
+            </div>
+          </div>
+          <div class="invite-status-toolbar">
+            <div class="invite-filter-pills" id="inviteFilterPills"></div>
+            <input type="search" class="form-input invite-search" id="inviteSearchInput" placeholder="Search email or name" oninput="setInviteSearch(this.value)">
+          </div>
+          <div class="table-container invite-table-wrap">
+            <table>
+              <thead><tr><th>Email</th><th>Tenant Role</th><th>InvitationStatus</th><th>Invited Date</th><th>Actions</th></tr></thead>
+              <tbody id="inviteStatusTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer invite-modal-footer">
+        <button class="btn btn-outline" type="button" onclick="closeInviteUsersModal()">Cancel</button>
+        <button class="btn btn-primary" type="button" id="sendInvitationsBtn" onclick="submitInviteModalRows()" disabled>Send Invitations</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const editModal = document.createElement('div');
+  editModal.id = 'editInvitationModal';
+  editModal.className = 'modal-overlay invite-edit-overlay';
+  editModal.innerHTML = `
+    <div class="modal invite-edit-modal" role="dialog" aria-modal="true" aria-labelledby="editInvitationTitle" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" id="editInvitationTitle">Edit Invitation</h3>
+        <button class="modal-close" aria-label="Close Edit Invitation" onclick="closeEditInvitationModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="editInvitationBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="closeEditInvitationModal()">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveInvitationEdit()">Save Changes</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(editModal);
+}
+
+function openInviteUsersModal() {
+  if (!NexusPermissions.canInviteUsers()) {
+    showToast('Only the original tenant admin can collaborate.', 'error');
+    return;
+  }
+  ensureInviteUsersModal();
+  InviteUsersModal.state.rows = [{ id: Date.now(), email: '', tenantRole: 'member', errors: {} }];
+  InviteUsersModal.state.filter = InviteUsersModal.state.filter || 'all';
+  InviteUsersModal.state.search = '';
+  document.getElementById('inviteSearchInput').value = '';
+  renderInviteUsersModal();
+  document.getElementById('inviteUsersModal').classList.add('show');
+}
+
+function closeInviteUsersModal(force = false) {
+  if (!force && hasUnsavedInviteInput() && !confirm('Discard unsent invitation details?')) return;
+  document.getElementById('inviteUsersModal')?.classList.remove('show');
+}
+
+function handleInviteUsersOverlayClick(event) {
+  if (event.target?.id === 'inviteUsersModal') closeInviteUsersModal();
+}
+
+function hasUnsavedInviteInput() {
+  const rows = [...document.querySelectorAll('#inviteModalRows .invite-row')];
+  return rows.some(row => row.querySelector('.invite-email')?.value.trim());
+}
+
+function addInviteModalRow(email = '', tenantRole = 'member') {
+  InviteUsersModal.state.rows.push({ id: Date.now() + Math.random(), email, tenantRole, errors: {} });
+  renderInviteRows();
+  updateSendInvitationsState();
+}
+
+function removeInviteModalRow(rowId) {
+  InviteUsersModal.state.rows = InviteUsersModal.state.rows.filter(row => String(row.id) !== String(rowId));
+  if (!InviteUsersModal.state.rows.length) addInviteModalRow();
+  else {
+    renderInviteRows();
+    updateSendInvitationsState();
+  }
+}
+
+function renderInviteUsersModal() {
+  renderInviteRows();
+  renderInviteFilters();
+  renderInvitationStatusTable();
+  updateSendInvitationsState();
+}
+
+function renderInviteRows() {
+  const rowsEl = document.getElementById('inviteModalRows');
+  if (!rowsEl) return;
+  rowsEl.innerHTML = InviteUsersModal.state.rows.map(row => `
+    <div class="invite-row" data-row-id="${row.id}">
+      <div>
+        <input type="email" class="form-input invite-email" placeholder="user@company.com" value="${escapeHtml(row.email)}" oninput="syncInviteRow('${row.id}', 'email', this.value)">
+        ${row.errors?.email ? `<div class="form-error">${escapeHtml(row.errors.email)}</div>` : ''}
+      </div>
+      <div>
+        <select class="form-select invite-role" onchange="syncInviteRow('${row.id}', 'tenantRole', this.value)">
+          <option value="">Select role</option>
+          <option value="member" ${row.tenantRole === 'member' ? 'selected' : ''}>Member</option>
+          <option value="admin" ${row.tenantRole === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>
+        ${row.errors?.tenantRole ? `<div class="form-error">${escapeHtml(row.errors.tenantRole)}</div>` : ''}
+      </div>
+      <button class="btn btn-outline btn-sm" type="button" onclick="removeInviteModalRow('${row.id}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+function syncInviteRow(rowId, key, value) {
+  const row = InviteUsersModal.state.rows.find(item => String(item.id) === String(rowId));
+  if (!row) return;
+  row[key] = key === 'email' ? value.trim().toLowerCase() : value;
+  row.errors = {};
+  updateSendInvitationsState();
+}
+
+function getInviteRowsFromDom() {
+  return [...document.querySelectorAll('#inviteModalRows .invite-row')].map(row => ({
+    id: row.dataset.rowId,
+    email: row.querySelector('.invite-email').value.trim().toLowerCase(),
+    tenantRole: row.querySelector('.invite-role').value,
+    errors: {}
+  }));
+}
+
+function isInviteEmailValid(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validateInviteRows(rows) {
+  const tenantId = getInviteTenantId();
+  const users = TenantState.getTenantUsers(tenantId);
+  const invitations = TenantState.getTenantInvitations(tenantId);
+  const seen = new Set();
+  let ok = true;
+
+  rows.forEach(row => {
+    row.errors = {};
+    if (!row.email) row.errors.email = 'Email is required.';
+    else if (!isInviteEmailValid(row.email)) row.errors.email = 'Enter a valid email address.';
+    else if (seen.has(row.email)) row.errors.email = 'This email is already in the invite list.';
+    else {
+      const activeUser = users.find(user => user.email === row.email && user.status === 'ACTIVE');
+      const pendingInvite = invitations.find(inv => inv.email === row.email && inv.invitationStatus === 'pending');
+      if (activeUser) row.errors.email = 'This email already belongs to an active tenant user.';
+      else if (pendingInvite) row.errors.email = 'This email already has a pending invitation.';
+    }
+    if (!row.tenantRole) row.errors.tenantRole = 'Choose a tenant role.';
+    seen.add(row.email);
+    if (Object.keys(row.errors).length) ok = false;
+  });
+
+  return ok;
+}
+
+function updateSendInvitationsState() {
+  const btn = document.getElementById('sendInvitationsBtn');
+  if (!btn) return;
+  const rows = getInviteRowsFromDom();
+  btn.disabled = !rows.some(row => row.email && isInviteEmailValid(row.email) && row.tenantRole);
+}
+
+function submitInviteModalRows() {
+  if (!NexusPermissions.canInviteUsers()) {
+    showToast('Only the original tenant admin can collaborate.', 'error');
+    return;
+  }
+
+  const tenantId = getInviteTenantId();
+  const rows = getInviteRowsFromDom().filter(row => row.email);
+  if (!rows.length) {
+    showToast('Add at least one email address.', 'error');
+    return;
+  }
+  if (!validateInviteRows(rows)) {
+    InviteUsersModal.state.rows = rows;
+    renderInviteRows();
+    updateSendInvitationsState();
+    showToast('Please fix invitation details.', 'error');
+    return;
+  }
+
+  rows.forEach(item => {
+    const invitation = TenantState.addTenantInvitation(tenantId, {
+      email: item.email,
+      tenantRole: item.tenantRole,
+      invitationStatus: 'pending',
+      invitedBy: getInviteCurrentUser()?.id || null,
+      lastSentAt: new Date().toISOString()
+    });
+    const existing = TenantState.findTenantUserByEmail(tenantId, item.email);
+    if (!existing) {
+      TenantState.addTenantUser(tenantId, {
+        id: TenantState.generateUserId(),
+        tenantId,
+        name: item.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        email: item.email,
+        tenantRole: item.tenantRole,
+        invitationStatus: 'pending',
+        status: 'PENDING',
+        createdAt: invitation.invitedAt
+      });
+    } else {
+      TenantState.updateTenantUser(tenantId, existing.id, {
+        tenantRole: item.tenantRole,
+        role: item.tenantRole === 'admin' ? 'Admin' : 'Member',
+        invitationStatus: existing.invitationStatus || 'pending'
+      });
+    }
+  });
+
+  TenantState.updateTenant(tenantId, { users: TenantState.getTenantUsers(tenantId).length });
+  NexusStore.addLog({ type: 'USERS', message: `${rows.length} invitation(s) sent`, agent: 'system' });
+  InviteUsersModal.state.rows = [{ id: Date.now(), email: '', tenantRole: 'member', errors: {} }];
+  renderInviteUsersModal();
+  showToast(`${rows.length} invitation${rows.length === 1 ? '' : 's'} sent.`, 'success');
+}
+
+function invitationMatchesFilter(invitation) {
+  const filter = InviteUsersModal.state.filter;
+  if (filter === 'sentPending') return invitation.invitationStatus === 'pending';
+  if (filter === 'sentAccepted') return invitation.invitationStatus === 'accepted';
+  return true;
+}
+
+function setInviteFilter(filter) {
+  InviteUsersModal.state.filter = filter;
+  renderInviteFilters();
+  renderInvitationStatusTable();
+}
+
+function setInviteSearch(value) {
+  InviteUsersModal.state.search = value.trim().toLowerCase();
+  renderInvitationStatusTable();
+}
+
+function renderInviteFilters() {
+  const el = document.getElementById('inviteFilterPills');
+  if (!el) return;
+  el.innerHTML = InviteUsersModal.filters.map(filter => `
+    <button type="button" class="invite-filter-pill ${InviteUsersModal.state.filter === filter.id ? 'active' : ''}" onclick="setInviteFilter('${filter.id}')">${filter.label}</button>
+  `).join('');
+}
+
+function getInvitationEmptyState() {
+  const labels = {
+    sentPending: 'No pending invitations',
+    sentAccepted: 'No accepted invitations yet',
+    all: 'No invitations found'
+  };
+  return labels[InviteUsersModal.state.filter] || labels.all;
+}
+
+function renderInvitationStatusTable() {
+  const tenantId = getInviteTenantId();
+  const users = TenantState.getTenantUsers(tenantId);
+  const query = InviteUsersModal.state.search;
+  const invitations = TenantState.getTenantInvitations(tenantId)
+    .filter(invitationMatchesFilter)
+    .filter(inv => {
+      if (!query) return true;
+      const user = users.find(item => item.email === inv.email);
+      return inv.email.includes(query) || (user?.name || '').toLowerCase().includes(query);
+    });
+
+  const body = document.getElementById('inviteStatusTable');
+  if (!body) return;
+  body.innerHTML = invitations.map(inv => {
+    const user = users.find(item => item.email === inv.email);
+    return `
+      <tr>
+        <td><div class="invite-email-cell">${escapeHtml(user?.name || inv.email.split('@')[0])}<span>${escapeHtml(inv.email)}</span></div></td>
+        <td><span class="tag">${inv.tenantRole === 'admin' ? 'Admin' : 'Member'}</span></td>
+        <td>${renderInviteStatusBadge(inv.invitationStatus)}</td>
+        <td><span title="${escapeHtml(formatTime(inv.invitedAt))}">${formatTime(inv.invitedAt)}</span>${inv.lastSentAt ? `<div class="invite-date-sub">Last sent ${formatTime(inv.lastSentAt)}</div>` : ''}</td>
+        <td><div class="invite-actions">${renderInvitationActions(inv, user)}</div></td>
+      </tr>
+    `;
+  }).join('') || `<tr><td colspan="5"><div class="invite-empty-state">${getInvitationEmptyState()}</div></td></tr>`;
+}
+
+function renderInviteStatusBadge(status) {
+  const value = String(status || 'pending').toLowerCase();
+  const label = value.replace(/\b\w/g, c => c.toUpperCase());
+  const colors = {
+    pending: '#f59e0b',
+    accepted: '#10b981',
+    cancelled: '#6b7280',
+    expired: '#ef4444'
+  };
+  const color = colors[value] || '#6b7280';
+  return `<span class="status-badge" style="background:${color}20;color:${color};border:1px solid ${color}40">${label}</span>`;
+}
+
+function renderInvitationActions(invitation, user) {
+  const status = invitation.invitationStatus;
+  if (status === 'pending') {
+    return `
+      <button class="btn btn-outline btn-sm" onclick="openEditInvitationModal('${invitation.id}')">Edit</button>
+      <button class="btn btn-outline btn-sm" onclick="resendInvitation('${invitation.id}')">Resend</button>
+      <button class="btn btn-outline btn-sm" onclick="cancelInvitation('${invitation.id}')">Cancel</button>
+      <button class="btn btn-outline btn-sm danger-action" onclick="deleteInvitation('${invitation.id}')">Delete</button>
+    `;
+  }
+  if (status === 'accepted') {
+    return `
+      <button class="btn btn-outline btn-sm" onclick="viewInviteDetails('${invitation.id}')">View User</button>
+      ${user && !user.isTenantOwner ? `<button class="btn btn-outline btn-sm" onclick="openEditInvitationModal('${invitation.id}', true)">Change Role</button><button class="btn btn-outline btn-sm danger-action" onclick="removeTenantUserFromInvite('${user.id}')">Remove User</button>` : '<span class="invite-readonly">Owner</span>'}
+    `;
+  }
+  return `<button class="btn btn-outline btn-sm" onclick="viewInviteDetails('${invitation.id}')">View Details</button>`;
+}
+
+function openEditInvitationModal(invitationId, manageAccepted = false) {
+  const tenantId = getInviteTenantId();
+  const invitation = TenantState.getTenantInvitations(tenantId).find(inv => inv.id === invitationId);
+  if (!invitation) return;
+  InviteUsersModal.state.editId = invitationId;
+  InviteUsersModal.state.editErrors = {};
+  renderEditInvitationModal(invitation, manageAccepted);
+  document.getElementById('editInvitationModal').classList.add('show');
+}
+
+function renderEditInvitationModal(invitation, manageAccepted = false) {
+  document.getElementById('editInvitationTitle').textContent = manageAccepted ? 'Manage User Role' : 'Edit Invitation';
+  document.getElementById('editInvitationBody').innerHTML = `
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input class="form-input" id="editInviteEmail" type="email" value="${escapeHtml(invitation.email)}" ${manageAccepted ? 'readonly' : ''}>
+      ${InviteUsersModal.state.editErrors.email ? `<div class="form-error">${escapeHtml(InviteUsersModal.state.editErrors.email)}</div>` : ''}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tenant Role</label>
+      <select class="form-select" id="editInviteRole">
+        <option value="member" ${invitation.tenantRole === 'member' ? 'selected' : ''}>Member</option>
+        <option value="admin" ${invitation.tenantRole === 'admin' ? 'selected' : ''}>Admin</option>
+      </select>
+      ${InviteUsersModal.state.editErrors.tenantRole ? `<div class="form-error">${escapeHtml(InviteUsersModal.state.editErrors.tenantRole)}</div>` : ''}
+    </div>
+  `;
+}
+
+function closeEditInvitationModal() {
+  document.getElementById('editInvitationModal')?.classList.remove('show');
+  InviteUsersModal.state.editId = null;
+}
+
+function saveInvitationEdit() {
+  const tenantId = getInviteTenantId();
+  const invitation = TenantState.getTenantInvitations(tenantId).find(inv => inv.id === InviteUsersModal.state.editId);
+  if (!invitation) return;
+  const email = document.getElementById('editInviteEmail').value.trim().toLowerCase();
+  const tenantRole = document.getElementById('editInviteRole').value;
+  InviteUsersModal.state.editErrors = {};
+
+  if (!email) InviteUsersModal.state.editErrors.email = 'Email is required.';
+  else if (!isInviteEmailValid(email)) InviteUsersModal.state.editErrors.email = 'Enter a valid email address.';
+  if (!tenantRole) InviteUsersModal.state.editErrors.tenantRole = 'Choose a tenant role.';
+
+  const activeUser = TenantState.getTenantUsers(tenantId)
+    .find(user => user.email === email && user.email !== invitation.email && user.status === 'ACTIVE');
+  const duplicate = TenantState.getTenantInvitations(tenantId)
+    .find(inv => inv.id !== invitation.id && inv.email === email && inv.invitationStatus === 'pending');
+  if (activeUser) InviteUsersModal.state.editErrors.email = 'This email already belongs to an active tenant user.';
+  else if (duplicate) InviteUsersModal.state.editErrors.email = 'This email already has a pending invitation.';
+
+  if (Object.keys(InviteUsersModal.state.editErrors).length) {
+    renderEditInvitationModal(invitation, invitation.invitationStatus === 'accepted');
+    return;
+  }
+
+  const updated = TenantState.updateTenantInvitation(tenantId, invitation.id, { email, tenantRole });
+  const user = TenantState.findTenantUserByEmail(tenantId, invitation.email);
+  if (user) TenantState.updateTenantUser(tenantId, user.id, { email, tenantRole, role: tenantRole === 'admin' ? 'Admin' : 'Member' });
+  closeEditInvitationModal();
+  renderInviteUsersModal();
+  showToast(updated?.invitationStatus === 'accepted' ? 'User role updated.' : 'Invitation updated.', 'success');
+}
+
+function resendInvitation(invitationId) {
+  TenantState.updateTenantInvitation(getInviteTenantId(), invitationId, { lastSentAt: new Date().toISOString() });
+  renderInvitationStatusTable();
+  showToast('Invitation resent.', 'success');
+}
+
+function cancelInvitation(invitationId) {
+  const tenantId = getInviteTenantId();
+  const invitation = TenantState.updateTenantInvitation(tenantId, invitationId, { invitationStatus: 'cancelled', cancelledAt: new Date().toISOString() });
+  const user = invitation ? TenantState.findTenantUserByEmail(tenantId, invitation.email) : null;
+  if (user && user.status === 'PENDING') TenantState.removeTenantUser(tenantId, user.id);
+  TenantState.updateTenant(tenantId, { users: TenantState.getTenantUsers(tenantId).length });
+  renderInviteUsersModal();
+  showToast('Invitation cancelled.', 'success');
+}
+
+function deleteInvitation(invitationId) {
+  if (!confirm('Are you sure you want to delete this invitation?')) return;
+  const tenantId = getInviteTenantId();
+  const invitation = TenantState.getTenantInvitations(tenantId).find(inv => inv.id === invitationId);
+  TenantState.removeTenantInvitation(tenantId, invitationId);
+  const user = invitation ? TenantState.findTenantUserByEmail(tenantId, invitation.email) : null;
+  if (user && user.status === 'PENDING') TenantState.removeTenantUser(tenantId, user.id);
+  TenantState.updateTenant(tenantId, { users: TenantState.getTenantUsers(tenantId).length });
+  renderInviteUsersModal();
+  showToast('Invitation deleted.', 'success');
+}
+
+function removeTenantUserFromInvite(userId) {
+  if (!confirm('Are you sure you want to remove this user from the tenant?\n\nUser access will be revoked.')) return;
+  const tenantId = getInviteTenantId();
+  const user = TenantState.getTenantUsers(tenantId).find(item => item.id === userId);
+  if (!user || user.isTenantOwner) return;
+  TenantState.removeTenantUser(tenantId, userId);
+  const invitation = TenantState.getTenantInvitations(tenantId).find(inv => inv.email === user.email);
+  if (invitation) TenantState.updateTenantInvitation(tenantId, invitation.id, { invitationStatus: 'cancelled', removedAt: new Date().toISOString() });
+  TenantState.updateTenant(tenantId, { users: TenantState.getTenantUsers(tenantId).length });
+  renderInviteUsersModal();
+  showToast('User removed from tenant.', 'success');
+}
+
+function viewInviteDetails(invitationId) {
+  const inv = TenantState.getTenantInvitations(getInviteTenantId()).find(item => item.id === invitationId);
+  if (!inv) return;
+  showToast(`${inv.email} is ${inv.invitationStatus}.`, 'info');
 }
 
 // Format timestamp

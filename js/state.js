@@ -335,6 +335,16 @@ const TenantState = {
     return list[idx];
   },
 
+  removeTenantInvitation(tenantId, invitationId) {
+    const all = (() => {
+      try { return JSON.parse(localStorage.getItem(this._invitationsKey)) || {}; }
+      catch { return {}; }
+    })();
+    const list = all[tenantId] || [];
+    all[tenantId] = list.filter(inv => inv.id !== invitationId);
+    localStorage.setItem(this._invitationsKey, JSON.stringify(all));
+  },
+
   acceptInvitationForEmail(tenantId, email) {
     const invitation = this.getTenantInvitations(tenantId)
       .find(inv => inv.email.toLowerCase() === email.toLowerCase() && inv.invitationStatus === 'pending');

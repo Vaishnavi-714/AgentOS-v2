@@ -87,7 +87,6 @@ const NexusPermissions = {
     if (!user) return false;
     // System admins can access everything
     if (TenantState.isSystemAdmin()) return true;
-    if (page === 'invite-users') return this.canInviteUsers(user);
     const role = this._resolveRole(user.role);
     const allowed = this.roleAccess[role] || [];
     return allowed.includes(page);
