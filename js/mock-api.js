@@ -78,7 +78,9 @@ const MockAPI = {
         projectId: id,
         email: currentUser.email || '',
         name: currentUser.name || '',
-        tenantRole: currentUser.tenantRole === 'admin' || currentUser.role === 'Tenant Admin' ? 'Admin' : 'Member',
+        tenantRole: typeof NexusPermissions !== 'undefined' && NexusPermissions.isTenantAdmin(currentUser)
+          ? (NexusPermissions.getTenantRole(currentUser) === 'tenant_admin' ? 'Tenant Admin' : 'Admin')
+          : 'Member',
         projectRole: 'WORKSPACE_UNIVERSAL'
       });
     }

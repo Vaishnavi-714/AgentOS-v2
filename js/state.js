@@ -128,6 +128,21 @@ const TenantState = {
   isLoggedIn() {
     return localStorage.getItem('nexus_isLoggedIn') === 'true';
   },
+  normalizeRoleName(role) {
+    const base = String(role || '')
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .trim()
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ');
+    if (!base) return '';
+    if (base.includes('tenant admin')) return 'tenant_admin';
+    if (base === 'organization admin' || base === 'org admin') return 'admin';
+    if (base === 'admin') return 'admin';
+    if (base === 'project admin') return 'project_admin';
+    if (base === 'member') return 'member';
+    return base.replace(/\s+/g, '_');
+  },
   loginAsSystemAdmin(email) {
     localStorage.setItem('nexus_role', 'SYSTEM_ADMIN');
     localStorage.setItem('nexus_isLoggedIn', 'true');
@@ -149,6 +164,8 @@ const TenantState = {
     localStorage.removeItem(this._currentKey);
     localStorage.removeItem(this._currentUserKey);
     localStorage.removeItem('selectedTenantId');
+    localStorage.removeItem('nexus_selected_project');
+    sessionStorage.removeItem('nexus_selected_project');
   },
   getLoginEmail() {
     return localStorage.getItem('nexus_login_email') || '';
@@ -389,7 +406,7 @@ const TenantState = {
 
   normalizeTenantUser(tenantId, user, index = 0) {
     const legacyRole = user.tenantRole || user.role || 'member';
-    const normalizedRole = String(legacyRole).toLowerCase();
+    const normalizedRole = this.normalizeRoleName(legacyRole);
     const tenantRole = normalizedRole === 'tenant_admin' ? 'tenant_admin' : normalizedRole === 'admin' ? 'admin' : 'member';
     const status = user.status || (user.invitationStatus === 'pending' ? 'PENDING' : 'ACTIVE');
     const isTenantOwner = Boolean(user.isTenantOwner || user.isOriginalTenantAdmin || tenantRole === 'tenant_admin');

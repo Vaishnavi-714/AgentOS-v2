@@ -1,7 +1,11 @@
 const ProductDeliveryDashboard = (() => {
   const state = {
     expandedProductProjectId: null,
-    expandedCrossProjectId: null
+    expandedCrossProjectId: null,
+    openDetailSections: {},
+    roadmapFilter: 'ALL',
+    roadmapPage: 0,
+    expandedEscalationRows: {}
   };
 
   function init() {
@@ -18,7 +22,6 @@ const ProductDeliveryDashboard = (() => {
 
     if (model.selectedProjectRole !== 'PRODUCT_DELIVERY') {
       root.innerHTML = roleMismatchState(model);
-      createProjectSelector('pdProjectSelector');
       return;
     }
 
@@ -28,80 +31,55 @@ const ProductDeliveryDashboard = (() => {
           <h1 class="page-title">Product &amp; Delivery Dashboard</h1>
           <p class="page-subtitle">Structured project execution and aligned delivery.</p>
         </div>
-        <div class="page-actions">
-          <div id="pdProjectSelector"></div>
-        </div>
       </div>
 
       <div class="pd-summary-grid" aria-label="Product and Delivery dashboard navigation">
-        ${summaryCard('Total Projects', model.assignedProjects.length, 'All projects assigned to you', `${model.productDeliveryProjects.length} delivery, ${model.crossRoleProjects.length} cross-role`, model.metrics.workflow.completionPercentage, 'project-involvement')}
-        ${summaryCard('Product & Delivery Projects', model.productDeliveryProjects.length, 'Projects where you own delivery flow', `${model.metrics.backlog.pendingApproval} approvals pending`, model.metrics.backlog.approved, 'product-delivery-projects')}
-        ${summaryCard('Cross-Role Projects', model.crossRoleProjects.length, 'Projects where you support another role', `${model.crossRoleBlockers} blocker${model.crossRoleBlockers === 1 ? '' : 's'}`, model.crossRoleProjects.length ? 55 : 0, 'cross-role-projects')}
+        ${summaryCard('Total Projects', model.assignedProjects.length, 'All projects assigned to you', `${model.productDeliveryProjects.length} delivery, ${model.crossRoleProjects.length} cross-role`, projectMixProgress(model), 'product-delivery-projects')}
+        ${summaryCard('Product & Delivery Projects', model.productDeliveryProjects.length, 'Projects where you own delivery flow', 'Open project details for PM controls', model.productDeliveryProjects.length ? 100 : 0, 'product-delivery-projects')}
+        ${summaryCard('Cross-Role Projects', model.crossRoleProjects.length, 'Projects where you support another role', `${model.crossRoleBlockers} blocker${model.crossRoleBlockers === 1 ? '' : 's'}`, model.assignedProjects.length ? (model.crossRoleProjects.length / model.assignedProjects.length) * 100 : 0, 'cross-role-projects')}
       </div>
 
       ${!model.assignedProjects.length ? noAssignedProjects() : `
-        <section class="pd-section" id="project-involvement">
-          <div class="pd-section-header">
-            <div>
-              <h2>Project Involvement</h2>
-              <p>Complete project involvement for the logged-in user.</p>
-            </div>
-          </div>
-          <div class="pd-flow-card">
-            <span>Review Requirements</span>
-            <span>Generate / Approve Backlog</span>
-            <span>Prioritize Features</span>
-            <span>Monitor Workflow Stages</span>
-            <span>Review Agent Outputs</span>
-            <span>Approve Stage Progression</span>
-          </div>
-        </section>
-
-        <section class="pd-section" id="delivery-flow-insights">
-          <div class="pd-section-header">
-            <div>
-              <h2>Delivery Flow Insights</h2>
-              <p>Requirement intake, backlog health, workflow progress, agent reviews, and roadmap visibility.</p>
-            </div>
-          </div>
-          ${renderDeliveryFlowInsights(model)}
-        </section>
-
         <section class="pd-section" id="product-delivery-projects">
-          <div class="pd-section-header">
-            <div>
-              <h2>Product &amp; Delivery Projects</h2>
-              <p>Projects where you are responsible for requirement intake, planning boards, task tracking, roadmap visibility, backlog approvals, and stage progression.</p>
+          <div class="pd-unified-section-card">
+            <div class="pd-section-header pd-unified-section-header">
+              <div>
+                <h2>Product &amp; Delivery Projects</h2>
+                <p>Projects where you are responsible for requirement intake, planning boards, task tracking, roadmap visibility, backlog approvals, and stage progression.</p>
+              </div>
             </div>
+            ${renderProductDeliveryTable(model.productDeliveryProjects, model)}
           </div>
-          ${renderProductDeliveryTable(model.productDeliveryProjects, model)}
         </section>
 
         <section class="pd-section" id="cross-role-projects">
-          <div class="pd-section-header">
-            <div>
-              <h2>Cross-Role Projects</h2>
-              <p>Projects where you are involved in a role other than Product &amp; Delivery.</p>
+          <div class="pd-unified-section-card">
+            <div class="pd-section-header pd-unified-section-header">
+              <div>
+                <h2>Cross-Role Projects</h2>
+                <p>Projects where you are involved in a role other than Product &amp; Delivery.</p>
+              </div>
             </div>
+            ${renderCrossRoleTable(model.crossRoleProjects, model)}
           </div>
-          ${renderCrossRoleTable(model.crossRoleProjects, model)}
         </section>
       `}
     `;
-    createProjectSelector('pdProjectSelector');
   }
 
   function getDashboardModel() {
     const currentUser = NexusRoleUtils.getCurrentUser();
     const projects = NexusStore.getProjects();
     const assignedProjects = NexusRoleUtils.getAssignedProjects(projects, currentUser);
-    const selectedProject = NexusRoleUtils.getSelectedProject(projects);
-    const selectedProjectRole = getProjectRole(selectedProject, currentUser);
     const productDeliveryProjects = assignedProjects.filter(project => getProjectRole(project, currentUser) === 'PRODUCT_DELIVERY');
     const crossRoleProjects = assignedProjects.filter(project => getProjectRole(project, currentUser) !== 'PRODUCT_DELIVERY');
+    const rawSelectedProject = NexusRoleUtils.getSelectedProject(projects);
+    const selectedProject = getProjectRole(rawSelectedProject, currentUser) === 'PRODUCT_DELIVERY'
+      ? rawSelectedProject
+      : productDeliveryProjects[0] || rawSelectedProject;
+    const selectedProjectRole = getProjectRole(selectedProject, currentUser);
     const tenantId = TenantState.getCurrentTenant()?.tenant_id || TenantState.getCurrentTenant()?.id || '';
     const tenantUsers = tenantId ? TenantState.getTenantUsers(tenantId) : [];
-    const metrics = buildProductDeliveryDetail(selectedProject || productDeliveryProjects[0] || {});
 
     return {
       currentUser,
@@ -112,8 +90,7 @@ const ProductDeliveryDashboard = (() => {
       assignedProjects,
       productDeliveryProjects,
       crossRoleProjects,
-      crossRoleBlockers: crossRoleProjects.filter(project => getCrossRoleBlocker(project, getProjectRole(project, currentUser)) !== 'None').length,
-      metrics
+      crossRoleBlockers: crossRoleProjects.filter(project => getCrossRoleBlocker(project, getProjectRole(project, currentUser)) !== 'None').length
     };
   }
 
@@ -133,6 +110,11 @@ const ProductDeliveryDashboard = (() => {
     `;
   }
 
+  function projectMixProgress(model) {
+    if (!model.assignedProjects.length) return 0;
+    return (model.productDeliveryProjects.length / model.assignedProjects.length) * 100;
+  }
+
   function roleMismatchState(model) {
     const roleLabel = model.selectedProjectRoleLabel || 'no assigned project role';
     return `
@@ -141,16 +123,13 @@ const ProductDeliveryDashboard = (() => {
           <h1 class="page-title">Product &amp; Delivery Dashboard</h1>
           <p class="page-subtitle">Structured project execution and aligned delivery.</p>
         </div>
-        <div class="page-actions">
-          <div id="pdProjectSelector"></div>
-        </div>
       </div>
       <div class="pd-empty-state pd-role-empty">
         <h3>This dashboard is for Product &amp; Delivery.</h3>
         <p>Your selected project role is ${escapeHtml(roleLabel)}.</p>
         <div class="pd-empty-actions">
           <a class="btn btn-primary" href="dashboard.html">Go to Projects Hub</a>
-          <span>Use the project dropdown to switch to a project where your role is Product &amp; Delivery.</span>
+          <span>Select a Product &amp; Delivery project from the Projects Hub to use this dashboard.</span>
         </div>
       </div>
     `;
@@ -176,7 +155,7 @@ const ProductDeliveryDashboard = (() => {
     }
 
     return `
-      <div class="table-container pd-table-card">
+      <div class="table-container pd-table-card pd-unified-table">
         <table class="pd-table">
           <thead>
             <tr>
@@ -222,168 +201,798 @@ const ProductDeliveryDashboard = (() => {
   function renderProductDeliveryDetails(project) {
     const detail = buildProductDeliveryDetail(project);
     return `
-      <div class="pd-details-card">
-        ${detailSection('Requirement to Backlog', [
-          ['Total requirements', detail.requirements.total],
-          ['Requirements pending review', detail.requirements.pendingReview],
-          ['Ready for backlog', detail.requirements.readyForBacklog],
-          ['Backlog items generated', detail.backlog.generated],
-          ['Backlog items pending approval', detail.backlog.pendingApproval],
-          ['Approved backlog items', detail.backlog.approved]
-        ])}
-        ${detailSection('Planning and Prioritization', [
-          ['Must-have features', detail.features.mustHave],
-          ['Should-have features', detail.features.shouldHave],
-          ['Task total', detail.tasks.total],
-          ['Tasks in progress', detail.tasks.inProgress],
-          ['Tasks completed', detail.tasks.completed]
-        ])}
-        ${detailSection('Execution Monitoring', [
-          ['Current workflow stage', detail.workflow.currentStage],
-          ['Stage completion', `${detail.workflow.completionPercentage}%`],
-          ['Next stage', detail.workflow.nextStage],
-          ['Current milestone', detail.roadmap.currentMilestone],
-          ['Next milestone', detail.roadmap.nextMilestone],
-          ['Timeline status', detail.roadmap.timelineStatus]
-        ])}
-        ${detailSection('Review and Approval', [
-          ['Agent outputs pending review', detail.outputs.pending],
-          ['Approved agent outputs', detail.outputs.approved],
-          ['Revisions requested', detail.outputs.revisions],
-          ['Pending stage approvals', detail.approvals.pending],
-          ['Delivery blockers', detail.escalations.deliveryBlockers],
-          ['At-risk milestones', detail.roadmap.atRiskMilestones]
-        ])}
+      <div class="pd-details-card pd-pdm-details">
+        <div class="pd-details-titlebar">
+          <div>
+            <h3>${escapeHtml(project.name || 'Project')} Product &amp; Delivery View</h3>
+            <p>${escapeHtml(project.description || 'Project-specific delivery management data generated for this project.')}</p>
+          </div>
+          ${deliveryHealthBadge(detail.roadmap.deliveryHealth)}
+        </div>
+        ${renderDetailBlock('Project Overview', renderMetricCards([
+          ['Total Requirements', detail.overview.totalRequirements],
+          ['Requirements Pending Review', detail.overview.requirementsPendingReview],
+          ['Ready for Backlog', detail.overview.readyForBacklog],
+          ['Backlog Items Generated', detail.overview.backlogItemsGenerated],
+          ['Backlog Items Approved', detail.overview.backlogItemsApproved],
+          ['Current Sprint', detail.overview.currentSprint],
+          ['Current Milestone', detail.overview.currentMilestone],
+          ['Delivery Confidence', detail.overview.deliveryConfidence],
+          ['Overall Completion %', `${detail.overview.overallCompletion}%`],
+          ['Target Delivery Date', formatDate(detail.overview.targetDeliveryDate)],
+          ['Days Remaining', detail.overview.daysRemaining],
+          ['Project Health', detail.overview.projectHealth]
+        ]), 'pd-detail-full', {
+          summary: sectionSummary([
+            ['Completion', `${detail.overview.overallCompletion}%`],
+            ['Current Sprint', detail.overview.currentSprint],
+            ['Health', detail.overview.projectHealth]
+          ]),
+          defaultOpen: true
+        })}
+        ${renderDeliveryHealth(detail)}
+        ${renderRoadmapTimeline(detail)}
+        ${renderMilestones(detail)}
+        ${renderRequirementBacklog(detail)}
+        ${renderFeatureProgress(detail)}
+        ${renderPrioritization(detail)}
+        ${renderSprintPlanning(detail)}
+        ${renderResourcePlanning(detail)}
+        ${renderStageGates(detail)}
+        ${renderDependencies(detail)}
+        ${renderRisks(detail)}
+        ${renderEscalations(detail)}
+        ${renderCostBudget(detail)}
+        ${renderStakeholders(detail)}
       </div>
     `;
   }
 
-  function renderDeliveryFlowInsights(model) {
-    const detail = model.metrics;
+  function renderDetailBlock(title, body, className = '', options = {}) {
+    if (options.accordion === false) {
+      return `
+        <section class="pd-management-section ${className}">
+          <div class="pd-management-head">
+            <h3>${escapeHtml(title)}</h3>
+          </div>
+          ${body}
+        </section>
+      `;
+    }
+    const sectionKey = detailSectionKey(title);
+    const defaultOpen = options.defaultOpen ?? ['Project Overview', 'Delivery Health', 'Roadmap', 'Milestones'].includes(title);
+    const isOpen = state.openDetailSections[sectionKey] ?? defaultOpen;
+    const summary = options.summary || `<span>${escapeHtml(options.summaryText || 'Quick view available')}</span>`;
     return `
-      <div class="pd-insights-grid">
-        ${renderRequirementFunnel(detail)}
-        ${renderBacklogStatus(detail)}
-        ${renderPriorityMix(detail)}
-        ${renderWorkflowStepper(detail)}
-        ${renderAgentOutputStatus(detail)}
-        ${renderRoadmapHealth(detail)}
-        ${renderTaskTracking(detail)}
-      </div>
+      <section class="pd-management-section pd-accordion-section ${className} ${isOpen ? 'is-open' : 'is-collapsed'}">
+        <button class="pd-management-head pd-accordion-head" type="button" onclick="ProductDeliveryDashboard.toggleDetailSection('${sectionKey}', ${String(isOpen)})" aria-expanded="${String(isOpen)}">
+          <span class="pd-accordion-title">${escapeHtml(title)}</span>
+          <span class="pd-accordion-summary">${summary}</span>
+          <span class="pd-accordion-chevron">${isOpen ? '&#9650;' : '&#9660;'}</span>
+        </button>
+        <div class="pd-accordion-body" ${isOpen ? '' : 'hidden'}>
+          ${body}
+        </div>
+      </section>
     `;
   }
 
-  function renderRequirementFunnel(detail) {
-    const total = Math.max(detail.requirements.total, 1);
-    const rows = [
-      ['Total Requirements', detail.requirements.total],
-      ['Pending Review', detail.requirements.pendingReview],
-      ['Needs Clarification', detail.requirements.needsClarification],
-      ['Ready for Backlog', detail.requirements.readyForBacklog],
-      ['Converted to Backlog', detail.requirements.convertedToBacklog]
-    ];
-    return chartCard('Requirement Intake Funnel', 'Review Requirements', rows.map(([label, value]) => `
-      <div class="pd-funnel-row">
+  function detailSectionKey(title) {
+    const projectId = state.expandedProductProjectId || state.expandedCrossProjectId || 'global';
+    return `${projectId}-${String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  }
+
+  function sectionSummary(items) {
+    return items.map(([label, value]) => `<span><b>${escapeHtml(label)}</b> ${escapeHtml(String(value))}</span>`).join('');
+  }
+
+  function renderMetricCards(items, className = '') {
+    return `<div class="pd-management-kpis ${className}">${items.map(([label, value]) => `
+      <article class="pd-management-kpi">
         <span>${escapeHtml(label)}</span>
-        <strong>${value}</strong>
-        <i><b style="width:${clampPercent((value / total) * 100)}%"></b></i>
-      </div>
-    `).join(''));
-  }
-
-  function renderBacklogStatus(detail) {
-    const data = [
-      ['Generated', detail.backlog.generated, 'info'],
-      ['Pending Approval', detail.backlog.pendingApproval, 'warning'],
-      ['Approved', detail.backlog.approved, 'success'],
-      ['Returned', detail.backlog.returned, 'orange'],
-      ['Rejected', detail.backlog.rejected, 'danger']
-    ];
-    const total = Math.max(data.reduce((sum, item) => sum + item[1], 0), 1);
-    return chartCard('Backlog Approval Status', 'Generate / Approve Backlog', `
-      <div class="pd-segment-bar">${data.map(([, value, tone]) => `<span class="pd-tone-${tone}" style="width:${clampPercent((value / total) * 100)}%"></span>`).join('')}</div>
-      <div class="pd-legend-grid">${data.map(([label, value, tone]) => `<span><i class="pd-dot pd-tone-${tone}"></i>${escapeHtml(label)} <strong>${value}</strong></span>`).join('')}</div>
-    `);
-  }
-
-  function renderPriorityMix(detail) {
-    const data = [
-      ['Must Have', detail.features.mustHave],
-      ['Should Have', detail.features.shouldHave],
-      ['Could Have', detail.features.couldHave],
-      ['Deferred', detail.features.deferred]
-    ];
-    const max = Math.max(...data.map(item => item[1]), 1);
-    return chartCard('Feature Priority Mix', 'Prioritize Features', `
-      <div class="pd-bar-chart">${data.map(([label, value]) => `
-        <div class="pd-bar-item">
-          <span>${escapeHtml(label)}</span>
-          <i><b style="height:${clampPercent((value / max) * 100)}%"></b></i>
-          <strong>${value}</strong>
-        </div>
-      `).join('')}</div>
-    `);
-  }
-
-  function renderWorkflowStepper(detail) {
-    const stages = ['Requirement Review', 'Backlog Generation', 'Backlog Approval', 'Feature Prioritization', 'Task Planning', 'Delivery Tracking', 'Stage Approval'];
-    const currentIndex = stages.findIndex(stage => stage === detail.workflow.currentStage);
-    const fallbackIndex = Math.min(stages.length - 1, Math.floor((detail.workflow.completionPercentage / 100) * stages.length));
-    const activeIndex = currentIndex >= 0 ? currentIndex : fallbackIndex;
-    return chartCard('Workflow Stage Progress', 'Monitor Workflow Stages', `
-      <div class="pd-stepper">${stages.map((stage, index) => {
-        const status = detail.workflow.blockedStages && index === activeIndex ? 'blocked' : index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'next';
-        return `<div class="pd-step ${status}"><i></i><span>${escapeHtml(stage)}</span></div>`;
-      }).join('')}</div>
-      <div class="pd-chart-foot">Next stage: <strong>${escapeHtml(detail.workflow.nextStage)}</strong></div>
-    `, 'pd-chart-card-wide');
-  }
-
-  function renderAgentOutputStatus(detail) {
-    const data = [
-      ['Pending Review', detail.outputs.pending],
-      ['Approved', detail.outputs.approved],
-      ['Revision Requested', detail.outputs.revisions],
-      ['Rejected', detail.outputs.rejected]
-    ];
-    return chartCard('Agent Output Review Status', 'Review Agent Outputs', `<div class="pd-mini-stat-grid">${data.map(([label, value]) => `<div><strong>${value}</strong><span>${escapeHtml(label)}</span></div>`).join('')}</div>`);
-  }
-
-  function renderRoadmapHealth(detail) {
-    return chartCard('Roadmap Health', 'Roadmap Visibility', `
-      <div class="pd-roadmap-card">
-        <div><span>Current milestone</span><strong>${escapeHtml(detail.roadmap.currentMilestone)}</strong></div>
-        <div><span>Next milestone</span><strong>${escapeHtml(detail.roadmap.nextMilestone)}</strong></div>
-        <div class="pd-roadmap-row"><span>Timeline status</span>${deliveryHealthBadge(detail.roadmap.timelineStatus)}</div>
-        <div class="pd-roadmap-row"><span>Delivery confidence</span>${confidenceBadge(detail.roadmap.deliveryConfidence)}</div>
-        <div class="pd-roadmap-row"><span>At-risk milestones</span><strong>${detail.roadmap.atRiskMilestones}</strong></div>
-      </div>
-    `);
-  }
-
-  function renderTaskTracking(detail) {
-    const data = [
-      ['In Progress', detail.tasks.inProgress, 'info'],
-      ['Completed', detail.tasks.completed, 'success'],
-      ['Blocked', detail.tasks.blocked, 'danger']
-    ];
-    const total = Math.max(detail.tasks.total, 1);
-    return chartCard('Task Tracking Snapshot', 'Task Tracking', `
-      <div class="pd-task-total"><strong>${detail.tasks.total}</strong><span>Total Tasks</span></div>
-      <div class="pd-segment-bar">${data.map(([, value, tone]) => `<span class="pd-tone-${tone}" style="width:${clampPercent((value / total) * 100)}%"></span>`).join('')}</div>
-      <div class="pd-legend-grid">${data.map(([label, value, tone]) => `<span><i class="pd-dot pd-tone-${tone}"></i>${escapeHtml(label)} <strong>${value}</strong></span>`).join('')}</div>
-    `);
-  }
-
-  function chartCard(title, subtitle, body, className = '') {
-    return `
-      <article class="pd-chart-card ${className}">
-        <div class="pd-chart-head">
-          <h3>${escapeHtml(title)}</h3>
-          <span>${escapeHtml(subtitle)}</span>
-        </div>
-        ${body}
+        <strong>${escapeHtml(String(value))}</strong>
       </article>
+    `).join('')}</div>`;
+  }
+
+  function metricStrip(items, className = '') {
+    return `
+      <div class="pd-metric-strip ${className}">
+        ${items.map(([label, value]) => `
+          <article>
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(String(value))}</strong>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function agentWorkforceGrid(agents) {
+    return `
+      <div class="pd-agent-grid">
+        ${agents.map(agent => `
+          <article class="pd-agent-card">
+            <div class="pd-agent-card-head">
+              <div>
+                <h4>${escapeHtml(agent.name)}</h4>
+                <span>${escapeHtml(agent.type)}</span>
+              </div>
+              ${statusBadge(agent.status)}
+            </div>
+            <p>${escapeHtml(agent.responsibilityArea)}</p>
+            <div class="pd-agent-util">
+              <span>Utilization <strong>${agent.utilization}%</strong></span>
+              ${bar(agent.utilization)}
+            </div>
+            <div class="pd-agent-card-foot">
+              <span>${escapeHtml(agent.workflowStage)}</span>
+              ${deliveryHealthBadge(agent.health)}
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function riskIssueList(items) {
+    return `
+      <div class="pd-risk-list">
+        ${items.map(item => `
+          <article>
+            <div class="pd-risk-main">
+              <h4>${escapeHtml(item.name)}</h4>
+              <span>${escapeHtml(item.category)} · ${escapeHtml(item.probability)} probability · ${escapeHtml(item.impact)} impact</span>
+            </div>
+            <div class="pd-risk-meta">
+              ${deliveryHealthBadge(item.severity)}
+              ${statusBadge(item.status)}
+              <span>Owner: ${escapeHtml(item.owner)}</span>
+            </div>
+            <p>${escapeHtml(item.mitigation)}</p>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function escalationList(items) {
+    return `
+      <div class="pd-responsive-table pd-escalation-table">
+        <table>
+          <colgroup>
+            <col class="pd-escalation-topic-col">
+            <col class="pd-escalation-level-col">
+            <col class="pd-escalation-owner-col">
+            <col class="pd-escalation-sla-col">
+            <col class="pd-escalation-status-col">
+            <col class="pd-escalation-date-col">
+            <col class="pd-escalation-action-col">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Escalation Topic</th>
+              <th>Current Level</th>
+              <th>Owner</th>
+              <th>SLA</th>
+              <th>Status</th>
+              <th>Next Escalation Date</th>
+              <th>Action / Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((item, index) => escalationTableRows(item, index)).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function escalationTableRows(item, index) {
+    const rowKey = `${state.expandedProductProjectId || 'project'}-${index}`;
+    const expanded = Boolean(state.expandedEscalationRows[rowKey]);
+    return `
+      <tr class="pd-main-row">
+        <td data-label="Escalation Topic"><strong>${escapeHtml(item.topic)}</strong></td>
+        <td data-label="Current Level">${levelBadge(item.currentLevel)}</td>
+        <td data-label="Owner">${escapeHtml(item.owner)}</td>
+        <td data-label="SLA"><span class="pd-mini-chip">${escapeHtml(item.sla)}</span></td>
+        <td data-label="Status">${statusBadge(item.status)}</td>
+        <td data-label="Next Escalation Date">${formatDate(item.nextEscalationDate)}</td>
+        <td data-label="Action / Details">
+          <button class="pd-row-detail-btn" type="button" onclick="ProductDeliveryDashboard.toggleEscalationRow('${rowKey}')" aria-expanded="${String(expanded)}">
+            ${expanded ? 'Hide' : 'View'} Details <span>${expanded ? '&#9650;' : '&#9660;'}</span>
+          </button>
+        </td>
+      </tr>
+      ${expanded ? `
+        <tr class="pd-details-subrow">
+          <td colspan="7">
+            <div class="pd-escalation-detail-grid">
+              <article><span>Trigger Condition</span><p>${escapeHtml(item.trigger)}</p></article>
+              <article><span>Resolution Plan</span><p>${escapeHtml(item.resolutionPlan)}</p></article>
+              <article><span>Level Meaning</span><p>${escapeHtml(levelMeaning(item.currentLevel))}</p></article>
+            </div>
+          </td>
+        </tr>
+      ` : ''}
+    `;
+  }
+
+  function levelBadge(value) {
+    const num = String(value || '').match(/\d+/)?.[0] || '1';
+    return `<span class="pd-level-badge" title="${escapeHtml(levelMeaning(value))}">L${num}</span>`;
+  }
+
+  function levelMeaning(value) {
+    const meanings = {
+      1: 'Team Lead / Product Owner',
+      2: 'Delivery Manager',
+      3: 'Governance / PMO',
+      4: 'Executive Sponsor',
+      5: 'Client Steering Committee'
+    };
+    const num = String(value || '').match(/\d+/)?.[0] || '1';
+    return meanings[num] || 'Escalation owner';
+  }
+
+  function costBreakdownList(items, maxCost) {
+    return `
+      <div class="pd-cost-breakdown">
+        ${items.map(item => `
+          <article>
+            <div>
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${currency(item.value)}</strong>
+            </div>
+            <i><b style="width:${clampPercent((item.value / Math.max(maxCost, 1)) * 100)}%"></b></i>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function stakeholderGrid(items) {
+    return `
+      <div class="pd-responsive-table pd-stakeholder-table">
+        <table>
+          <colgroup>
+            <col class="pd-stakeholder-name-col">
+            <col class="pd-stakeholder-role-col">
+            <col class="pd-stakeholder-frequency-col">
+            <col class="pd-stakeholder-contact-col">
+            <col class="pd-stakeholder-decision-col">
+            <col class="pd-stakeholder-health-col">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Stakeholder</th>
+              <th>Role</th>
+              <th>Frequency</th>
+              <th>Last Contact</th>
+              <th>Pending Decision</th>
+              <th>Health</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td data-label="Stakeholder"><strong class="pd-clamp-2">${escapeHtml(item.name)}</strong></td>
+                <td data-label="Role"><span class="pd-clamp-2">${escapeHtml(item.role)}</span></td>
+                <td data-label="Frequency">${escapeHtml(item.frequency)}</td>
+                <td data-label="Last Contact">${formatDate(item.lastContacted)}</td>
+                <td data-label="Pending Decision"><span class="pd-clamp-2">${escapeHtml(item.pendingDecision)}</span></td>
+                <td data-label="Health">${compactHealthBadge(item.sentiment)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function compactHealthBadge(value) {
+    const label = String(value || '').toLowerCase().includes('red') ? 'Risk'
+      : String(value || '').toLowerCase().includes('amber') ? 'Watch'
+      : 'Green';
+    const tone = label === 'Risk' ? 'danger' : label === 'Watch' ? 'warning' : 'success';
+    return `<span class="pd-badge pd-badge-${tone}">${label}</span>`;
+  }
+
+  function renderRequirementBacklog(detail) {
+    const req = detail.requirements;
+    const total = Math.max(req.totalReceived, 1);
+    return renderDetailBlock('Requirement Intake & Backlog Automation', `
+      <div class="pd-backlog-health">
+        <article>
+          <span class="pd-dot pd-tone-success"></span>
+          <div>
+            <strong>${detail.backlog.onScheduleCount}</strong>
+            <small>On Schedule Backlog Items</small>
+          </div>
+        </article>
+        <article>
+          <span class="pd-dot pd-tone-warning"></span>
+          <div>
+            <strong>${detail.backlog.offScheduleCount}</strong>
+            <small>Off Schedule / Running Behind</small>
+          </div>
+        </article>
+      </div>
+      <div class="pd-funnel-visual pd-funnel-visual-focus">
+        ${req.funnel.map((item, index) => `
+          <div class="pd-funnel-row pd-funnel-step-${index + 1}">
+            <span>${escapeHtml(item.label)}</span>
+            <strong>${item.value}</strong>
+            <i><b style="width:${clampPercent((item.value / total) * 100)}%"></b></i>
+          </div>
+        `).join('')}
+      </div>
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['On schedule', detail.backlog.onScheduleCount],
+        ['Behind', detail.backlog.offScheduleCount],
+        ['Approved', detail.backlog.approved]
+      ])
+    });
+  }
+
+  function renderFeatureProgress(detail) {
+    return renderDetailBlock('Feature / Module Progress', renderDataTable(
+      ['Feature / Module Name', 'Owner', 'Priority', 'Status', 'Completion %', 'Linked Sprints', 'Blockers', 'RAG Status'],
+      detail.features.map(feature => [
+        escapeHtml(feature.name),
+        escapeHtml(feature.owner),
+        priorityBadge(feature.priority),
+        statusBadge(feature.status),
+        `<div class="pd-progress-cell"><span>${feature.completion}%</span>${bar(feature.completion)}</div>`,
+        sprintChips(feature.linkedSprints),
+        blockersBadge(String(feature.blockers)),
+        ragStatusDot(feature.ragStatus)
+      ]),
+      'pd-feature-table'
+    ), 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Modules', detail.features.length],
+        ['Avg complete', `${Math.round(detail.features.reduce((sum, item) => sum + item.completion, 0) / Math.max(detail.features.length, 1))}%`],
+        ['Blockers', detail.features.reduce((sum, item) => sum + Number(item.blockers || 0), 0)]
+      ])
+    });
+  }
+
+  function renderPrioritization(detail) {
+    const mix = detail.prioritization.mix;
+    const total = Math.max(mix.mustHave + mix.shouldHave + mix.couldHave + mix.deferred, 1);
+    return renderDetailBlock('Prioritization', `
+      <div class="pd-priority-quickview">
+        ${pieChart([
+          ['Must', mix.mustHave, 'danger'],
+          ['Should', mix.shouldHave, 'warning'],
+          ['Could', mix.couldHave, 'info'],
+          ['Deferred', mix.deferred, 'success']
+        ], total)}
+        <div class="pd-priority-compact-grid">
+          ${compactPriorityCard('Business Value', detail.prioritization.businessValueScore, 'Impact')}
+          ${compactPriorityCard('Effort', detail.prioritization.effortScore, 'Delivery lift')}
+          ${compactPriorityCard('Risk', detail.prioritization.riskScore, 'Heat')}
+          ${compactPriorityCard('Tier', detail.prioritization.priorityRank, 'Priority')}
+        </div>
+      </div>
+    `, '', {
+      summary: sectionSummary([
+        ['Must', mix.mustHave],
+        ['Should', mix.shouldHave],
+        ['Tier', detail.prioritization.priorityRank]
+      ])
+    });
+  }
+
+  function pieChart(items, total) {
+    let cursor = 0;
+    const stops = items.map(([label, value, tone]) => {
+      const start = cursor;
+      cursor += (Number(value) || 0) / Math.max(total, 1) * 100;
+      return `var(--pd-${tone}) ${start}% ${cursor}%`;
+    }).join(', ');
+    return `
+      <div class="pd-pie-summary">
+        <div class="pd-pie-chart" style="background: conic-gradient(${stops})"><span>${total}</span></div>
+        <div class="pd-pie-legend">
+          ${items.map(([label, value, tone]) => `<span><i class="pd-dot pd-tone-${tone}"></i>${escapeHtml(label)} <b>${value}</b></span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function compactPriorityCard(label, value, caption) {
+    return `
+      <button class="pd-priority-mini-card" type="button">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(String(value))}${typeof value === 'number' ? '%' : ''}</strong>
+        <small>${escapeHtml(caption)}</small>
+      </button>
+    `;
+  }
+
+  function renderSprintPlanning(detail) {
+    const sprint = detail.sprints.current;
+    return renderDetailBlock('Sprint Planning', `
+      <div class="pd-two-col">
+        ${renderMetricCards([
+          ['Current Sprint Name', sprint.name],
+          ['Sprint Start Date', formatDate(sprint.startDate)],
+          ['Sprint End Date', formatDate(sprint.endDate)],
+          ['Sprint Goal', sprint.goal],
+          ['Total Sprint Tasks', sprint.totalTasks],
+          ['Tasks Completed', sprint.completed],
+          ['Tasks In Progress', sprint.inProgress],
+          ['Tasks Blocked', sprint.blocked],
+          ['Sprint Velocity', sprint.velocity],
+          ['Sprint Confidence', sprint.confidence]
+        ], 'pd-kpis-compact')}
+        <div class="pd-sprint-stack">
+          ${detail.sprints.list.map(item => `
+            <article class="pd-sprint-card">
+              <div><strong>${escapeHtml(item.name)}</strong>${statusBadge(item.status)}</div>
+              ${bar(item.completion)}
+              <span>${item.completion}% complete</span>
+            </article>
+          `).join('')}
+        </div>
+      </div>
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Current', sprint.name],
+        ['Velocity', sprint.velocity],
+        ['Confidence', sprint.confidence]
+      ])
+    });
+  }
+
+  function renderRoadmapTimeline(detail) {
+    const filtered = filteredRoadmapPhases(detail.roadmap.phases);
+    const pageSize = 3;
+    const maxPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1);
+    const page = Math.min(state.roadmapPage, maxPage);
+    const visible = filtered.slice(page * pageSize, page * pageSize + pageSize);
+    return renderDetailBlock('Roadmap', `
+      <div class="pd-roadmap-toolbar">
+        <div class="pd-filter-chips" aria-label="Roadmap filters">
+          ${roadmapFilterButton('ALL', 'All')}
+          ${roadmapFilterButton('COMPLETED', 'Completed')}
+          ${roadmapFilterButton('IN_PROGRESS', 'In Progress')}
+        </div>
+        <div class="pd-carousel-controls">
+          <button type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(-1)" ${page <= 0 ? 'disabled' : ''} aria-label="Previous roadmap phases">&lt;</button>
+          <span>${filtered.length ? `${page + 1} / ${maxPage + 1}` : '0 / 0'}</span>
+          <button type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(1)" ${page >= maxPage ? 'disabled' : ''} aria-label="Next roadmap phases">&gt;</button>
+        </div>
+      </div>
+      <div class="pd-roadmap-carousel">
+        <div class="pd-roadmap-track">
+          ${visible.map(phase => roadmapPhaseCard(phase)).join('') || '<div class="pd-carousel-empty">No roadmap phases match this filter.</div>'}
+        </div>
+      </div>
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['In progress', detail.roadmap.phases.filter(phase => phase.status === 'IN_PROGRESS').length],
+        ['Completed', detail.roadmap.phases.filter(phase => phase.status === 'COMPLETED').length],
+        ['Upcoming', detail.roadmap.phases.filter(phase => phase.status === 'NOT_STARTED' || phase.status === 'TO_DO').length]
+      ]),
+      defaultOpen: true
+    });
+  }
+
+  function filteredRoadmapPhases(phases) {
+    if (state.roadmapFilter === 'COMPLETED') return phases.filter(phase => phase.status === 'COMPLETED');
+    if (state.roadmapFilter === 'IN_PROGRESS') return phases.filter(phase => phase.status === 'IN_PROGRESS');
+    return phases;
+  }
+
+  function roadmapFilterButton(value, label) {
+    const active = state.roadmapFilter === value;
+    return `<button class="${active ? 'active' : ''}" type="button" onclick="ProductDeliveryDashboard.setRoadmapFilter('${value}')">${escapeHtml(label)}</button>`;
+  }
+
+  function roadmapPhaseCard(phase) {
+    return `
+      <article class="pd-roadmap-phase">
+        <span>${escapeHtml(phase.name)}</span>
+        ${statusBadge(phase.status)}
+        <small>Planned: ${formatDate(phase.plannedDate)}</small>
+        <small>Forecast: ${formatDate(phase.forecastDate)}</small>
+        <small>Delay risk: ${escapeHtml(phase.delayRisk)}</small>
+        ${bar(phase.completion)}
+      </article>
+    `;
+  }
+
+  function renderMilestones(detail) {
+    return renderDetailBlock('Milestones', renderDataTable(
+      ['Milestone', 'Owner', 'Due Date', 'Status', 'Health', 'Dependency', 'Approval Required'],
+      detail.milestones.map(item => [
+        escapeHtml(item.name),
+        escapeHtml(item.owner),
+        formatDate(item.dueDate),
+        statusBadge(item.status),
+        deliveryHealthBadge(item.health),
+        escapeHtml(item.dependency),
+        escapeHtml(item.approvalRequired)
+      ])
+    ), 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Milestones', detail.milestones.length],
+        ['At risk', detail.milestones.filter(item => item.health.includes('Red')).length],
+        ['Approvals', detail.milestones.filter(item => item.approvalRequired === 'Yes').length]
+      ]),
+      defaultOpen: true
+    });
+  }
+
+  function renderResourcePlanning(detail) {
+    return renderDetailBlock('Resource Planning', `
+      ${metricStrip([
+        ['Active Agents', detail.resources.summary.totalActiveAgents],
+        ['Available', detail.resources.summary.availableAgents],
+        ['High Utilization', detail.resources.summary.highUtilizationAgents],
+        ['Blocked', detail.resources.summary.blockedAgents],
+        ['Coverage', `${detail.resources.summary.automationCoverage}%`],
+        ['Efficiency', `${detail.resources.summary.agentEfficiency}%`]
+      ], 'pd-resource-strip')}
+      ${agentWorkforceGrid(detail.resources.agents)}
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Active agents', detail.resources.summary.totalActiveAgents],
+        ['Blocked', detail.resources.summary.blockedAgents],
+        ['Coverage', `${detail.resources.summary.automationCoverage}%`]
+      ])
+    });
+  }
+
+  function renderStageGates(detail) {
+    return renderDetailBlock('Stage Gates', renderDataTable(
+      ['Gate Name', 'Status', 'Approver', 'Decision Date', 'Comments', 'Next Action'],
+      detail.stageGates.map(gate => [
+        escapeHtml(gate.name),
+        statusBadge(gate.status),
+        escapeHtml(gate.approver),
+        formatDate(gate.decisionDate),
+        escapeHtml(gate.comments),
+        escapeHtml(gate.nextAction)
+      ])
+    ), 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Gates', detail.stageGates.length],
+        ['Approved', detail.stageGates.filter(gate => gate.status === 'APPROVED').length],
+        ['Blocked', detail.stageGates.filter(gate => gate.status === 'BLOCKED').length]
+      ])
+    });
+  }
+
+  function renderDependencies(detail) {
+    return renderDetailBlock('Dependencies', `
+      ${dependencySummaryStrip(detail.dependencies.summary)}
+      ${renderDataTable(
+        ['Dependency Name', 'Type', 'Owner', 'Impact', 'Due Date', 'Status', 'Linked Milestone', 'Risk Level'],
+        detail.dependencies.items.map(item => [
+          escapeHtml(item.name),
+          escapeHtml(item.type),
+          escapeHtml(item.owner),
+          escapeHtml(item.impact),
+          formatDate(item.dueDate),
+          statusBadge(item.status),
+          escapeHtml(item.linkedMilestone),
+          deliveryHealthBadge(item.riskLevel)
+        ])
+      )}
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Internal', detail.dependencies.summary.internal],
+        ['External', detail.dependencies.summary.external],
+        ['Client', detail.dependencies.summary.client]
+      ])
+    });
+  }
+
+  function renderRisks(detail) {
+    const riskTotal = Math.max(detail.risks.summary.high + detail.risks.summary.medium + detail.risks.summary.low, 1);
+    return renderDetailBlock('Risks & Issues', `
+      <div class="pd-risk-quickview">
+        ${pieChart([
+          ['High', detail.risks.summary.high, 'danger'],
+          ['Medium', detail.risks.summary.medium, 'warning'],
+          ['Low', detail.risks.summary.low, 'success']
+        ], riskTotal)}
+        ${renderMetricCards([
+          ['Open Issues', detail.risks.summary.openIssues],
+          ['Resolved Issues', detail.risks.summary.resolvedIssues],
+          ['Blockers', detail.risks.summary.blockers],
+          ['High Risks', detail.risks.summary.high]
+        ], 'pd-kpis-compact pd-risk-kpis')}
+      </div>
+      ${riskIssueList(detail.risks.items)}
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['High', detail.risks.summary.high],
+        ['Open', detail.risks.summary.openIssues],
+        ['Blockers', detail.risks.summary.blockers]
+      ])
+    });
+  }
+
+  function renderEscalations(detail) {
+    return renderDetailBlock('Escalation Roadmap', `
+      ${metricStrip([
+        ['Active', detail.escalations.summary.active],
+        ['Due Today', detail.escalations.summary.dueToday],
+        ['SLA Breaches', detail.escalations.summary.slaBreaches],
+        ['Resolved', detail.escalations.summary.resolved],
+        ['Executive Attention', detail.escalations.summary.executiveAttention]
+      ], 'pd-escalation-strip')}
+      ${escalationList(detail.escalations.items)}
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Active', detail.escalations.summary.active],
+        ['Due today', detail.escalations.summary.dueToday],
+        ['SLA breaches', detail.escalations.summary.slaBreaches]
+      ])
+    });
+  }
+
+  function renderCostBudget(detail) {
+    const maxCost = Math.max(detail.cost.approvedBudget, detail.cost.actualCost, detail.cost.forecastCost, 1);
+    return renderDetailBlock('Cost & Budget', `
+      ${metricStrip([
+        ['Budget', currency(detail.cost.approvedBudget)],
+        ['Actual', currency(detail.cost.actualCost)],
+        ['Forecast', currency(detail.cost.forecastCost)],
+        ['Utilization', `${detail.cost.budgetUtilization}%`],
+        ['Variance', currency(detail.cost.costVariance)],
+        ['Burn Rate', currency(detail.cost.burnRate)]
+      ], 'pd-cost-strip')}
+      <div class="pd-cost-dashboard">
+        <div class="pd-cost-bars">
+          ${costBar('Budget', detail.cost.approvedBudget, maxCost)}
+          ${costBar('Actual', detail.cost.actualCost, maxCost)}
+          ${costBar('Forecast', detail.cost.forecastCost, maxCost)}
+        </div>
+        ${costBreakdownList(detail.cost.breakdown, maxCost)}
+      </div>
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Budget', currency(detail.cost.approvedBudget)],
+        ['Forecast', currency(detail.cost.forecastCost)],
+        ['Risk', detail.cost.costRisk]
+      ])
+    });
+  }
+
+  function renderStakeholders(detail) {
+    return renderDetailBlock('Stakeholder Communication', `
+      ${metricStrip([
+        ['Last Client Update', formatDate(detail.stakeholders.summary.lastClientUpdate)],
+        ['Next Steering', formatDate(detail.stakeholders.summary.nextSteeringMeeting)],
+        ['Pending Decisions', detail.stakeholders.summary.pendingDecisions],
+        ['Open Questions', detail.stakeholders.summary.openQuestions],
+        ['Health', detail.stakeholders.summary.communicationHealth]
+      ], 'pd-stakeholder-strip')}
+      ${stakeholderGrid(detail.stakeholders.items)}
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Pending decisions', detail.stakeholders.summary.pendingDecisions],
+        ['Open questions', detail.stakeholders.summary.openQuestions],
+        ['Health', detail.stakeholders.summary.communicationHealth]
+      ])
+    });
+  }
+
+  function renderDeliveryHealth(detail) {
+    return renderDetailBlock('Delivery Health', `
+      <div class="pd-health-grid">
+        ${detail.health.items.map(item => `
+          <article>
+            <span>${escapeHtml(item.label)}</span>
+            ${deliveryHealthBadge(item.status)}
+            ${bar(item.score)}
+          </article>
+        `).join('')}
+      </div>
+      <div class="pd-overall-confidence">
+        <span>Overall Delivery Confidence</span>
+        <strong>${escapeHtml(detail.health.overallDeliveryConfidence)}</strong>
+      </div>
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Confidence', detail.health.overallDeliveryConfidence],
+        ['Signals', detail.health.items.length],
+        ['Watch', detail.health.items.filter(item => item.status.includes('Amber')).length]
+      ]),
+      defaultOpen: true
+    });
+  }
+
+  function renderDataTable(headers, rows, className = '') {
+    return `
+      <div class="table-container pd-inner-table ${className}">
+        <table class="pd-table pd-compact-table">
+          <thead><tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+          <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function bar(value) {
+    return `<div class="pd-card-meter"><i style="width:${clampPercent(value)}%"></i></div>`;
+  }
+
+  function priorityBadge(value) {
+    const label = titleCase(value || 'Medium');
+    const tone = /must|high|critical/i.test(label) ? 'danger' : /should|medium/i.test(label) ? 'warning' : /could|low/i.test(label) ? 'info' : 'muted';
+    return `<span class="pd-badge pd-badge-${tone}">${escapeHtml(label)}</span>`;
+  }
+
+  function scoreVisual(label, value, caption) {
+    const score = clampPercent(value);
+    const level = score >= 76 ? 'High' : score >= 51 ? 'Medium' : score >= 26 ? 'Low' : 'Minimal';
+    const tone = label === 'Risk' && score >= 65 ? 'danger' : score >= 76 ? 'success' : score >= 51 ? 'warning' : 'info';
+    return `
+      <article class="pd-priority-visual">
+        <div>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(level)}</strong>
+        </div>
+        <i class="pd-priority-meter pd-meter-${tone}"><b style="width:${score}%"></b></i>
+        <small>${escapeHtml(caption)}</small>
+      </article>
+    `;
+  }
+
+  function priorityTierVisual(rank) {
+    const tier = String(rank || 'P3').toUpperCase();
+    const tiers = ['P1', 'P2', 'P3', 'P4', 'P5'];
+    return `
+      <article class="pd-priority-visual pd-priority-tier">
+        <div>
+          <span>Priority Tier</span>
+          <strong>${escapeHtml(tier)}</strong>
+        </div>
+        <div class="pd-tier-ladder">
+          ${tiers.map(item => `<i class="${item === tier ? 'active' : ''}">${item}</i>`).join('')}
+        </div>
+        <small>Tier ladder</small>
+      </article>
+    `;
+  }
+
+  function dependencySummaryStrip(summary) {
+    const items = [
+      ['Internal', summary.internal, 'info'],
+      ['External', summary.external, 'warning'],
+      ['Technical', summary.technical, 'success'],
+      ['Business', summary.business, 'orange'],
+      ['Client', summary.client, 'danger']
+    ];
+    return `
+      <div class="pd-dependency-strip">
+        ${items.map(([label, value, tone]) => `
+          <article>
+            <i class="pd-dot pd-tone-${tone}"></i>
+            <span>${escapeHtml(label)}</span>
+            <strong>${value}</strong>
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function costBar(label, value, max) {
+    return `
+      <div class="pd-cost-bar">
+        <span>${escapeHtml(label)}</span>
+        <i><b style="width:${clampPercent((value / max) * 100)}%"></b></i>
+        <strong>${currency(value)}</strong>
+      </div>
     `;
   }
 
@@ -398,13 +1007,20 @@ const ProductDeliveryDashboard = (() => {
     }
 
     return `
-      <div class="table-container pd-table-card">
-        <table class="pd-table">
+      <div class="table-container pd-table-card pd-unified-table">
+        <table class="pd-table pd-cross-role-table">
+          <colgroup>
+            <col class="pd-cross-project-col">
+            <col class="pd-cross-role-col">
+            <col class="pd-cross-responsibilities-col">
+            <col class="pd-cross-blockers-col">
+            <col class="pd-cross-team-col">
+            <col class="pd-cross-status-col">
+            <col class="pd-cross-details-col">
+          </colgroup>
           <thead>
             <tr>
               <th>Project Name</th>
-              <th>Dashboard Cluster</th>
-              <th>Persona</th>
               <th>Project Role</th>
               <th>Key Responsibilities</th>
               <th>Blockers</th>
@@ -424,15 +1040,11 @@ const ProductDeliveryDashboard = (() => {
   function crossRoleRow(project, model) {
     const assignment = NexusRoleUtils.findUserAssignment(project, model.currentUser);
     const role = NexusRoleUtils.normalizeProjectRole(assignment?.projectRole);
-    const meta = getCrossRoleMeta(role);
-    const persona = getPrimaryPersona(role, assignment);
     const responsibilities = getShortResponsibilities(role);
     const expanded = state.expandedCrossProjectId === project.id;
     return `
       <tr>
         <td><strong>${escapeHtml(project.name)}</strong></td>
-        <td><span class="pd-cluster-badge">${escapeHtml(meta.dashboardCluster)}</span></td>
-        <td><strong class="pd-persona-name">${escapeHtml(persona)}</strong></td>
         <td><span class="pd-role-badge">${escapeHtml(NexusRoleUtils.projectRoleLabel(role))}</span></td>
         <td class="pd-responsibility-cell">${responsibilities.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</td>
         <td>${blockersBadge(getCrossRoleBlocker(project, role))}</td>
@@ -440,42 +1052,237 @@ const ProductDeliveryDashboard = (() => {
         <td>${statusBadge(project.status || 'ACTIVE')}</td>
         <td><button class="btn btn-outline btn-sm" type="button" onclick="ProductDeliveryDashboard.toggleCrossDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button></td>
       </tr>
-      ${expanded ? `<tr class="pd-details-row"><td colspan="9">${renderCrossRoleDetails(project, model)}</td></tr>` : ''}
+      ${expanded ? `<tr class="pd-details-row"><td colspan="7">${renderCrossRoleDetails(project, model)}</td></tr>` : ''}
     `;
   }
 
   function renderCrossRoleDetails(project, model) {
     const assignment = NexusRoleUtils.findUserAssignment(project, model.currentUser);
     const role = NexusRoleUtils.normalizeProjectRole(assignment?.projectRole);
-    const meta = getCrossRoleMeta(role);
-    const persona = getPrimaryPersona(role, assignment);
-    const blocker = getCrossRoleBlocker(project, role);
-    const tenantRole = NexusRoleUtils.getTenantRoleLabel(model.currentUser);
-    const teamCount = NexusRoleUtils.getProjectAssignments(project).length;
+    const detail = generateCrossRoleDetails(project, role, model);
     return `
-      <div class="pd-cross-details">
-        ${detailSection('Role Context', [
-          ['Dashboard Cluster', meta.dashboardCluster],
-          ['Primary Persona', persona],
-          ['Project Role', NexusRoleUtils.projectRoleLabel(role)],
-          ['Assigned tenant role', tenantRole]
-        ])}
-        ${detailListSection('Responsibilities', meta.tasksInvolved)}
-        ${detailSection('Touchpoints', [
-          ['Focus area', meta.details.focusArea]
-        ])}
-        ${detailSection('Expected Outcome', [
-          ['Outcome', meta.details.outcome]
-        ])}
-        ${detailSection('Project Status', [
-          ['Current status', titleCase(project.status || 'Active')],
-          ['Blockers', blocker],
-          ['Team members', `${teamCount} member${teamCount === 1 ? '' : 's'}`],
-          ['Last updated', formatDate(project.updatedAt || project.updated_at || project.createdAt || project.created_at)]
-        ])}
-        ${detailSection('Role-Specific Summary', meta.summary.map(([label, value], index) => [label, enrichCrossDetail(project, value, index)]))}
+      <div class="pd-cross-details pd-cross-support-details">
+        <div class="pd-details-titlebar">
+          <div>
+            <h3>${escapeHtml(project.name || 'Project')} Cross-Role Support</h3>
+            <p>${escapeHtml(detail.summary)}</p>
+          </div>
+          ${deliveryHealthBadge(detail.overview.deliveryHealth)}
+        </div>
+        ${renderDetailBlock('Cross-Role Overview', renderMetricCards([
+          ['Assigned Role', detail.overview.assignedRole],
+          ['Support Area', detail.overview.supportArea],
+          ['Current Status', detail.overview.currentStatus],
+          ['Priority', detail.overview.priority],
+          ['Delivery Health', detail.overview.deliveryHealth],
+          ['Active Blockers', detail.overview.activeBlockers],
+          ['Pending Actions', detail.overview.pendingActions],
+          ['Due Date / Next Milestone', detail.overview.nextMilestone]
+        ]), 'pd-detail-full', { accordion: false })}
+        ${renderDetailBlock('Responsibilities', `
+          <div class="pd-cross-responsibility-grid">
+            ${crossResponsibilityCard('Primary Responsibilities', detail.responsibilities.primary)}
+            ${crossResponsibilityCard('Secondary Responsibilities', detail.responsibilities.secondary)}
+            ${crossResponsibilityCard('Current Deliverables', detail.responsibilities.deliverables)}
+            ${crossResponsibilityCard('Expected Outputs', detail.responsibilities.outputs)}
+            ${crossResponsibilityCard('Handoffs / Dependencies', detail.responsibilities.handoffs)}
+          </div>
+        `, 'pd-detail-full', { accordion: false })}
       </div>
     `;
+  }
+
+  function crossResponsibilityCard(title, items) {
+    return `
+      <article class="pd-cross-responsibility-card">
+        <h4>${escapeHtml(title)}</h4>
+        <ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+      </article>
+    `;
+  }
+
+  function generateCrossRoleDetails(project, role, model) {
+    const seed = hashProject({ ...project, id: `${project.id || ''}-${role || ''}` });
+    const meta = getCrossRoleMeta(role);
+    const roleLabel = NexusRoleUtils.projectRoleLabel(role) || 'Workspace Support';
+    const roleContent = getCrossRoleContent(role);
+    const blocker = getCrossRoleBlocker(project, role);
+    const activeBlockers = blocker && blocker !== 'None' ? seededInt(seed, 1, 3, 1) : 0;
+    const pendingActions = seededInt(seed, 2, 8, 2);
+    const health = project.status === 'BLOCKED' || activeBlockers > 2 ? 'Red / At Risk' : activeBlockers ? 'Amber / Watch' : 'Green / Healthy';
+    const start = project.createdAt || project.created_at || Date.now();
+    const collaborators = buildCrossCollaborators(project, model, roleLabel);
+
+    return {
+      summary: `${roleLabel} contribution for ${project.name || 'this project'}: ${meta.details?.focusArea || 'role-specific project support'}.`,
+      overview: {
+        assignedRole: roleLabel,
+        supportArea: roleContent.supportArea,
+        currentStatus: titleCase(project.status || 'Active'),
+        priority: pick(seed, ['High', 'Medium', 'Critical', 'Watch'], 3),
+        deliveryHealth: health,
+        activeBlockers,
+        pendingActions,
+        nextMilestone: `${roleContent.milestones[0]} (${formatDate(addDays(start, seededInt(seed, 12, 36, 4)))})`
+      },
+      responsibilities: {
+        primary: roleContent.primary,
+        secondary: roleContent.secondary,
+        deliverables: roleContent.deliverables,
+        outputs: roleContent.outputs,
+        handoffs: roleContent.handoffs
+      },
+      workItems: roleContent.tasks.map((task, index) => ({
+        name: task,
+        status: pick(seed, ['IN_PROGRESS', 'PENDING', 'BLOCKED', 'APPROVED', 'COMPLETED'], 10 + index),
+        owner: collaborators[index % collaborators.length],
+        dueDate: addDays(start, 8 + index * seededInt(seed, 5, 10, 20 + index)),
+        progress: seededInt(seed, 18, 96, 30 + index),
+        notes: pick(seed, roleContent.notes, 40 + index)
+      })),
+      risks: roleContent.risks.map((risk, index) => ({
+        name: risk,
+        severity: pick(seed, ['Green / Healthy', 'Amber / Watch', 'Red / At Risk'], 50 + index),
+        impact: pick(seed, ['Schedule', 'Quality', 'Scope', 'Readiness', 'Decision latency'], 60 + index),
+        owner: collaborators[(index + 1) % collaborators.length],
+        mitigation: pick(seed, roleContent.mitigations, 70 + index),
+        eta: addDays(Date.now(), seededInt(seed, 2, 18, 80 + index)),
+        status: pick(seed, ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'BLOCKED'], 90 + index)
+      })),
+      dependencies: roleContent.dependencies.map((dependency, index) => ({
+        party: collaborators[(index + 2) % collaborators.length],
+        type: dependency,
+        requiredBy: addDays(start, 14 + index * 9),
+        status: pick(seed, ['PENDING', 'IN_PROGRESS', 'APPROVED', 'BLOCKED'], 100 + index),
+        escalationNeed: pick(seed, ['Green / Healthy', 'Amber / Watch', 'Red / At Risk'], 110 + index)
+      })),
+      timeline: roleContent.milestones.map((milestone, index) => ({
+        milestone,
+        contribution: roleContent.contributions[index % roleContent.contributions.length],
+        plannedDate: addDays(start, 18 + index * 14),
+        readiness: seededInt(seed, 24, 100, 120 + index),
+        risks: pick(seed, roleContent.timelineRisks, 130 + index)
+      })),
+      communication: {
+        lastUpdate: addDays(Date.now(), -seededInt(seed, 1, 9, 140)),
+        nextCheckIn: addDays(Date.now(), seededInt(seed, 1, 10, 141)),
+        pendingDecisions: seededInt(seed, 0, 4, 142),
+        escalationRequired: health.includes('Red') ? 'Yes' : pick(seed, ['No', 'Watch'], 143),
+        escalationOwner: pick(seed, collaborators.concat(['Delivery Manager', 'Product Owner']), 144)
+      }
+    };
+  }
+
+  function buildCrossCollaborators(project, model, roleLabel) {
+    const assignments = NexusRoleUtils.getProjectAssignments(project);
+    const users = model.tenantUsers || [];
+    const names = assignments
+      .map(assignment => users.find(user => user.id === assignment.userId || user.email === assignment.email)?.name)
+      .filter(Boolean);
+    return [...new Set(names.concat([roleLabel, 'Product Owner', 'Delivery Manager', 'Tech Lead', 'QA Lead']))];
+  }
+
+  function getCrossRoleContent(role) {
+    const roleKey = NexusRoleUtils.normalizeProjectRole(role);
+    const common = {
+      supportArea: 'Project execution support',
+      primary: ['Track assigned role commitments', 'Surface blockers early', 'Coordinate handoffs with Product & Delivery'],
+      secondary: ['Join checkpoint reviews', 'Update delivery evidence', 'Confirm readiness signals'],
+      deliverables: ['Support status update', 'Role-specific work evidence', 'Dependency notes'],
+      outputs: ['Reviewed artifacts', 'Action log', 'Readiness signal'],
+      handoffs: ['Product & Delivery planning', 'Execution team coordination', 'Milestone sign-off support'],
+      tasks: ['Review assigned support queue', 'Update readiness evidence', 'Close role-specific actions', 'Confirm milestone contribution'],
+      risks: ['Support action delay', 'Dependency response lag', 'Incomplete handoff evidence'],
+      dependencies: ['Product clarification', 'Execution input', 'Approval checkpoint'],
+      milestones: ['Support Readiness Review', 'Milestone Contribution Due', 'Cross-Team Handoff'],
+      contributions: ['Provide role status and evidence', 'Resolve support blockers', 'Confirm milestone readiness'],
+      notes: ['Evidence is being consolidated', 'Waiting for one dependency response', 'On track for next checkpoint'],
+      mitigations: ['Escalate at next check-in', 'Split work into smaller support actions', 'Confirm owner and ETA'],
+      timelineRisks: ['No material risk', 'Decision turnaround needs monitoring', 'Dependency may affect readiness']
+    };
+    const byRole = {
+      QA_TESTING: {
+        supportArea: 'QA validation and release quality',
+        primary: ['Review generated test cases', 'Track test execution progress', 'Validate defects and retest readiness'],
+        secondary: ['Confirm QA entry criteria', 'Support UAT preparation', 'Report quality gate risks'],
+        deliverables: ['Test case review notes', 'Execution summary', 'Defect triage update'],
+        outputs: ['Validation status', 'Defect summary', 'QA sign-off recommendation'],
+        handoffs: ['Development fixes', 'UAT evidence', 'Release quality gate'],
+        tasks: ['Review test case coverage', 'Execute priority regression suite', 'Triage open defects', 'Validate QA environment readiness'],
+        risks: ['QA environment not ready', 'Critical defect retest pending', 'UAT evidence incomplete'],
+        dependencies: ['Development fix availability', 'Test data readiness', 'Client UAT schedule'],
+        milestones: ['QA Entry', 'Regression Complete', 'UAT Sign-off'],
+        contributions: ['Confirm validation scope', 'Report quality readiness', 'Approve QA gate evidence'],
+        notes: ['Defect aging is under review', 'Regression scope is prioritized', 'Environment access is being confirmed'],
+        mitigations: ['Reprioritize high-risk tests', 'Pair with development owner', 'Escalate environment readiness'],
+        timelineRisks: ['Defect retest may compress UAT', 'Environment readiness needs monitoring', 'Coverage gap under review']
+      },
+      TECHNICAL_EXECUTION: {
+        supportArea: 'Development delivery and integration',
+        primary: ['Execute development tasks', 'Track build readiness', 'Resolve integration dependencies'],
+        secondary: ['Support code review', 'Clarify implementation details', 'Update technical risk notes'],
+        deliverables: ['Implementation status', 'Build readiness note', 'Integration dependency update'],
+        outputs: ['Code review package', 'Implementation evidence', 'Technical handoff notes'],
+        handoffs: ['QA test readiness', 'Release branch readiness', 'Architecture review closure'],
+        tasks: ['Complete assigned development task', 'Prepare integration build', 'Close code review comments', 'Validate API contract changes'],
+        risks: ['API dependency delay', 'Code review backlog', 'Integration conflict'],
+        dependencies: ['Architecture decision', 'API contract confirmation', 'QA test data'],
+        milestones: ['Build Ready', 'Integration Complete', 'Code Freeze'],
+        contributions: ['Deliver implementation evidence', 'Resolve technical blockers', 'Confirm integration readiness'],
+        notes: ['Implementation is progressing', 'Review queue has active comments', 'Integration plan is being validated'],
+        mitigations: ['Run focused technical review', 'Pair on blocked API contract', 'Sequence integration work by dependency'],
+        timelineRisks: ['Integration window may tighten', 'Contract review needs closure', 'Build stability under watch']
+      },
+      RELEASE_DEVOPS: {
+        supportArea: 'Release readiness and environments',
+        primary: ['Validate environment readiness', 'Track CI/CD tasks', 'Coordinate deployment blockers'],
+        secondary: ['Prepare rollback evidence', 'Confirm release approvals', 'Monitor deployment risks'],
+        deliverables: ['Release readiness checklist', 'Deployment plan update', 'Environment validation report'],
+        outputs: ['CI/CD status', 'Release approval evidence', 'Rollback readiness note'],
+        handoffs: ['QA sign-off', 'Production release approval', 'Post-release monitoring'],
+        tasks: ['Validate staging environment', 'Review deployment pipeline', 'Confirm rollback path', 'Close release approval action'],
+        risks: ['Deployment window conflict', 'Environment readiness gap', 'Pipeline failure risk'],
+        dependencies: ['QA sign-off', 'Infrastructure approval', 'Release calendar confirmation'],
+        milestones: ['Environment Ready', 'Release Approval', 'Go Live'],
+        contributions: ['Confirm deployment readiness', 'Resolve environment blockers', 'Publish release evidence'],
+        notes: ['Pipeline evidence is current', 'Release window is being confirmed', 'Rollback plan needs final review'],
+        mitigations: ['Run pre-release dry run', 'Secure release approval owner', 'Prepare contingency window'],
+        timelineRisks: ['Release window dependency', 'Approval timing under watch', 'Environment drift risk']
+      },
+      GOVERNANCE_ADMIN: {
+        supportArea: 'Governance reviews and approvals',
+        primary: ['Track approvals pending', 'Review compliance checkpoints', 'Coordinate governance decisions'],
+        secondary: ['Maintain audit evidence', 'Route critical decisions', 'Confirm policy alignment'],
+        deliverables: ['Approval queue update', 'Compliance checkpoint report', 'Governance decision log'],
+        outputs: ['Approval status', 'Audit evidence', 'Policy exception notes'],
+        handoffs: ['Product approval gate', 'Compliance sign-off', 'Executive decision path'],
+        tasks: ['Review approval queue', 'Validate compliance checkpoint', 'Confirm governance evidence', 'Route pending decision'],
+        risks: ['Approval delay', 'Compliance evidence gap', 'Policy exception unresolved'],
+        dependencies: ['Product owner approval', 'Compliance reviewer response', 'Executive decision input'],
+        milestones: ['Governance Review', 'Compliance Checkpoint', 'Approval Gate'],
+        contributions: ['Confirm governance readiness', 'Close approval actions', 'Document compliance evidence'],
+        notes: ['Approval evidence is being assembled', 'Compliance checkpoint is active', 'Decision owner is assigned'],
+        mitigations: ['Escalate overdue approval', 'Request missing evidence', 'Schedule governance review'],
+        timelineRisks: ['Approval timing may affect gate', 'Evidence completeness under review', 'Policy exception needs decision']
+      },
+      EXECUTIVE_STRATEGIC: {
+        supportArea: 'Strategic decisions and steering alignment',
+        primary: ['Review strategic decisions', 'Track steering dependencies', 'Resolve leadership escalations'],
+        secondary: ['Validate business alignment', 'Monitor ROI and risk signals', 'Support sponsor communication'],
+        deliverables: ['Steering decision brief', 'Leadership risk update', 'Strategic alignment note'],
+        outputs: ['Decision recommendation', 'Executive escalation summary', 'Business impact note'],
+        handoffs: ['Governance decision', 'Product priority confirmation', 'Client sponsor alignment'],
+        tasks: ['Review steering dependency', 'Confirm strategic priority', 'Resolve leadership escalation', 'Approve decision path'],
+        risks: ['Strategic decision delay', 'Sponsor alignment gap', 'Business priority conflict'],
+        dependencies: ['Client sponsor input', 'PMO recommendation', 'Product value assessment'],
+        milestones: ['Steering Review', 'Strategic Decision Due', 'Executive Approval'],
+        contributions: ['Confirm decision direction', 'Resolve leadership dependency', 'Approve strategic path'],
+        notes: ['Decision brief is ready for review', 'Sponsor input is being gathered', 'Strategic priority remains visible'],
+        mitigations: ['Schedule sponsor decision forum', 'Escalate priority tradeoff', 'Publish decision recommendation'],
+        timelineRisks: ['Decision latency may affect planning', 'Sponsor alignment under watch', 'Priority tradeoff pending']
+      }
+    };
+    return { ...common, ...(byRole[roleKey] || {}) };
   }
 
   function detailSection(title, items) {
@@ -528,15 +1335,21 @@ const ProductDeliveryDashboard = (() => {
     return `<span class="pd-badge pd-badge-${tone}">${escapeHtml(label)}</span>`;
   }
 
-  function confidenceBadge(value) {
-    const label = titleCase(value || 'Medium');
-    const tone = /low|risk/i.test(label) ? 'danger' : /medium|watch/i.test(label) ? 'warning' : 'success';
-    return `<span class="pd-badge pd-badge-${tone}">${escapeHtml(label)}</span>`;
-  }
-
   function blockersBadge(value) {
     const hasBlocker = value && value !== 'None';
     return `<span class="pd-badge ${hasBlocker ? 'pd-badge-danger' : 'pd-badge-muted'}">${escapeHtml(value || 'None')}</span>`;
+  }
+
+  function sprintChips(values) {
+    const sprints = Array.isArray(values) && values.length ? values : ['Sprint 1'];
+    return `<div class="pd-sprint-chip-list">${sprints.map(sprint => `<span>${escapeHtml(sprint)}</span>`).join('')}</div>`;
+  }
+
+  function ragStatusDot(value) {
+    const normalized = String(value || 'green').toLowerCase();
+    const tone = normalized.includes('red') ? 'red' : normalized.includes('amber') || normalized.includes('yellow') ? 'amber' : 'green';
+    const labels = { green: 'Healthy / On Track', amber: 'Watch / At Risk', red: 'Critical / Blocked' };
+    return `<span class="pd-rag-status pd-rag-${tone}" title="${labels[tone]}" aria-label="${labels[tone]}"><i></i><span>${labels[tone].split(' / ')[0]}</span></span>`;
   }
 
   function clampPercent(value) {
@@ -545,7 +1358,10 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function buildProductDeliveryDetail(project) {
-    if (project?.productDeliveryMetrics) return normalizeMetrics(project.productDeliveryMetrics, project);
+    return generateProductDeliveryDetails(project || {});
+  }
+
+  function generateProductDeliveryDetails(project) {
     const requirements = NexusStore.getRequirements(project.id);
     const backlog = NexusStore.getBacklog(project.id);
     const pipeline = NexusStore.getPipeline(project.id);
@@ -555,36 +1371,126 @@ const ProductDeliveryDashboard = (() => {
     const currentStage = stages.find(stage => stage.status === 'IN_PROGRESS') || stages[completedStages - 1] || stages[0];
     const nextStage = stages.find(stage => stage.status === 'PENDING' || stage.stage === (currentStage?.stage || 0) + 1);
     const blockedStages = stages.filter(stage => ['BLOCKED', 'ESCALATED'].includes(stage.status)).length;
-    const totalRequirements = requirements.length || fallbackNumber(project, 18, 9);
-    const totalBacklog = backlog.length || fallbackNumber(project, 32, 11);
-    const totalTasks = tasks.length || fallbackNumber(project, 24, 8);
-
-    const completionPercentage = stages.length ? Math.round((completedStages / stages.length) * 100) : project.status === 'COMPLETED' ? 100 : 42;
-    const timelineStatus = project.status === 'BLOCKED' ? 'At Risk' : project.status === 'COMPLETED' ? 'On Track' : 'Monitoring';
+    const seed = hashProject(project);
+    const totalRequirements = requirements.length || seededInt(seed, 22, 54, 1);
+    const totalBacklog = backlog.length || seededInt(seed, 30, 86, 2);
+    const totalTasks = tasks.length || seededInt(seed, 28, 110, 3);
+    const pendingReview = countBy(requirements, req => !req.reviewStatus || req.reviewStatus === 'PENDING') || seededInt(seed, 3, 12, 4);
+    const needsClarification = countBy(requirements, req => Number(req.confidence) < 0.9) || seededInt(seed, 2, 9, 5);
+    const reviewed = Math.max(0, totalRequirements - pendingReview);
+    const readyForBacklog = Math.max(1, reviewed - needsClarification);
+    const convertedToBacklog = Math.min(totalRequirements, Math.max(readyForBacklog - seededInt(seed, 0, 5, 6), Math.round(totalRequirements * 0.45)));
+    const generatedByAI = totalBacklog;
+    const pendingApproval = countBy(backlog, item => ['SPECIFIED', 'PENDING', 'IN_REVIEW'].includes(item.status)) || seededInt(seed, 5, 18, 7);
+    const approved = countBy(backlog, item => ['DONE', 'APPROVED', 'IN_PROGRESS'].includes(item.status)) || seededInt(seed, 12, Math.max(14, totalBacklog - pendingApproval), 8);
+    const returned = countBy(backlog, item => item.status === 'RETURNED') || seededInt(seed, 1, 6, 9);
+    const rejected = countBy(backlog, item => item.status === 'REJECTED') || seededInt(seed, 0, 4, 10);
+    const scheduleHealth = buildBacklogScheduleHealth(backlog, seed, totalBacklog);
+    const completionPercentage = stages.length ? Math.round((completedStages / stages.length) * 100) : seededInt(seed, 24, 88, 11);
     const deliveryConfidence = ProductDeliveryDashboardData.deliveryConfidence(project, pipeline);
-    const rejectedBacklog = countBy(backlog, item => item.status === 'REJECTED') || Math.max(0, Math.round(totalBacklog * 0.05));
-    const returnedBacklog = countBy(backlog, item => item.status === 'RETURNED') || Math.max(1, Math.round(totalBacklog * 0.08));
+    const timelineStatus = project.status === 'BLOCKED' ? 'At Risk' : completionPercentage > 76 ? 'On Track' : completionPercentage > 46 ? 'Watch' : 'Monitoring';
+    const deliveryHealth = project.status === 'BLOCKED' ? 'Red / At Risk' : deliveryConfidence === 'High' || completionPercentage > 72 ? 'Green / Healthy' : 'Amber / Watch';
+    const currentMilestone = project.currentMilestone || currentStage?.name || pick(seed, ['Backlog Approval', 'Sprint Planning Completed', 'MVP Feature Complete', 'QA Entry'], 12);
+    const targetDeliveryDate = getDeliveryDate(project);
+    const daysRemaining = daysBetween(new Date(), new Date(targetDeliveryDate));
+    const modules = buildFeatureModules(project, backlog, seed, completionPercentage);
+    const priorityMix = {
+      mustHave: countPriority(backlog, 'MUST_HAVE') || seededInt(seed, 8, 22, 13),
+      shouldHave: countPriority(backlog, 'SHOULD_HAVE') || seededInt(seed, 6, 18, 14),
+      couldHave: countPriority(backlog, 'COULD_HAVE') || seededInt(seed, 3, 12, 15),
+      deferred: countPriority(backlog, 'WONT_HAVE') || seededInt(seed, 1, 8, 16)
+    };
+    const sprintList = buildSprints(project, seed, completionPercentage);
+    const currentSprint = sprintList.find(sprint => sprint.status === 'IN_PROGRESS') || sprintList[Math.min(2, sprintList.length - 1)];
+    const healthItems = buildHealthItems(project, seed, completionPercentage, deliveryHealth);
 
-    return normalizeMetrics({
+    return {
+      overview: {
+        totalRequirements,
+        requirementsPendingReview: pendingReview,
+        readyForBacklog,
+        backlogItemsGenerated: generatedByAI,
+        backlogItemsApproved: approved,
+        currentSprint: currentSprint.name,
+        currentMilestone,
+        deliveryConfidence,
+        overallCompletion: completionPercentage,
+        targetDeliveryDate,
+        daysRemaining,
+        projectHealth: deliveryHealth
+      },
       requirements: {
         total: totalRequirements,
-        pendingReview: countBy(requirements, req => !req.reviewStatus || req.reviewStatus === 'PENDING') || Math.max(2, Math.round(totalRequirements * 0.25)),
-        needsClarification: countBy(requirements, req => Number(req.confidence) < 0.9) || Math.max(1, Math.round(totalRequirements * 0.15)),
-        readyForBacklog: countBy(requirements, req => Number(req.confidence) >= 0.9) || Math.max(4, Math.round(totalRequirements * 0.6)),
-        convertedToBacklog: Math.min(totalRequirements, totalBacklog || Math.max(3, Math.round(totalRequirements * 0.45)))
+        totalReceived: totalRequirements,
+        pendingReview,
+        reviewed,
+        needsClarification,
+        readyForBacklog,
+        convertedToBacklog,
+        funnel: [
+          { label: 'Requirement Intake', value: totalRequirements },
+          { label: 'Review', value: reviewed },
+          { label: 'Clarification', value: needsClarification },
+          { label: 'Backlog Generation', value: convertedToBacklog },
+          { label: 'Approval', value: approved },
+          { label: 'Sprint Ready', value: Math.max(1, approved - seededInt(seed, 1, 6, 17)) }
+        ]
       },
       backlog: {
-        generated: totalBacklog,
-        pendingApproval: countBy(backlog, item => ['SPECIFIED', 'PENDING', 'IN_REVIEW'].includes(item.status)) || Math.max(3, Math.round(totalBacklog * 0.35)),
-        approved: countBy(backlog, item => ['DONE', 'APPROVED', 'IN_PROGRESS'].includes(item.status)) || Math.max(5, Math.round(totalBacklog * 0.45)),
-        returned: returnedBacklog,
-        rejected: rejectedBacklog
+        generated: generatedByAI,
+        generatedByAI,
+        pendingApproval,
+        approved,
+        returned,
+        rejected,
+        returnedRejected: returned + rejected,
+        onScheduleCount: scheduleHealth.onScheduleCount,
+        offScheduleCount: scheduleHealth.offScheduleCount,
+        runningBehindCount: scheduleHealth.offScheduleCount
       },
-      features: {
-        mustHave: countPriority(backlog, 'MUST_HAVE') || Math.max(4, Math.round(totalBacklog * 0.38)),
-        shouldHave: countPriority(backlog, 'SHOULD_HAVE') || Math.max(3, Math.round(totalBacklog * 0.28)),
-        couldHave: countPriority(backlog, 'COULD_HAVE') || Math.max(2, Math.round(totalBacklog * 0.18)),
-        deferred: countPriority(backlog, 'WONT_HAVE') || Math.max(1, Math.round(totalBacklog * 0.08))
+      features: modules,
+      prioritization: {
+        mix: priorityMix,
+        businessValueScore: seededInt(seed, 68, 96, 18),
+        effortScore: seededInt(seed, 32, 78, 19),
+        riskScore: seededInt(seed, 18, 72, 20),
+        priorityRank: `P${seededInt(seed, 1, 5, 21)}`
+      },
+      sprints: {
+        current: {
+          name: currentSprint.name,
+          startDate: currentSprint.startDate,
+          endDate: currentSprint.endDate,
+          goal: currentSprint.goal,
+          totalTasks,
+          completed: countBy(tasks, task => ['DONE', 'COMPLETED'].includes(task.status)) || seededInt(seed, 8, Math.max(10, Math.round(totalTasks * 0.55)), 22),
+          inProgress: countBy(tasks, task => ['IN_PROGRESS', 'EXECUTING', 'AGENT_ASSIGNED'].includes(task.status)) || seededInt(seed, 4, 18, 23),
+          blocked: countBy(tasks, task => ['BLOCKED', 'ESCALATED'].includes(task.status)) || seededInt(seed, 1, 6, 24),
+          velocity: `${seededInt(seed, 24, 54, 25)} pts`,
+          confidence: confidenceFromScore(seededInt(seed, 52, 94, 26))
+        },
+        list: sprintList
+      },
+      roadmap: {
+        currentMilestone,
+        nextMilestone: project.nextMilestone || nextStage?.name || 'Stage progression approval',
+        timelineStatus,
+        deliveryConfidence,
+        deliveryHealth,
+        atRiskMilestones: deliveryHealth.includes('Red') ? 3 : deliveryHealth.includes('Amber') ? 1 : 0,
+        phases: buildRoadmap(project, seed, completionPercentage)
+      },
+      milestones: buildMilestones(project, seed, currentMilestone),
+      resources: buildResources(project, seed),
+      stageGates: buildStageGates(project, seed, completionPercentage),
+      dependencies: buildDependencies(project, seed),
+      risks: buildRisks(project, seed, blockedStages),
+      escalations: buildEscalations(project, seed, blockedStages),
+      cost: buildCost(project, seed, deliveryHealth),
+      stakeholders: buildStakeholders(project, seed, deliveryHealth),
+      health: {
+        items: healthItems,
+        overallDeliveryConfidence: deliveryHealth
       },
       workflow: {
         currentStage: mapWorkflowStage(currentStage?.name),
@@ -592,63 +1498,391 @@ const ProductDeliveryDashboard = (() => {
         blockedStages,
         nextStage: nextStage?.name || 'Stage progression approval'
       },
-      outputs: {
-        pending: Math.max(1, Math.round(totalTasks * 0.18)),
-        approved: countBy(tasks, task => ['DONE', 'COMPLETED'].includes(task.status)) || Math.max(4, Math.round(totalTasks * 0.45)),
-        revisions: countBy(tasks, task => ['ESCALATED', 'BLOCKED'].includes(task.status)) || Math.max(1, Math.round(totalTasks * 0.12)),
-        rejected: countBy(tasks, task => task.status === 'REJECTED') || 0
-      },
-      approvals: {
-        pending: Math.max(1, countBy(stages, stage => stage.status === 'IN_PROGRESS') || 1),
-        approved: completedStages || Math.max(3, Math.round((stages.length || 10) * 0.45)),
-        rejected: 0,
-        clarification: countBy(tasks, task => task.status === 'ESCALATED') || Math.max(1, Math.round(totalTasks * 0.08))
-      },
-      roadmap: {
-        currentMilestone: project.currentMilestone || currentStage?.name || 'Requirements review',
-        nextMilestone: project.nextMilestone || nextStage?.name || 'Backlog approval',
-        timelineStatus,
-        deliveryConfidence,
-        deliveryHealth: project.status === 'BLOCKED' ? 'Blocked' : deliveryConfidence === 'High' ? 'On Track' : 'Watch',
-        atRiskMilestones: project.status === 'BLOCKED' ? 2 : 1
-      },
       tasks: {
         total: totalTasks,
         inProgress: countBy(tasks, task => ['IN_PROGRESS', 'EXECUTING'].includes(task.status)) || Math.max(3, Math.round(totalTasks * 0.28)),
         completed: countBy(tasks, task => ['DONE', 'COMPLETED'].includes(task.status)) || Math.max(6, Math.round(totalTasks * 0.42)),
         blocked: countBy(tasks, task => ['BLOCKED', 'ESCALATED'].includes(task.status)) || Math.max(1, Math.round(totalTasks * 0.1))
       },
-      escalations: {
-        deliveryBlockers: countProjectEscalations(project.id, 'delivery') || Math.max(1, blockedStages),
-        requirementClarifications: countProjectEscalations(project.id, 'requirement') || Math.max(1, Math.round(totalRequirements * 0.08)),
-        timelineRisks: countProjectEscalations(project.id, 'timeline') || (project.status === 'BLOCKED' ? 2 : 1),
-        scopeRisks: countProjectEscalations(project.id, 'scope') || 1
+      outputs: {
+        pending: Math.max(1, Math.round(totalTasks * 0.18)),
+        approved: Math.max(4, Math.round(totalTasks * 0.45)),
+        revisions: Math.max(1, Math.round(totalTasks * 0.12)),
+        rejected: seededInt(seed, 0, 2, 98)
+      },
+      approvals: {
+        pending: Math.max(1, countBy(stages, stage => stage.status === 'IN_PROGRESS') || 1),
+        approved: completedStages || Math.max(3, Math.round((stages.length || 10) * 0.45)),
+        rejected: 0,
+        clarification: Math.max(1, Math.round(totalTasks * 0.08))
       }
-    }, project);
+    };
   }
 
-  function normalizeMetrics(metrics, project = {}) {
-    const demo = ProductDeliveryDashboardData.defaultMetrics;
-    const merged = {
-      requirements: { ...demo.requirements, ...(metrics.requirements || {}) },
-      backlog: { ...demo.backlog, ...(metrics.backlog || {}) },
-      features: { ...demo.priority, ...(metrics.priority || metrics.features || {}) },
-      workflow: { ...demo.workflow, ...(metrics.workflow || {}) },
-      outputs: { ...demo.agentOutputs, ...(metrics.agentOutputs || metrics.outputs || {}) },
-      roadmap: { ...demo.roadmap, ...(metrics.roadmap || {}) },
-      tasks: { ...demo.tasks, ...(metrics.tasks || {}) },
-      approvals: { pending: 2, approved: 5, rejected: 0, clarification: 1, ...(metrics.approvals || {}) },
-      escalations: { deliveryBlockers: 1, requirementClarifications: 1, timelineRisks: 1, scopeRisks: 1, ...(metrics.escalations || {}) }
+  function hashProject(project) {
+    const source = `${project.id || ''}|${project.name || ''}|${project.domain || ''}`;
+    return source.split('').reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) >>> 0, 2166136261);
+  }
+
+  function seededInt(seed, min, max, salt = 0) {
+    const range = Math.max(1, max - min + 1);
+    const mixed = (seed + salt * 2654435761) >>> 0;
+    const value = (mixed ^ (mixed >>> 16)) * 2246822519;
+    return min + (Math.abs(value) % range);
+  }
+
+  function pick(seed, items, salt = 0) {
+    return items[seededInt(seed, 0, items.length - 1, salt)];
+  }
+
+  function addDays(value, days) {
+    const date = new Date(value || Date.now());
+    date.setDate(date.getDate() + days);
+    return date.toISOString();
+  }
+
+  function daysBetween(start, end) {
+    if (Number.isNaN(end.getTime())) return 'Not set';
+    return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+  }
+
+  function projectKind(project) {
+    const value = `${project.name || ''} ${project.domain || ''}`.toLowerCase();
+    if (value.includes('almora')) return 'almora';
+    if (value.includes('health') || value.includes('patient') || value.includes('portal')) return 'healthcare';
+    if (value.includes('delivery') || value.includes('workflow') || value.includes('automation')) return 'delivery';
+    if (value.includes('commerce') || value.includes('payment') || value.includes('retail')) return 'commerce';
+    return 'product';
+  }
+
+  function moduleNamePool(project) {
+    const kind = projectKind(project);
+    if (kind === 'almora') return ['ALMora Intake Hub', 'Merchant Onboarding', 'Policy Rule Engine', 'Collections Workflow', 'Partner Reporting', 'Compliance Console'];
+    if (kind === 'healthcare') return ['Patient Identity', 'Appointment Scheduling', 'Telemedicine Room', 'Clinical Notes', 'Billing Review', 'Compliance Reporting'];
+    if (kind === 'delivery') return ['Requirement Setup', 'Workflow Automation', 'QA Readiness', 'Deployment Preparation', 'Client Review', 'Go-Live Planning'];
+    if (kind === 'commerce') return ['Authentication Module', 'Catalog Management', 'Payment Checkout', 'Order Tracking', 'Inventory Sync', 'Notification System'];
+    return ['Authentication Module', 'Dashboard Analytics', 'User Management', 'Notification System', 'Reporting Module', 'Integration Layer'];
+  }
+
+  function buildFeatureModules(project, backlog, seed, completion) {
+    // Project-specific detail data is deterministic from project identity plus available store data.
+    const fromProject = Array.isArray(project.modules) ? project.modules.map(titleCase) : [];
+    const fromBacklog = [...new Set((backlog || []).map(item => item.module).filter(Boolean).map(titleCase))];
+    const names = [...new Set([...fromProject, ...fromBacklog, ...moduleNamePool(project)])].slice(0, 6);
+    const owners = ['Product Owner', 'Delivery Manager', 'Tech Lead', 'QA Lead', 'Business Analyst', 'UX Lead'];
+    const priorities = ['MUST_HAVE', 'SHOULD_HAVE', 'COULD_HAVE', 'DEFERRED'];
+    const statuses = ['IN_PROGRESS', 'PENDING', 'APPROVED', 'BLOCKED', 'COMPLETED'];
+    return names.map((name, index) => {
+      const moduleCompletion = clampPercent(completion + seededInt(seed, -22, 24, 30 + index));
+      const blockers = seededInt(seed, 0, index === 0 ? 2 : 4, 60 + index);
+      return {
+        name,
+        owner: owners[index % owners.length],
+        priority: priorities[seededInt(seed, 0, priorities.length - 1, 40 + index)],
+        status: moduleCompletion > 92 ? 'COMPLETED' : statuses[seededInt(seed, 0, statuses.length - 2, 50 + index)],
+        completion: moduleCompletion,
+        linkedSprints: buildLinkedSprints(seed, index),
+        blockers,
+        ragStatus: moduleRagStatus(moduleCompletion, blockers)
+      };
+    });
+  }
+
+  function buildBacklogScheduleHealth(backlog, seed, totalBacklog) {
+    if (Array.isArray(backlog) && backlog.length) {
+      const offScheduleCount = backlog.filter((item, index) => {
+        const status = String(item.scheduleStatus || item.timelineStatus || item.status || '').toLowerCase();
+        return status.includes('behind') || status.includes('late') || status.includes('blocked') || status.includes('risk') || (index + seed) % 7 === 0;
+      }).length;
+      return {
+        onScheduleCount: Math.max(0, backlog.length - offScheduleCount),
+        offScheduleCount
+      };
+    }
+    const offScheduleCount = seededInt(seed, Math.max(1, Math.round(totalBacklog * 0.08)), Math.max(2, Math.round(totalBacklog * 0.28)), 205);
+    return {
+      onScheduleCount: Math.max(0, totalBacklog - offScheduleCount),
+      offScheduleCount
     };
-    merged.requirements.needsClarification = merged.requirements.needsClarification ?? merged.requirements.needingClarification ?? demo.requirements.needsClarification;
-    merged.outputs.pending = merged.outputs.pendingReview ?? merged.outputs.pending ?? demo.agentOutputs.pending;
-    merged.outputs.revisions = merged.outputs.revisionsRequested ?? merged.outputs.revisions ?? demo.agentOutputs.revisions;
-    merged.workflow.currentStage = mapWorkflowStage(merged.workflow.currentStage);
-    merged.workflow.completionPercentage = clampPercent(merged.workflow.completionPercentage);
-    merged.workflow.blockedStages = merged.workflow.blockedStages ?? merged.workflow.blocked ?? 0;
-    merged.roadmap.deliveryHealth = merged.roadmap.deliveryHealth || (project.status === 'BLOCKED' ? 'Blocked' : merged.roadmap.deliveryConfidence === 'High' ? 'On Track' : 'Watch');
-    merged.roadmap.atRiskMilestones = merged.roadmap.atRiskMilestones ?? demo.roadmap.atRiskMilestones;
-    return merged;
+  }
+
+  function buildLinkedSprints(seed, index) {
+    const first = Math.min(4, index + 1);
+    const count = seededInt(seed, 2, index % 3 === 0 ? 3 : 2, 170 + index);
+    return [...new Set(Array.from({ length: count }, (_, offset) => `Sprint ${Math.min(5, first + offset)}`))];
+  }
+
+  function moduleRagStatus(completion, blockers) {
+    if (blockers >= 3 || completion < 35) return 'red';
+    if (blockers > 0 || completion < 68) return 'amber';
+    return 'green';
+  }
+
+  function buildSprints(project, seed, completion) {
+    const start = project.createdAt || project.created_at || Date.now();
+    const names = [
+      'Sprint 1: Requirement Stabilization',
+      'Sprint 2: Backlog & Design',
+      'Sprint 3: Build & Integration',
+      'Sprint 4: QA & UAT',
+      'Sprint 5: Release Readiness'
+    ];
+    return names.map((name, index) => {
+      const sprintCompletion = clampPercent(completion + 36 - index * 18 + seededInt(seed, -8, 10, 80 + index));
+      return {
+        name,
+        startDate: addDays(start, index * 14),
+        endDate: addDays(start, index * 14 + 13),
+        status: sprintCompletion > 96 ? 'COMPLETED' : sprintCompletion > 20 && sprintCompletion < 96 ? 'IN_PROGRESS' : 'PENDING',
+        completion: sprintCompletion,
+        goal: sprintGoal(project, index)
+      };
+    });
+  }
+
+  function sprintGoal(project, index) {
+    const goals = projectKind(project) === 'delivery'
+      ? ['Stabilize intake scope', 'Confirm automated backlog rules', 'Build delivery workflow', 'Validate QA entry path', 'Prepare client go-live']
+      : ['Stabilize requirements', 'Approve backlog and designs', 'Build core modules', 'Complete QA and UAT readiness', 'Confirm release plan'];
+    return goals[index] || goals[0];
+  }
+
+  function buildRoadmap(project, seed, completion) {
+    const start = project.createdAt || project.created_at || Date.now();
+    const phases = ['Discovery', 'Requirement Review', 'Backlog Generation', 'Sprint Planning', 'Development', 'QA / UAT', 'Release Readiness', 'Go Live'];
+    const developmentIndex = phases.indexOf('Development');
+    return phases.map((name, index) => {
+      const phaseCompletion = clampPercent(completion + 42 - index * 13 + seededInt(seed, -5, 7, 90 + index));
+      const isThroughDevelopment = index <= developmentIndex;
+      return {
+        name,
+        plannedDate: addDays(start, index * 12),
+        forecastDate: addDays(start, index * 12 + seededInt(seed, -2, 6, 100 + index)),
+        status: isThroughDevelopment ? 'IN_PROGRESS' : 'NOT_STARTED',
+        delayRisk: phaseCompletion < 35 ? 'High' : phaseCompletion < 70 ? 'Medium' : 'Low',
+        completion: isThroughDevelopment ? Math.max(18, phaseCompletion) : Math.min(10, phaseCompletion)
+      };
+    });
+  }
+
+  function buildMilestones(project, seed) {
+    const start = project.createdAt || project.created_at || Date.now();
+    const names = ['Requirements Sign-off', 'Backlog Approval', 'Sprint Planning Completed', 'MVP Feature Complete', 'QA Entry', 'UAT Sign-off', 'Production Release'];
+    const owners = ['Product Owner', 'Delivery Manager', 'Scrum Master', 'Tech Lead', 'QA Lead', 'Client Sponsor', 'Release Manager'];
+    return names.map((name, index) => ({
+      name,
+      owner: owners[index % owners.length],
+      dueDate: addDays(start, 10 + index * 12),
+      status: pick(seed, ['APPROVED', 'IN_PROGRESS', 'PENDING', 'BLOCKED'], 110 + index),
+      health: pick(seed, ['Green / Healthy', 'Amber / Watch', 'Red / At Risk'], 120 + index),
+      dependency: pick(seed, ['Stakeholder decision', 'API readiness', 'QA environment', 'Resource capacity', 'No active dependency'], 130 + index),
+      approvalRequired: index < 2 || index > 4 ? 'Yes' : 'No'
+    }));
+  }
+
+  function buildResources(project, seed) {
+    const agentTemplates = [
+      ['Requirement Intake Agent', 'Intake Automation', 'Requirement capture and normalization', 'Requirement Intake'],
+      ['Backlog Generation Agent', 'Backlog Automation', 'Story generation and acceptance criteria', 'Backlog Generation'],
+      ['Prioritization Agent', 'Planning Intelligence', 'MoSCoW and value sequencing', 'Prioritization'],
+      ['Sprint Planning Agent', 'Sprint Automation', 'Sprint scope and capacity planning', 'Sprint Planning'],
+      ['Roadmap Agent', 'Roadmap Intelligence', 'Timeline and milestone forecasting', 'Roadmap'],
+      ['QA Validation Agent', 'Quality Automation', 'Readiness and validation signal review', 'QA / UAT'],
+      ['Dependency Analysis Agent', 'Dependency Intelligence', 'Cross-team dependency mapping', 'Dependency Mapping'],
+      ['Escalation Monitoring Agent', 'Governance Automation', 'Escalation SLA and risk monitoring', 'Escalation Roadmap'],
+      ['Cost Tracking Agent', 'Budget Intelligence', 'Budget utilization and forecast tracking', 'Cost & Budget'],
+      ['Stakeholder Update Agent', 'Communication Automation', 'Stakeholder updates and decision tracking', 'Stakeholder Communication']
+    ];
+    const agents = agentTemplates.map(([name, type, responsibilityArea, workflowStage], index) => {
+      const utilization = seededInt(seed, 28, 98, 150 + index);
+      return {
+        name,
+        type,
+        responsibilityArea,
+        utilization,
+        currentLoad: utilization > 85 ? 'High automation load' : utilization > 58 ? 'Balanced automation load' : 'Available capacity',
+        status: utilization > 92 ? 'BLOCKED' : utilization > 42 ? 'ACTIVE' : 'IDLE',
+        health: utilization > 92 ? 'Red / At Risk' : utilization > 78 ? 'Amber / Watch' : 'Green / Healthy',
+        workflowStage
+      };
+    });
+    const activeAgents = agents.filter(agent => agent.status !== 'IDLE').length;
+    const highUtilizationAgents = agents.filter(agent => agent.utilization > 78).length;
+    const blockedAgents = agents.filter(agent => agent.status === 'BLOCKED').length;
+    const avgEfficiency = Math.round(agents.reduce((sum, agent) => sum + (100 - Math.abs(70 - agent.utilization)), 0) / agents.length);
+    return {
+      summary: {
+        totalActiveAgents: activeAgents,
+        availableAgents: agents.filter(agent => agent.status === 'IDLE').length,
+        highUtilizationAgents,
+        blockedAgents,
+        automationCoverage: seededInt(seed, 74, 98, 190),
+        agentEfficiency: clampPercent(avgEfficiency),
+        workflowStagesCovered: new Set(agents.map(agent => agent.workflowStage)).size,
+        monitoringAgents: agents.filter(agent => /Monitoring|Tracking|Analysis/.test(agent.name)).length
+      },
+      agents
+    };
+  }
+
+  function buildStageGates(project, seed, completion) {
+    const start = project.createdAt || project.created_at || Date.now();
+    const gates = ['Requirement Review Gate', 'Backlog Approval Gate', 'Design Readiness Gate', 'Sprint Commitment Gate', 'QA Entry Gate', 'UAT Sign-off Gate', 'Release Approval Gate'];
+    const approvers = ['Product Owner', 'Delivery Manager', 'Design Lead', 'Scrum Master', 'QA Lead', 'Client Sponsor', 'Executive Sponsor'];
+    return gates.map((name, index) => ({
+      name,
+      status: completion > (index + 1) * 13 ? 'APPROVED' : pick(seed, ['PENDING', 'BLOCKED', 'REWORK'], 200 + index),
+      approver: approvers[index],
+      decisionDate: completion > (index + 1) * 13 ? addDays(project.createdAt || project.created_at || Date.now(), 6 + index * 10) : null,
+      comments: pick(seed, ['Evidence complete', 'Needs stakeholder confirmation', 'Pending dependency closure', 'Rework comments shared'], 210 + index),
+      nextAction: pick(seed, ['Proceed to next gate', 'Collect sign-off', 'Close blocker', 'Refresh delivery evidence'], 220 + index)
+    }));
+  }
+
+  function buildDependencies(project, seed) {
+    const names = projectKind(project) === 'healthcare'
+      ? ['FHIR API contract', 'Clinic UAT roster', 'Identity provider approval', 'Billing vendor test window', 'HIPAA review evidence']
+      : ['API dependency delay', 'Client content approval', 'QA environment readiness', 'Release window confirmation', 'Data migration sample'];
+    const items = names.map((name, index) => ({
+      name,
+      type: pick(seed, ['Internal', 'External', 'Technical', 'Business', 'Client'], 230 + index),
+      owner: pick(seed, ['Tech Lead', 'Client Sponsor', 'Delivery Manager', 'QA Lead', 'Business Analyst'], 240 + index),
+      impact: pick(seed, ['Schedule', 'Scope', 'Quality', 'Budget'], 250 + index),
+      dueDate: addDays(project.createdAt || project.created_at || Date.now(), 18 + index * 9),
+      status: pick(seed, ['PENDING', 'IN_PROGRESS', 'APPROVED', 'BLOCKED'], 260 + index),
+      linkedMilestone: pick(seed, ['Backlog Approval', 'MVP Feature Complete', 'QA Entry', 'UAT Sign-off', 'Production Release'], 270 + index),
+      riskLevel: pick(seed, ['Green / Healthy', 'Amber / Watch', 'Red / At Risk'], 280 + index)
+    }));
+    return {
+      summary: {
+        internal: items.filter(item => item.type === 'Internal').length,
+        external: items.filter(item => item.type === 'External').length,
+        technical: items.filter(item => item.type === 'Technical').length,
+        business: items.filter(item => item.type === 'Business').length,
+        client: items.filter(item => item.type === 'Client').length
+      },
+      items
+    };
+  }
+
+  function buildRisks(project, seed, blockedStages) {
+    const names = ['Requirement ambiguity', 'Delayed stakeholder approval', 'API dependency delay', 'QA environment not ready', 'Scope creep', 'Resource overload'];
+    const items = names.map((name, index) => ({
+      name,
+      category: pick(seed, ['Scope', 'Schedule', 'Technical', 'Quality', 'Resource'], 290 + index),
+      severity: pick(seed, ['Green / Healthy', 'Amber / Watch', 'Red / At Risk'], 300 + index),
+      probability: pick(seed, ['Low', 'Medium', 'High'], 310 + index),
+      impact: pick(seed, ['Low', 'Medium', 'High', 'Critical'], 320 + index),
+      owner: pick(seed, ['Product Owner', 'Delivery Manager', 'Tech Lead', 'QA Lead'], 330 + index),
+      mitigation: pick(seed, ['Clarify acceptance criteria', 'Escalate decision forum', 'Create contingency plan', 'Rebalance sprint scope'], 340 + index),
+      status: pick(seed, ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'BLOCKED'], 350 + index)
+    }));
+    return {
+      summary: {
+        high: items.filter(item => item.severity.includes('Red')).length + blockedStages,
+        medium: items.filter(item => item.severity.includes('Amber')).length,
+        low: items.filter(item => item.severity.includes('Green')).length,
+        openIssues: items.filter(item => item.status !== 'RESOLVED').length,
+        resolvedIssues: items.filter(item => item.status === 'RESOLVED').length,
+        blockers: items.filter(item => item.status === 'BLOCKED').length + blockedStages
+      },
+      items
+    };
+  }
+
+  function buildEscalations(project, seed, blockedStages) {
+    const items = ['Scope decision overdue', 'API contract variance', 'QA entry readiness', 'Budget variance watch'].map((topic, index) => ({
+      topic,
+      trigger: pick(seed, ['SLA exceeded', 'Gate blocked', 'Risk score increased', 'Client decision pending'], 360 + index),
+      currentLevel: `Level ${seededInt(seed, 1, 5, 370 + index)}`,
+      owner: pick(seed, ['Product Owner', 'Delivery Manager', 'PMO', 'Executive Sponsor'], 380 + index),
+      sla: `${seededInt(seed, 8, 48, 390 + index)} hrs`,
+      status: pick(seed, ['PENDING', 'IN_PROGRESS', 'RESOLVED', 'ESCALATED'], 400 + index),
+      nextEscalationDate: addDays(Date.now(), seededInt(seed, 0, 14, 410 + index)),
+      resolutionPlan: pick(seed, ['Confirm decision owner', 'Run technical review', 'Publish recovery plan', 'Close governance action'], 420 + index)
+    }));
+    return {
+      summary: {
+        active: items.filter(item => item.status !== 'RESOLVED').length + blockedStages,
+        dueToday: items.filter(item => daysBetween(new Date(), new Date(item.nextEscalationDate)) === 0).length,
+        slaBreaches: seededInt(seed, 0, 2, 430),
+        resolved: items.filter(item => item.status === 'RESOLVED').length,
+        executiveAttention: items.filter(item => item.currentLevel === 'Level 4' || item.currentLevel === 'Level 5').length
+      },
+      items
+    };
+  }
+
+  function buildCost(project, seed, health) {
+    const approvedBudget = seededInt(seed, 180, 780, 440) * 1000;
+    const actualCost = Math.round(approvedBudget * seededInt(seed, 28, 78, 441) / 100);
+    const forecastCost = Math.round(approvedBudget * seededInt(seed, health.includes('Red') ? 104 : 86, health.includes('Red') ? 122 : 104, 442) / 100);
+    const breakdownLabels = ['Product Management Cost', 'Engineering Cost', 'QA Cost', 'DevOps Cost', 'Design Cost', 'Vendor / External Cost', 'Contingency'];
+    const breakdown = breakdownLabels.map((label, index) => ({
+      label,
+      value: Math.round(forecastCost * seededInt(seed, 6, index === 1 ? 34 : 18, 450 + index) / 100)
+    }));
+    return {
+      approvedBudget,
+      actualCost,
+      forecastCost,
+      budgetUtilization: clampPercent((actualCost / approvedBudget) * 100),
+      costVariance: forecastCost - approvedBudget,
+      burnRate: seededInt(seed, 16, 74, 460) * 1000,
+      estimatedCompletionCost: forecastCost,
+      costRisk: health.includes('Red') ? 'Red / At Risk' : forecastCost > approvedBudget ? 'Amber / Watch' : 'Green / Healthy',
+      breakdown
+    };
+  }
+
+  function buildStakeholders(project, seed, health) {
+    const items = [
+      ['Avery Johnson', 'Executive Sponsor'],
+      ['Leah Morris', 'Client Product Lead'],
+      ['Victor Rao', 'Compliance Reviewer'],
+      ['Iris Kim', 'Operations Lead'],
+      ['Noah Wilson', 'Finance Partner']
+    ].map(([name, role], index) => ({
+      name,
+      role,
+      frequency: pick(seed, ['Weekly', 'Bi-weekly', 'Monthly', 'On Demand'], 470 + index),
+      lastContacted: addDays(Date.now(), -seededInt(seed, 1, 16, 480 + index)),
+      pendingDecision: pick(seed, ['None', 'Scope confirmation', 'Budget approval', 'UAT roster', 'Release date'], 490 + index),
+      sentiment: pick(seed, ['Green / Healthy', 'Amber / Watch', 'Red / At Risk'], 500 + index)
+    }));
+    return {
+      summary: {
+        lastClientUpdate: addDays(Date.now(), -seededInt(seed, 1, 8, 510)),
+        nextSteeringMeeting: addDays(Date.now(), seededInt(seed, 3, 18, 511)),
+        pendingDecisions: items.filter(item => item.pendingDecision !== 'None').length,
+        openQuestions: seededInt(seed, 1, 7, 512),
+        communicationHealth: health.includes('Red') ? 'Amber / Watch' : 'Green / Healthy'
+      },
+      items
+    };
+  }
+
+  function buildHealthItems(project, seed, completion, deliveryHealth) {
+    const labels = ['Scope Health', 'Schedule Health', 'Budget Health', 'Resource Health', 'Quality Health', 'Dependency Health', 'Stakeholder Health'];
+    return labels.map((label, index) => {
+      const score = clampPercent(completion + seededInt(seed, -18, 18, 520 + index));
+      return {
+        label,
+        score,
+        status: score < 46 ? 'Red / At Risk' : score < 72 ? 'Amber / Watch' : 'Green / Healthy'
+      };
+    }).concat([{ label: 'Overall Delivery Confidence', score: completion, status: deliveryHealth }]);
+  }
+
+  function confidenceFromScore(score) {
+    if (score < 48) return 'Low';
+    if (score < 74) return 'Medium';
+    return 'High';
+  }
+
+  function currency(value) {
+    const amount = Number(value) || 0;
+    return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   }
 
   function mapWorkflowStage(name) {
@@ -660,13 +1894,6 @@ const ProductDeliveryDashboard = (() => {
     if (value.includes('final') || value.includes('stage')) return 'Stage Approval';
     if (value.includes('tracking') || value.includes('delivery')) return 'Delivery Tracking';
     return 'Requirement Review';
-  }
-
-  function countProjectEscalations(projectId, keyword) {
-    return NexusStore.getEscalations()
-      .filter(item => item.projectId === projectId || item.project_id === projectId)
-      .filter(item => JSON.stringify(item).toLowerCase().includes(keyword))
-      .length;
   }
 
   function countBy(items, predicate) {
@@ -729,8 +1956,30 @@ const ProductDeliveryDashboard = (() => {
 
   function toggleProductDetails(projectId) {
     state.expandedProductProjectId = state.expandedProductProjectId === projectId ? null : projectId;
+    state.roadmapPage = 0;
     render();
     if (state.expandedProductProjectId) requestAnimationFrame(() => document.getElementById('product-delivery-projects')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function toggleDetailSection(sectionKey, currentlyOpen) {
+    state.openDetailSections[sectionKey] = !currentlyOpen;
+    render();
+  }
+
+  function toggleEscalationRow(rowKey) {
+    state.expandedEscalationRows[rowKey] = !state.expandedEscalationRows[rowKey];
+    render();
+  }
+
+  function setRoadmapFilter(filter) {
+    state.roadmapFilter = filter;
+    state.roadmapPage = 0;
+    render();
+  }
+
+  function moveRoadmapCarousel(delta) {
+    state.roadmapPage = Math.max(0, state.roadmapPage + Number(delta || 0));
+    render();
   }
 
   function toggleCrossDetails(projectId) {
@@ -743,7 +1992,11 @@ const ProductDeliveryDashboard = (() => {
     init,
     scrollToSection,
     toggleProductDetails,
-    toggleCrossDetails
+    toggleCrossDetails,
+    toggleDetailSection,
+    toggleEscalationRow,
+    setRoadmapFilter,
+    moveRoadmapCarousel
   };
 })();
 if (typeof window !== 'undefined') window.ProductDeliveryDashboard = ProductDeliveryDashboard;

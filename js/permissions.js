@@ -86,7 +86,7 @@ const NexusPermissions = {
     const user = NexusStore.getUser();
     if (!user) return false;
     // System admins can access everything
-    if (TenantState.isSystemAdmin()) return true;
+    if (typeof TenantState !== 'undefined' && TenantState.isSystemAdmin()) return true;
     const role = this._resolveRole(user.role);
     const allowed = this.roleAccess[role] || [];
     return allowed.includes(page);
@@ -95,7 +95,7 @@ const NexusPermissions = {
   canPerform(feature) {
     const user = NexusStore.getUser();
     if (!user) return false;
-    if (TenantState.isSystemAdmin()) return true;
+    if (typeof TenantState !== 'undefined' && TenantState.isSystemAdmin()) return true;
     if (feature === 'invite_users') return this.canInviteUsers(user);
     if (feature === 'create_project') return this.canCreateProject(user);
     if (feature === 'assign_project_roles') return this.canAssignProjectRoles(user);
@@ -115,16 +115,58 @@ const NexusPermissions = {
     return TenantState.getCurrentTenantUser() || NexusStore.getUser();
   },
 
+  normalizeRole(role) {
+    const base = String(role || '')
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .trim()
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ');
+    if (!base) return '';
+    if (base.includes('tenant admin')) return 'tenant_admin';
+    if (base === 'organization admin' || base === 'org admin') return 'admin';
+    if (base === 'admin') return 'admin';
+    if (base === 'project admin') return 'project_admin';
+    return base.replace(/\s+/g, '_');
+  },
+
   getTenantRole(user = this.getCurrentTenantUser()) {
-    return String(user?.tenantRole || '').toLowerCase();
+    return this.normalizeRole(user?.tenantRole || user?.tenant_role || user?.tenantRoleLabel || user?.role);
   },
 
   isOriginalTenantAdmin(user = this.getCurrentTenantUser()) {
-    return this.getTenantRole(user) === 'admin' && Boolean(user?.isTenantOwner || user?.isOriginalTenantAdmin);
+    return this.isTenantAdmin(user) && Boolean(user?.isTenantOwner || user?.isOriginalTenantAdmin);
   },
 
   isTenantAdmin(user = this.getCurrentTenantUser()) {
-    return this.getTenantRole(user) === 'admin';
+    if (!user) return false;
+    const tenantRole = this.getTenantRole(user);
+    const roleCandidates = [
+      tenantRole,
+      this.normalizeRole(user.role),
+      this.normalizeRole(user.roleLabel),
+      this.normalizeRole(user.displayRole),
+      this.normalizeRole(user.title),
+      ...(Array.isArray(user.roles) ? user.roles.map(role => this.normalizeRole(role)) : [])
+    ].filter(Boolean);
+    const hasAdminRole = roleCandidates.some(role => (
+      role === 'tenant_admin' ||
+      role === 'admin' ||
+      role === 'organization_admin' ||
+      role === 'org_admin' ||
+      role === 'project_admin'
+    ));
+    return hasAdminRole || Boolean(
+      user.isAdmin ||
+      user.admin ||
+      user.hasAdminPermission ||
+      user.canCreateProjects ||
+      (Array.isArray(user.permissions) && user.permissions.some(permission => ['admin', 'create_project', 'create_projects'].includes(this.normalizeRole(permission)))) ||
+      user.isTenantOwner ||
+      user.isOriginalTenantAdmin ||
+      user.isTenantCreator ||
+      user.isTenantOwnerOrCreator
+    );
   },
 
   canInviteUsers(user = this.getCurrentTenantUser()) {
@@ -133,6 +175,11 @@ const NexusPermissions = {
   },
 
   canCreateProject(user = this.getCurrentTenantUser()) {
+    if (!user) {
+      console.warn('[NexusPermissions] Project creation blocked: missing current user.');
+      return false;
+    }
+    if (TenantState.isSystemAdmin()) return true;
     return this.isTenantAdmin(user);
   },
 

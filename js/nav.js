@@ -81,7 +81,9 @@ const NexusRoleUtils = {
 
   getTenantRoleLabel(user = this.getCurrentUser()) {
     if (!user) return '';
-    const rawRole = String(user.tenantRole || user.role || '').trim().toLowerCase();
+    const rawRole = typeof NexusPermissions !== 'undefined'
+      ? NexusPermissions.normalizeRole(user.tenantRole || user.role || '')
+      : String(user.tenantRole || user.role || '').trim().toLowerCase();
     const tenant = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenant?.() : null;
     const ownerEmail = (tenant?.primaryAdmin?.email || tenant?.admin_email || '').trim().toLowerCase();
     const userEmail = (user.email || '').trim().toLowerCase();
@@ -112,6 +114,36 @@ const NexusRoleUtils = {
   }
 };
 if (typeof window !== 'undefined') window.NexusRoleUtils = NexusRoleUtils;
+
+const NexusSidebar = {
+  storageKey: 'nexus_sidebar_collapsed',
+
+  isCollapsed() {
+    return localStorage.getItem(this.storageKey) === 'true';
+  },
+
+  apply(collapsed = this.isCollapsed()) {
+    const nav = document.querySelector('.nexus-nav');
+    document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+    if (nav) {
+      nav.classList.toggle('collapsed', collapsed);
+      const toggle = nav.querySelector('.nav-collapse-toggle');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        toggle.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+      }
+    }
+  },
+
+  toggle() {
+    const collapsed = !this.isCollapsed();
+    localStorage.setItem(this.storageKey, String(collapsed));
+    this.apply(collapsed);
+  }
+};
+if (typeof window !== 'undefined') window.NexusSidebar = NexusSidebar;
 
 function createNavigation(activePage) {
   // Session protection: must be logged in
@@ -158,21 +190,27 @@ function createNavigation(activePage) {
   const stateColors = { IDLE: '#6b7280', EXECUTING: '#10b981', ESCALATION_PENDING: '#f59e0b', BLOCKED: '#ef4444', GATE_REVIEW: '#8b5cf6', RELEASED: '#3b82f6' };
 
   const nav = document.createElement('nav');
-  nav.className = 'nexus-nav';
+  const sidebarCollapsed = NexusSidebar.isCollapsed();
+  document.documentElement.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  document.body.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  nav.className = `nexus-nav${sidebarCollapsed ? ' collapsed' : ''}`;
   nav.innerHTML = `
     <div class="nav-header">
       <div class="nav-brand">
         <span class="brand-icon">🧠</span>
         <span class="brand-text">NEXUS</span>
+        <button class="nav-collapse-toggle" type="button" onclick="NexusSidebar.toggle()" aria-label="${sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}" aria-expanded="${String(!sidebarCollapsed)}" title="${sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}">
+          <span class="nav-collapse-glyph">&lt;</span>
+        </button>
       </div>
       <div class="system-state" style="background: ${stateColors[systemState] || '#6b7280'}20; color: ${stateColors[systemState] || '#6b7280'}; border: 1px solid ${stateColors[systemState] || '#6b7280'}40">
         <span class="state-dot" style="background: ${stateColors[systemState] || '#6b7280'}"></span>
-        ${systemState}
+        <span class="system-state-label">${systemState}</span>
       </div>
     </div>
     <div class="nav-links">
       ${mainNavItems.map(item => `
-        <a href="${item.href}" class="nav-link ${(item.activePages || [item.id]).includes(activePage) ? 'active' : ''}">
+        <a href="${item.href}" class="nav-link ${(item.activePages || [item.id]).includes(activePage) ? 'active' : ''}" title="${item.label}" aria-label="${item.label}">
           <span class="nav-icon">${item.icon}</span>
           <span class="nav-label">${item.label}</span>
           ${item.id === 'support' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
@@ -180,7 +218,7 @@ function createNavigation(activePage) {
       `).join('')}
       <div class="nav-section-divider">Control Panel</div>
       ${filteredControlItems.map(item => `
-        <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}">
+        <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}" title="${item.label}" aria-label="${item.label}">
           <span class="nav-icon">${item.icon}</span>
           <span class="nav-label">${item.label}</span>
           ${item.id === 'support' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
@@ -195,7 +233,7 @@ function createNavigation(activePage) {
           <span class="user-role">${sidebarRoleLabel}</span>
         </div>
       </div>
-      <button class="nav-logout" onclick="handleLogout()">Logout</button>
+      <button class="nav-logout" onclick="handleLogout()" title="Logout" aria-label="Logout"><span class="nav-logout-icon">&rarr;</span><span class="nav-logout-label">Logout</span></button>
     </div>
   `;
 
@@ -212,13 +250,14 @@ function createNavigation(activePage) {
         tenantLabel.innerHTML = `
           <label class="tenant-switcher-label">ROLE</label>
           <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 6px; padding: 6px 0;">
-            <span>${tenantRoleLabel || 'Tenant User'}</span>
+            <span class="tenant-switcher-value">${tenantRoleLabel || 'Tenant User'}</span>
           </div>
         `;
       }
       navHeader.appendChild(tenantLabel);
     }
   }
+  NexusSidebar.apply(sidebarCollapsed);
 }
 
 function handleLogout() {

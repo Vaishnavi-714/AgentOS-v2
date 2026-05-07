@@ -65,27 +65,40 @@ const ProjectAccessUI = {
     return NexusPermissions.getVisibleProjects(NexusStore.getProjects());
   },
 
+  projectCreateDeniedMessage: 'Only Tenant Admins or Admins can create projects.',
+
+  tenantRoleLabel(user) {
+    if (!user) return 'Member';
+    if (typeof NexusPermissions !== 'undefined' && NexusPermissions.isTenantAdmin(user)) {
+      return NexusPermissions.getTenantRole(user) === 'tenant_admin' ? 'Tenant Admin' : 'Admin';
+    }
+    return 'Member';
+  },
+
   applyProjectPageChrome() {
     const canCreate = NexusPermissions.canCreateProject();
     document.querySelectorAll('[data-create-project-action]').forEach(el => {
-      el.style.display = canCreate ? '' : 'none';
+      el.disabled = !canCreate;
+      el.classList.toggle('disabled', !canCreate);
+      if (canCreate) el.removeAttribute('title');
+      else el.setAttribute('title', this.projectCreateDeniedMessage);
     });
-    const createModal = document.getElementById('createProjectModal');
-    if (createModal && !canCreate) createModal.remove();
   },
 
   guardCreateProject() {
     if (NexusPermissions.canCreateProject()) return true;
-    showToast('Only admins can create projects.', 'error');
+    showToast(this.projectCreateDeniedMessage, 'error');
     return false;
   },
 
   syncCreateProjectEntryPoints(hasProjects) {
+    const canCreate = NexusPermissions.canCreateProject();
     document.querySelectorAll('[data-create-project-action="header"]').forEach(button => {
       button.style.display = hasProjects ? '' : 'none';
-      button.disabled = false;
-      button.classList.remove('disabled');
-      button.removeAttribute('title');
+      button.disabled = !canCreate;
+      button.classList.toggle('disabled', !canCreate);
+      if (canCreate) button.removeAttribute('title');
+      else button.setAttribute('title', this.projectCreateDeniedMessage);
     });
   },
 
@@ -115,7 +128,7 @@ const ProjectAccessUI = {
                 return `<tr>
                   <td><input type="checkbox" class="project-create-user" data-user-id="${user.id}" ${checked} onchange="ProjectAccessUI.handleCreateAssignmentToggle(this)"></td>
                   <td><strong>${this.esc(user.name)}</strong><br><span style="font-size:11px;color:var(--text-muted)">${this.esc(user.email)}</span></td>
-                  <td><span class="tag">${user.tenantRole === 'admin' ? 'Admin' : 'Member'}</span></td>
+                  <td><span class="tag">${this.esc(this.tenantRoleLabel(user))}</span></td>
                   <td>
                     ${this.renderRoleSelect('create', user.id, defaultRole, !checked)}
                     <div class="rt-validation err project-role-error" data-user-id="${user.id}" style="display:none">Select project role.</div>
@@ -170,7 +183,7 @@ const ProjectAccessUI = {
         projectId: '',
         name: user?.name || '',
         email: user?.email || '',
-        tenantRole: user?.tenantRole === 'admin' ? 'Admin' : 'Member',
+        tenantRole: this.tenantRoleLabel(user),
         projectRole
       };
     });
@@ -392,7 +405,7 @@ const ProjectAccessUI = {
       return `<tr>
         <td>${canEdit ? `<input type="checkbox" class="project-team-user" data-user-id="${user.id}" ${assignment ? 'checked' : ''} onchange="ProjectAccessUI.handleTeamAssignmentToggle(this)">` : ''}</td>
         <td><strong>${this.esc(user.name)}</strong><br><span style="font-size:11px;color:var(--text-muted)">${this.esc(user.email)}</span></td>
-        <td><span class="tag">${user.tenantRole === 'admin' ? 'Admin' : 'Member'}</span></td>
+        <td><span class="tag">${this.esc(this.tenantRoleLabel(user))}</span></td>
         <td>${canEdit ? this.renderRoleSelect('team', user.id, projectRole, !assignment) : `<span class="tag">${this.esc(this.roleLabel(projectRole))}</span>`}</td>
       </tr>`;
     }).join('');
@@ -430,7 +443,7 @@ const ProjectAccessUI = {
         projectId: project.id,
         email: user?.email || '',
         name: user?.name || '',
-        tenantRole: user?.tenantRole === 'admin' ? 'Admin' : 'Member',
+        tenantRole: this.tenantRoleLabel(user),
         projectRole
       };
     });
