@@ -85,6 +85,8 @@
 
     /* --- Content --- */
     .rt-content { flex: 1; padding: 28px 32px; overflow-y: auto; }
+    .rt-page-nav { display: flex; align-items: center; justify-content: flex-start; margin-bottom: 14px; }
+    .rt-home-link { padding-left: 14px; padding-right: 14px; }
 
     /* --- Progress Steps --- */
     .rt-steps {
@@ -212,6 +214,11 @@
     .rt-form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .rt-inline-action { display: flex; gap: 8px; align-items: flex-end; }
     .rt-transfer-box { border: 1px dashed var(--border-light); border-radius: var(--radius); padding: 14px; background: var(--bg-tertiary); }
+    .rt-checkout-actions {
+      border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card);
+      padding: 18px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px;
+    }
+    .rt-checkout-actions .btn { width: 100%; justify-content: center; }
     .rt-terms-row { display: flex; gap: 9px; align-items: flex-start; font-size: 12px; color: var(--text-secondary); line-height: 1.4; }
     .rt-terms-row input { margin-top: 2px; accent-color: var(--accent); }
     .rt-error-list { display: none; border: 1px solid #ef444430; background: #ef444415; color: var(--danger); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; line-height: 1.6; margin-top: 12px; }
@@ -418,6 +425,10 @@
 
       <!-- Content -->
       <div class="rt-content">
+        <div class="rt-page-nav">
+          <a class="btn btn-outline btn-sm rt-home-link" href="landing.html">Back to Home</a>
+        </div>
+
         <!-- Step Progress -->
         <div class="rt-steps">
           <div class="rt-step active" id="rtStep1"><span class="rt-step-num">1</span> Tenant Details</div>
@@ -460,71 +471,15 @@
                     <div class="rt-hint">Email domain for user authentication</div>
                     <div id="fDomainVal"></div>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. Organization Details -->
-            <div class="rt-card" data-rt-step="1">
-              <div class="rt-card-header">
-                <span class="rt-card-icon">🏛️</span>
-                <div>
-                  <div class="rt-card-title">Organization Details</div>
-                  <div class="rt-card-desc">Company profile and classification</div>
-                </div>
-              </div>
-              <div class="rt-card-body">
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Organization Type</label>
-                    <select class="rt-select" id="fOrgType" onchange="rtUpdate()">
-                      <option value="Enterprise">🏢 Enterprise</option>
-                      <option value="SMB">🏬 SMB</option>
-                      <option value="Startup">🚀 Startup</option>
-                      <option value="Education">🎓 Education</option>
-                      <option value="Government">🏛️ Government</option>
-                      <option value="Non-Profit">❤️ Non-Profit</option>
-                    </select>
-                  </div>
-                  <div class="rt-fg">
-                    <label class="rt-label">Industry</label>
-                    <select class="rt-select" id="fIndustry" onchange="rtUpdate()">
-                      <option value="Technology">Technology</option>
-                      <option value="Financial Services">Financial Services</option>
-                      <option value="Healthcare">Healthcare</option>
-                      <option value="Manufacturing">Manufacturing</option>
-                      <option value="Retail">Retail</option>
-                      <option value="Telecommunications">Telecommunications</option>
-                      <option value="Education">Education</option>
-                      <option value="Government">Government</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="rt-card-grid">
-                  <div class="rt-fg">
-                    <label class="rt-label">Company Size</label>
-                    <select class="rt-select" id="fCompanySize" onchange="rtUpdate()">
-                      <option value="1-50">1–50 employees</option>
-                      <option value="51-200">51–200 employees</option>
-                      <option value="201-1000" selected>201–1,000 employees</option>
-                      <option value="1001-5000">1,001–5,000 employees</option>
-                      <option value="5001+">5,001+ employees</option>
-                    </select>
-                  </div>
                   <div class="rt-fg">
                     <label class="rt-label">Website</label>
-                    <input type="url" class="rt-input" id="fWebsite" placeholder="https://www.acme.com" oninput="rtUpdate()">
+                    <input type="url" class="rt-input" id="fWebsite" placeholder="https://www.company.com" oninput="rtUpdate()">
                   </div>
-                </div>
-                <div class="rt-fg">
-                  <label class="rt-label">Description</label>
-                  <textarea class="rt-textarea" id="fDescription" placeholder="Brief description of the organization..." oninput="rtUpdate()"></textarea>
                 </div>
               </div>
             </div>
 
-            <!-- 3. Primary Contact -->
+            <!-- 2. Primary Contact -->
             <div class="rt-card" data-rt-step="1">
               <div class="rt-card-header">
                 <span class="rt-card-icon">👤</span>
@@ -561,8 +516,13 @@
 
             <div data-rt-step="2">
               <div class="rt-step-title-block">
-                <div class="rt-step-title">Subscription Plan & Payment</div>
-                <div class="rt-step-subtitle">Choose a plan, select billing, and complete payment to activate your tenant.</div>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap">
+                  <div>
+                    <div class="rt-step-title">Subscription Plan & Payment</div>
+                    <div class="rt-step-subtitle">Choose a plan, select billing, and complete payment to activate your tenant.</div>
+                  </div>
+                  <button class="btn btn-outline btn-sm" onclick="rtPrevStep()" id="rtBackBtn" style="display:none">Back to Tenant Details</button>
+                </div>
               </div>
 
               <div class="rt-subscription-shell">
@@ -582,6 +542,16 @@
 
                 <div class="rt-feature-panel" id="rtSelectedPlanFeatures"></div>
                 <div class="rt-payment-panel" id="rtPaymentPanel"></div>
+                <div class="rt-checkout-actions" id="rtCheckoutActions" style="display:none">
+                  <label class="rt-terms-row" id="rtTermsWrap">
+                    <input type="checkbox" id="fTermsAccepted" onchange="setTermsAccepted(this.checked)">
+                    <span>I agree to the Terms of Service and Privacy Policy.</span>
+                  </label>
+                  <div class="rt-validation err" id="rtTermsError" style="display:none">Terms acceptance is required.</div>
+                  <button class="btn btn-primary" onclick="rtSubmit()" id="rtSubmitBtn" disabled>
+                    Complete Registration
+                  </button>
+                </div>
                 <div class="rt-error-list" id="rtStep2Errors" aria-live="polite"></div>
               </div>
             </div>
@@ -615,20 +585,9 @@
               <div class="rt-summary-body" id="rtSummaryBody">
                 <!-- filled by JS -->
               </div>
-              <div class="rt-summary-actions">
+              <div class="rt-summary-actions" id="rtSummaryActions">
                 <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="rtNextStep()" id="rtNextBtn">
                   Continue to Subscription
-                </button>
-                <button class="btn btn-outline" style="width:100%;justify-content:center;display:none" onclick="rtPrevStep()" id="rtBackBtn">
-                  Back to Tenant Details
-                </button>
-                <label class="rt-terms-row" id="rtTermsWrap" style="display:none">
-                  <input type="checkbox" id="fTermsAccepted" onchange="setTermsAccepted(this.checked)">
-                  <span>I agree to the Terms of Service and Privacy Policy.</span>
-                </label>
-                <div class="rt-validation err" id="rtTermsError" style="display:none">Terms acceptance is required.</div>
-                <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="rtSubmit()" id="rtSubmitBtn" disabled>
-                  Create Tenant
                 </button>
               </div>
             </div>
@@ -781,11 +740,7 @@
         slug: document.getElementById('fTenantSlug').value.trim(),
         domain: document.getElementById('fDomain').value.trim(),
         status: 'ACTIVE',
-        org_type: document.getElementById('fOrgType').value,
-        industry: document.getElementById('fIndustry').value,
-        company_size: document.getElementById('fCompanySize').value,
         website: document.getElementById('fWebsite').value.trim(),
-        description: document.getElementById('fDescription').value.trim(),
         admin_name: document.getElementById('fAdminName').value.trim(),
         admin_email: document.getElementById('fAdminEmail').value.trim(),
         job_title: document.getElementById('fJobTitle').value.trim(),
@@ -875,14 +830,12 @@
     ];
     const OPT_FIELDS = [
       { id: 'fWebsite',     label: 'Website' },
-      { id: 'fDescription', label: 'Description' },
       { id: 'fJobTitle',    label: 'Job Title' },
       { id: 'fPhone',       label: 'Phone' },
     ];
     function calcProgress() {
-      let filled = 0; let total = REQ_FIELDS.length + OPT_FIELDS.length;
+      let filled = 0; let total = REQ_FIELDS.length;
       REQ_FIELDS.forEach(f => { if (document.getElementById(f.id).value.trim()) filled++; });
-      OPT_FIELDS.forEach(f => { if (document.getElementById(f.id).value.trim()) filled++; });
       return Math.round((filled / total) * 100);
     }
     function renderProgress() {
@@ -923,8 +876,7 @@
           <div class="rt-summary-section-label">Tenant Info</div>
           <div class="rt-summary-row"><span class="rt-summary-key">Name</span><span class="rt-summary-val">${esc(d.tenant_name) || '—'}</span></div>
           <div class="rt-summary-row"><span class="rt-summary-key">Domain</span><span class="rt-summary-val">${esc(d.domain) || '—'}</span></div>
-          <div class="rt-summary-row"><span class="rt-summary-key">Type</span><span class="rt-summary-val">${esc(d.org_type)}</span></div>
-          <div class="rt-summary-row"><span class="rt-summary-key">Industry</span><span class="rt-summary-val">${esc(d.industry)}</span></div>
+          <div class="rt-summary-row"><span class="rt-summary-key">Website</span><span class="rt-summary-val">${esc(d.website) || '—'}</span></div>
           <div class="rt-summary-row"><span class="rt-summary-key">ID</span><span class="rt-summary-val" style="font-family:var(--mono);font-size:12px">${d.tenant_id}</span></div>
         </div>
         <div class="rt-summary-section">
@@ -983,7 +935,7 @@
       rtUpdate();
     }
 
-    function selectPlan(planId) {
+    function selectPlan(planId, shouldScroll = false) {
       const sub = rtRegistrationState.subscription;
       sub.plan = planId;
       const plan = NexusSubscriptionPricing.getPlan(planId);
@@ -991,6 +943,11 @@
       if (planId === 'free') sub.paymentStatus = 'not_required';
       else sub.paymentStatus = 'pending';
       rtUpdate();
+      if (shouldScroll && planId !== 'free') {
+        requestAnimationFrame(() => {
+          document.getElementById('rtPaymentPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      }
     }
 
     function selectPaymentMethod(method) {
@@ -1043,7 +1000,7 @@
             <p class="rt-plan-desc">${esc(plan.description)}</p>
             <div class="rt-plan-price">${priceLabel(plan)}<span class="rt-plan-billing">${plan.billingText[sub.billingCycle]}</span></div>
             <ul class="rt-plan-features">${plan.features.slice(0, 5).map(feature => `<li>${esc(feature)}</li>`).join('')}</ul>
-            <button type="button" class="btn ${selected ? 'btn-primary' : 'btn-outline'}" onclick="event.stopPropagation();selectPlan('${plan.id}')">${esc(plan.button)}</button>
+            <button type="button" class="btn ${selected ? 'btn-primary' : 'btn-outline'}" onclick="event.stopPropagation();selectPlan('${plan.id}', true)">${esc(plan.button)}</button>
           </article>
         `;
       }).join('');
@@ -1130,7 +1087,7 @@
 
     function finalButtonText() {
       const plan = rtRegistrationState.subscription.plan;
-      if (plan === 'pro' || plan === 'business' || plan === 'enterprise') return 'Complete Registration & Start Trial';
+      if (plan === 'pro' || plan === 'business' || plan === 'enterprise') return 'Complete Registration';
       return 'Complete Registration';
     }
 
@@ -1143,8 +1100,9 @@
       document.getElementById('rtLine1').className = rtCurrentStep === 2 ? 'rt-step-line active' : 'rt-step-line';
       document.getElementById('rtStep2').className = rtCurrentStep === 2 ? 'rt-step active' : 'rt-step';
       document.getElementById('rtNextBtn').style.display = rtCurrentStep === 1 ? 'flex' : 'none';
+      document.getElementById('rtSummaryActions').style.display = rtCurrentStep === 1 ? 'flex' : 'none';
       document.getElementById('rtBackBtn').style.display = rtCurrentStep === 2 ? 'flex' : 'none';
-      document.getElementById('rtSubmitBtn').style.display = rtCurrentStep === 2 ? 'flex' : 'none';
+      document.getElementById('rtCheckoutActions').style.display = rtCurrentStep === 2 ? 'flex' : 'none';
     }
 
     function rtNextStep() {
@@ -1179,10 +1137,8 @@
         renderPlanCards();
         renderSelectedPlanFeatures();
         renderPaymentPanel();
-        document.getElementById('rtTermsWrap').style.display = 'flex';
         document.getElementById('rtSubmitBtn').textContent = finalButtonText();
       } else {
-        document.getElementById('rtTermsWrap').style.display = 'none';
         document.getElementById('rtTermsError').style.display = 'none';
         document.getElementById('rtSubmitBtn').textContent = 'Create Tenant';
       }
@@ -1199,11 +1155,7 @@
         slug: d.slug,
         domain: d.domain,
         status: d.status,
-        organizationType: d.org_type,
-        industry: d.industry,
-        companySize: d.company_size,
         website: d.website || undefined,
-        description: d.description || undefined,
         primaryAdmin: {
           name: d.admin_name,
           email: d.admin_email,
@@ -1364,12 +1316,7 @@
           jobTitle: completedData.job_title,
           phone: completedData.phone
         },
-        tenant_type: completedData.org_type,
-        organizationType: completedData.org_type,
-        industry: completedData.industry,
-        companySize: completedData.company_size,
         website: completedData.website,
-        description: completedData.description,
       };
       TenantState.addTenant(newTenant);
       const adminUser = TenantState.addTenantUser(newTenant.tenant_id, {
