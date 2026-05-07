@@ -589,11 +589,13 @@
       <div id="tab-orgchart-section" class="tab-content">
         <!-- AI Generated Banner -->
         <div class="ai-gen-banner" id="aiGenBanner" style="display:none">
-          <div class="ai-gen-badge">🤖 AI Generated Structure</div>
-          <p class="ai-gen-text">This structure was automatically generated based on project requirements and uploaded documents.</p>
+          <div class="ai-gen-badge" id="aiGenBadge">🤖 AI Generated Structure</div>
+          <p class="ai-gen-text" id="aiGenText">This structure was automatically generated based on project requirements and uploaded documents.</p>
+          <div id="sowInsightsPanel" class="sow-insights-panel"></div>
           <div class="ai-gen-actions">
             <button class="btn btn-outline btn-sm" onclick="openPromptModal()">👁️ View Generation Prompt</button>
             <button class="btn btn-outline btn-sm" onclick="toggleEditMode()" id="editStructureBtn">✏️ Edit Structure</button>
+            <button class="btn btn-primary btn-sm" onclick="continueToGeneratedWorkflows()">Continue to Generated Workflows</button>
           </div>
         </div>
 
@@ -769,6 +771,7 @@
   <script src="../js/nav.js"></script>
   <script src="../js/orchestration-runtime.js"></script>
   <script src="../js/ai-org-generator.js"></script>
+  <script src="../js/sow-setup-generator.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
@@ -1055,6 +1058,7 @@
       const saved = NexusStore.getActiveProject();
       selectedProjectId = projects.find(p => p.id === saved) ? saved : projects[0].id;
       NexusStore.setActiveProject(selectedProjectId);
+      NexusRoleUtils.setSelectedProjectId(selectedProjectId, { silent: true });
 
       sel.innerHTML = projects.map(p =>
         `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${p.name}</option>`
@@ -1066,6 +1070,7 @@
     function onProjectChange() {
       selectedProjectId = document.getElementById('projectSelector').value;
       NexusStore.setActiveProject(selectedProjectId);
+      NexusRoleUtils.setSelectedProjectId(selectedProjectId);
       updateProjectMeta();
       populateModuleScope();
       render();
@@ -1386,13 +1391,7 @@
       if (saved && Array.isArray(saved.levels)) {
         orgLevels = saved.levels;
       } else {
-        orgLevels = [
-          { id: 'lvl_1', label: 'Human Orchestrator', agents: [{ agent_id: '_human_', name: '👤 Human Orchestrator', icon: '👤', role: 'Final Authority' }] },
-          { id: 'lvl_2', label: 'Leadership', agents: [] },
-          { id: 'lvl_3', label: 'Architecture', agents: [] },
-          { id: 'lvl_4', label: 'Development', agents: [] },
-          { id: 'lvl_5', label: 'Quality & Release', agents: [] }
-        ];
+        orgLevels = SowSetupGenerator.generateOrgStructure([], new Date().toISOString()).levels;
       }
     }
 
@@ -1474,6 +1473,7 @@
         <div class="org-level-row" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${idx})" id="orgLevel_${idx}">
           <div class="org-level-label">
             <span onclick="renameOrgLevel(${idx})" style="cursor:pointer" title="Click to rename">${escapeHtml(level.label)}</span>
+            ${level._generatedFromSow || level.purpose ? '<span class="tag" style="margin-left:8px">Generated from SOW</span>' : ''}
             ${canEditProjectAgents && idx > 0 ? `
               <button onclick="moveOrgLevel(${idx},-1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;margin-left:4px" title="Move up">▲</button>
               <button onclick="moveOrgLevel(${idx},1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px" title="Move down">▼</button>
@@ -1481,6 +1481,7 @@
             ` : ''}
             ${canEditProjectAgents && isEditMode ? `<button class="org-add-role-btn" onclick="addRoleToLevel(${idx})" style="margin-left:8px">+ Add Role</button>` : ''}
           </div>
+          ${level.purpose ? `<div class="org-level-purpose">${escapeHtml(level.purpose)}</div>` : ''}
           ${level.agents.length ? level.agents.map((a, aIdx) => `
             <div class="org-placed-node ${isEditMode ? 'editable' : ''} ${a._aiGenerated ? 'ai-node' : ''}" data-org-node="${idx}-${aIdx}" ${isEditMode && a.agent_id !== '_human_' ? `onclick="inlineRenameRole(${idx},${aIdx})"` : ''}>
               <span>${a.icon||'🤖'}</span>
@@ -1736,9 +1737,29 @@
       const banner = document.getElementById('aiGenBanner');
       if (orgData && orgData._aiGenerated) {
         banner.style.display = 'flex';
+        const project = NexusStore.getProject(selectedProjectId);
+        const fromSow = Boolean(orgData._generatedFromSow || project?.sow?.generatedFromSow);
+        document.getElementById('aiGenBadge').textContent = fromSow ? 'SOW-Based Org Structure Generated' : '🤖 AI Generated Structure';
+        document.getElementById('aiGenText').textContent = fromSow
+          ? `This structure was automatically generated from the uploaded SOW for ${project?.name || 'this project'}.`
+          : 'This structure was automatically generated based on project requirements and uploaded documents.';
+        const insights = project?.sowInsights;
+        document.getElementById('sowInsightsPanel').innerHTML = fromSow && insights ? `
+          <div class="sow-insight-row"><strong>Detected modules</strong><span>${(insights.detectedModules || []).map(escapeHtml).join(', ')}</span></div>
+          <div class="sow-insight-row"><strong>Detected risks</strong><span>${(insights.detectedRisks || []).map(escapeHtml).join(', ')}</span></div>
+          <div class="sow-insight-row"><strong>Recommended workflows</strong><span>${(insights.recommendedWorkflows || []).map(escapeHtml).join(', ')}</span></div>
+        ` : '';
       } else {
         banner.style.display = 'none';
       }
+    }
+
+    function continueToGeneratedWorkflows() {
+      if (selectedProjectId) {
+        NexusRoleUtils.setSelectedProjectId(selectedProjectId);
+        NexusStore.setActiveProject(selectedProjectId);
+      }
+      window.location.href = `workflows.html?project=${encodeURIComponent(selectedProjectId)}&tab=my-workflows&sow=1`;
     }
 
     function openPromptModal() {
@@ -1973,6 +1994,7 @@
       const projectParam = urlParams.get('project');
       const tabParam = urlParams.get('tab');
       const aiParam = urlParams.get('ai');
+      const sowParam = urlParams.get('sow');
 
       if (projectParam) {
         NexusRoleUtils.setSelectedProjectId(projectParam);
@@ -1990,6 +2012,9 @@
             messages.forEach(msg => {
               setTimeout(() => showToast(msg.text, 'info'), msg.delay / 4);
             });
+            if (sowParam === '1') {
+              setTimeout(() => showToast('AI-generated org structure created from uploaded SOW.', 'success'), 700);
+            }
           }
         }, 500);
       }

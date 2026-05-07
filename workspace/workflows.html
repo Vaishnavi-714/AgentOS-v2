@@ -91,6 +91,7 @@
 
     <!-- Main Content -->
     <div id="mainWfContent">
+      <div id="sowWorkflowBanner"></div>
       <div class="grid grid-4" style="margin-bottom:20px">
         <div class="stat-card"><span class="stat-label">Total Workflows</span><span class="stat-value" id="wfTotal">0</span></div>
         <div class="stat-card"><span class="stat-label">From Templates</span><span class="stat-value" style="color:var(--accent)" id="wfTemplateCount">0</span></div>
@@ -247,6 +248,7 @@
   <script src="../js/permissions.js"></script>
   <script src="../js/app.js"></script>
   <script src="../js/nav.js"></script>
+  <script src="../js/sow-setup-generator.js"></script>
   <script>
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
@@ -296,19 +298,26 @@
       document.getElementById('noProjectState').style.display = 'none';
       document.getElementById('mainWfContent').style.display = '';
 
-      const saved = NexusStore.getActiveProject();
+      const urlParams = new URLSearchParams(window.location.search);
+      const projectParam = urlParams.get('project');
+      const saved = projectParam || NexusRoleUtils.getSelectedProjectId() || NexusStore.getActiveProject();
       selectedProjectId = projects.find(p => p.id === saved) ? saved : projects[0].id;
       NexusStore.setActiveProject(selectedProjectId);
+      NexusRoleUtils.setSelectedProjectId(selectedProjectId, { silent: true });
 
       sel.innerHTML = projects.map(p =>
         `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${p.name}</option>`
       ).join('');
       updateProjectMeta();
+      if (urlParams.get('tab') === 'my-workflows') setTimeout(() => switchWfTab('wfMyWorkflows-section'), 0);
+      if (urlParams.get('sow') === '1') setTimeout(() => showToast('Workflows generated from SOW', 'success'), 500);
+      if (urlParams.toString()) window.history.replaceState({}, '', window.location.pathname);
     }
 
     function onProjectChange() {
       selectedProjectId = document.getElementById('projectSelector').value;
       NexusStore.setActiveProject(selectedProjectId);
+      NexusRoleUtils.setSelectedProjectId(selectedProjectId);
       updateProjectMeta();
       renderAll();
     }
@@ -497,6 +506,17 @@
     function renderMyWorkflows() {
       const search = (document.getElementById('myWfSearch')?.value || '').toLowerCase();
       let wfs = getProjectWorkflows();
+      const project = NexusStore.getProject(selectedProjectId);
+      const hasSowWorkflows = wfs.some(w => w._source === 'SOW Generated');
+      const banner = document.getElementById('sowWorkflowBanner');
+      if (banner) {
+        banner.innerHTML = hasSowWorkflows ? `
+          <div class="sow-workflow-banner">
+            <h3>Workflows generated from SOW</h3>
+            <p>NEXUS created project workflows based on the uploaded SOW and assigned roles.</p>
+          </div>
+        ` : '';
+      }
       wfs = wfs.filter(w => {
         if (currentMyWfFilter === 'template' && w._type !== 'template') return false;
         if (currentMyWfFilter === 'custom' && w._type !== 'custom') return false;
@@ -508,30 +528,39 @@
 
       document.getElementById('myWorkflowsGrid').innerHTML = wfs.map(wf => {
         const isCustom = wf._type === 'custom';
+        const isSow = wf._source === 'SOW Generated';
+        const isCustomSow = Boolean(wf._customSowWorkflow);
         return `
-          <div class="my-wf-card ${wf.status==='ACTIVE'?'wf-active':''}">
-            ${isCustom?'<span class="tc-badge-custom">Custom</span>':'<span class="tc-badge-template">Template</span>'}
+          <div class="my-wf-card ${wf.status==='ACTIVE'||wf.status==='READY'?'wf-active':''}" ${isCustomSow ? 'style="border-color:var(--success)"' : ''}>
+            ${isCustomSow ? '<span class="tc-badge-custom">Custom SOW Workflow</span>' : isSow ? '<span class="tc-badge-template">SOW Generated</span>' : isCustom?'<span class="tc-badge-custom">Custom</span>':'<span class="tc-badge-template">Template</span>'}
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
               <div>
                 <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${wf.icon||'🔄'} ${wf.name}</div>
-                <div style="font-size:11px;color:var(--text-muted)">Trigger: ${wf.trigger}</div>
+                <div style="font-size:11px;color:var(--text-muted)">Category: ${escapeHtml(wf.category || 'Workflow')} · Source: ${escapeHtml(wf._source || 'Manual')} · Project: ${escapeHtml(project?.name || '')}</div>
               </div>
-              ${statusBadge(wf.status)}
+              ${statusBadge(wf.status === 'READY' ? 'READY' : wf.status)}
             </div>
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.4">${wf.desc}</p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${(wf.agents||[]).map(a=>`<span class="tag">🤖 ${a}</span>`).join('')}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${(wf.steps||[]).slice(0, 4).map((step, idx)=>`<span class="tag">${idx + 1}. ${escapeHtml(step)}</span>`).join('')}</div>
             <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:12px">
-              <span>${wf.executions} runs</span>
-              <span>${wf.successRate}% success</span>
-              ${wf.lastRun ? `<span>Last: ${formatTime(wf.lastRun)}</span>` : '<span>Never run</span>'}
+              <span>${(wf.steps || []).length} steps</span>
+              <span>Created: ${formatTime(wf.createdAt)}</span>
+              <span>Status: Ready</span>
             </div>
             <div style="display:flex;gap:6px">
               ${canEditProjectWorkflows ? `<button class="btn btn-primary btn-sm" onclick="executeWorkflow('${wf.id}')">Run</button>
               <button class="btn btn-outline btn-sm" onclick="toggleWfStatus('${wf.id}')">${wf.status==='ACTIVE'?'Pause':'Resume'}</button>
-              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeWorkflow('${wf.id}')">Remove</button>` : '<span class="tag">Read only</span>'}
+              <button class="btn btn-outline btn-sm" onclick="viewWorkflowDetails('${wf.id}')">View Details</button>
+              <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeWorkflow('${wf.id}')">Remove</button>` : `<button class="btn btn-outline btn-sm" onclick="viewWorkflowDetails('${wf.id}')">View Details</button>`}
             </div>
           </div>`;
       }).join('') || '<div class="empty-state"><div class="empty-state-icon">⚡</div><h3 class="empty-state-title">No workflows in this project</h3><p class="empty-state-text">Use a template or build a custom workflow</p></div>';
+    }
+
+    function viewWorkflowDetails(wfId) {
+      const wf = getProjectWorkflows().find(item => item.id === wfId);
+      if (!wf) return;
+      showToast(`${wf.name}: ${(wf.steps || []).join(' → ')}`, 'info');
     }
 
     function toggleWfStatus(wfId) {

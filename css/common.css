@@ -787,6 +787,132 @@ tbody tr:last-child td { border-bottom: none; }
 .pd-badge-muted { color: var(--text-muted); background: var(--bg-tertiary); }
 .pd-role-badge { color: var(--accent-hover); background: var(--accent-bg); border-color: rgba(99,102,241,0.4); }
 .pd-cluster-badge { color: var(--text-primary); background: var(--bg-tertiary); }
+.pd-breadcrumb {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+.pd-project-hero {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  padding: 16px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-soft, var(--shadow));
+}
+.pd-project-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.pd-project-meta-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 12px;
+}
+.pd-project-meta-item span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.pd-project-meta-item strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.pd-project-team {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pd-team-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  padding: 8px 10px;
+}
+.pd-team-chip strong { color: var(--text-primary); font-size: 12px; }
+.pd-team-chip small { color: var(--text-muted); font-size: 11px; }
+.pd-empty-inline {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.pd-detail-table-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+.pd-detail-table-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  padding: 14px;
+}
+.pd-detail-table-card h3 {
+  color: var(--text-primary);
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.pd-compact-table th, .pd-compact-table td {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sow-insights-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.sow-insight-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  padding: 9px;
+}
+.sow-insight-row strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 11px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.sow-insight-row span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.org-level-purpose {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: -4px 0 10px;
+}
+.sow-workflow-banner {
+  border: 1px solid rgba(16,185,129,0.35);
+  border-radius: var(--radius-lg);
+  background: rgba(16,185,129,0.1);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.sow-workflow-banner h3 {
+  margin: 0 0 4px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+.sow-workflow-banner p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
 
 /* Toast */
 .toast {
@@ -1066,6 +1192,8 @@ section, div[id$='-section'] {
 @media (max-width: 1000px) {
   .project-access-grid { grid-template-columns: 1fr; }
   .pd-summary-grid, .pd-details-card, .pd-cross-details, .pd-insights-grid { grid-template-columns: 1fr; }
+  .pd-project-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sow-insights-panel { grid-template-columns: 1fr; }
   .pd-flow-card, .pd-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pd-chart-card-wide { grid-column: span 1; }
   .pd-details-card-compact .pd-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1081,6 +1209,7 @@ section, div[id$='-section'] {
   .pd-bar-chart { grid-template-columns: repeat(2, minmax(0, 1fr)); height: auto; }
   .pd-bar-item { min-height: 150px; }
   .pd-summary-card { min-height: 0; }
+  .pd-project-meta-grid { grid-template-columns: 1fr; }
 }
 
 /* Filter bar */
