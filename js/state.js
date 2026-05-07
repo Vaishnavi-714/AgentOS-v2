@@ -389,9 +389,10 @@ const TenantState = {
 
   normalizeTenantUser(tenantId, user, index = 0) {
     const legacyRole = user.tenantRole || user.role || 'member';
-    const tenantRole = String(legacyRole).toLowerCase() === 'admin' ? 'admin' : 'member';
+    const normalizedRole = String(legacyRole).toLowerCase();
+    const tenantRole = normalizedRole === 'tenant_admin' ? 'tenant_admin' : normalizedRole === 'admin' ? 'admin' : 'member';
     const status = user.status || (user.invitationStatus === 'pending' ? 'PENDING' : 'ACTIVE');
-    const isTenantOwner = Boolean(user.isTenantOwner || user.isOriginalTenantAdmin || (tenantRole === 'admin' && index === 0));
+    const isTenantOwner = Boolean(user.isTenantOwner || user.isOriginalTenantAdmin || tenantRole === 'tenant_admin');
     return {
       ...user,
       id: user.id || this.generateUserId(),
@@ -399,7 +400,7 @@ const TenantState = {
       name: user.name || (user.email ? user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Tenant User'),
       email: (user.email || '').trim().toLowerCase(),
       tenantRole,
-      role: tenantRole === 'admin' ? 'Admin' : 'Member',
+      role: tenantRole === 'tenant_admin' ? 'Tenant Admin' : tenantRole === 'admin' ? 'Admin' : 'Member',
       invitationStatus: user.invitationStatus || (status === 'PENDING' ? 'pending' : 'accepted'),
       status,
       isTenantOwner,
@@ -417,7 +418,7 @@ const TenantState = {
       const tenantId = tenant.tenant_id;
       const list = all[tenantId] || [];
       const normalized = list.map((u, idx) => this.normalizeTenantUser(tenantId, u, idx));
-      if (!normalized.some(u => u.tenantRole === 'admin')) {
+      if (!normalized.some(u => u.tenantRole === 'admin' || u.tenantRole === 'tenant_admin')) {
         normalized.unshift(this.normalizeTenantUser(tenantId, {
           name: tenant.primaryAdmin?.name || tenant.admin_name || 'Tenant Admin',
           email: tenant.primaryAdmin?.email || tenant.admin_email || `admin@${tenant.domain}`,
@@ -427,16 +428,17 @@ const TenantState = {
           status: 'ACTIVE'
         }, 0));
       }
-      const firstAdmin = normalized.find(u => u.tenantRole === 'admin');
-      if (firstAdmin) {
+      const ownerEmail = (tenant.primaryAdmin?.email || tenant.admin_email || '').trim().toLowerCase();
+      const explicitOwner = normalized.find(u => u.isTenantOwner || u.isOriginalTenantAdmin || u.tenantRole === 'tenant_admin');
+      const tenantOwner = explicitOwner || (ownerEmail ? normalized.find(u => u.email === ownerEmail) : null);
+      if (tenantOwner) {
         normalized.forEach(u => {
-          if (u.id !== firstAdmin.id) {
-            u.isTenantOwner = Boolean(u.isTenantOwner && u.email === firstAdmin.email);
-            u.isOriginalTenantAdmin = u.isTenantOwner;
-          }
+          const isOwner = u.id === tenantOwner.id || (ownerEmail && u.email === ownerEmail);
+          u.isTenantOwner = Boolean(isOwner);
+          u.isOriginalTenantAdmin = Boolean(isOwner);
+          if (isOwner && u.tenantRole !== 'tenant_admin') u.tenantRole = 'tenant_admin';
+          if (isOwner) u.role = 'Tenant Admin';
         });
-        firstAdmin.isTenantOwner = true;
-        firstAdmin.isOriginalTenantAdmin = true;
       }
       all[tenantId] = normalized;
     });

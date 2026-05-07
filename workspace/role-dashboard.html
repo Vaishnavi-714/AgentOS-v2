@@ -210,6 +210,9 @@
     const _role = localStorage.getItem("role");
     if (_role !== "tenant") { window.location.href = "../index.html"; }
     seedNexusData();
+    if (NexusRoleUtils.getPrimaryProjectRole() === 'PRODUCT_DELIVERY') {
+      window.location.replace('product-delivery-dashboard.html');
+    }
     createNavigation('role-dashboard');
     if (TenantState.isTenantUser()) { injectTenantInfoCard(); }
 

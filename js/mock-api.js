@@ -128,7 +128,8 @@ const MockAPI = {
     NexusStore.addLog({ type: 'REQUIREMENTS', message: `${newReqs.length} requirements ingested for project ${projectId}`, agent: 'system' });
     
     // IMPORTANT: Fix context bug by forcing active project before trigger
-    sessionStorage.setItem('nexus_selected_project', projectId);
+    if (typeof NexusRoleUtils !== 'undefined') NexusRoleUtils.setSelectedProjectId(projectId);
+    else sessionStorage.setItem('nexus_selected_project', projectId);
     
     // Trigger flow
     if (typeof onRequirementsIngested === 'function') {

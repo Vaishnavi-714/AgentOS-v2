@@ -548,7 +548,7 @@
     }
 
     function selectProject(id) {
-      sessionStorage.setItem('nexus_selected_project', id);
+      NexusRoleUtils.setSelectedProjectId(id);
       if (document.getElementById('projectSelect')) document.getElementById('projectSelect').value = id;
       switchTab('projects', 'projectOverview');
       renderAll();
@@ -829,7 +829,7 @@
       }
       project.updatedAt = new Date().toISOString();
       NexusStore.saveProject(project);
-      sessionStorage.setItem('nexus_selected_project', project.id);
+      NexusRoleUtils.setSelectedProjectId(project.id);
       const existingDummyData = getProjectDummyData();
       if (existingDummyData) {
         localStorage.setItem("project_dummy_data", JSON.stringify({

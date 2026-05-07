@@ -1975,7 +1975,7 @@
       const aiParam = urlParams.get('ai');
 
       if (projectParam) {
-        sessionStorage.setItem('nexus_selected_project', projectParam);
+        NexusRoleUtils.setSelectedProjectId(projectParam);
         NexusStore.setActiveProject(projectParam);
       }
 

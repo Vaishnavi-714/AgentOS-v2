@@ -458,7 +458,7 @@
         const project = projects.find(item => item.id === projectId) || projects[0];
         nameEl.textContent = project.name;
         domainEl.textContent = project.subtitle;
-        sessionStorage.setItem('nexus_selected_project', project.id);
+        NexusRoleUtils.setSelectedProjectId(project.id);
       }
 
       selectEl.addEventListener('change', function () {

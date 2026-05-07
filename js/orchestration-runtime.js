@@ -1354,7 +1354,8 @@ const NexusOrchestration = (() => {
     const projectId = targetProjectId || getCurrentProjectId();
     
     // Force sessionStorage to match so all downstream reads are correct
-    sessionStorage.setItem('nexus_selected_project', projectId);
+    if (typeof NexusRoleUtils !== 'undefined') NexusRoleUtils.setSelectedProjectId(projectId);
+    else sessionStorage.setItem('nexus_selected_project', projectId);
     
     if (typeof NexusStore !== 'undefined') {
       const project = NexusStore.getProject(projectId);

@@ -1,4 +1,118 @@
 // NEXUS Navigation Component — Enterprise Multi-Tenant Platform
+const NexusRoleUtils = {
+  projectRoleLabels: {
+    EXECUTIVE_STRATEGIC: 'Executive & Strategic',
+    GOVERNANCE_ADMIN: 'Governance & Admin',
+    PRODUCT_DELIVERY: 'Product & Delivery',
+    TECHNICAL_EXECUTION: 'Technical Execution',
+    QA_TESTING: 'QA / Testing',
+    RELEASE_DEVOPS: 'Release / DevOps',
+    WORKSPACE_UNIVERSAL: 'Workspace / Universal'
+  },
+
+  normalizeProjectRole(role) {
+    if (!role) return '';
+    return String(role).trim().toUpperCase().replace(/[\s/&-]+/g, '_');
+  },
+
+  projectRoleLabel(role) {
+    const normalized = this.normalizeProjectRole(role);
+    return this.projectRoleLabels[normalized] || '';
+  },
+
+  getCurrentUser() {
+    if (typeof TenantState !== 'undefined') {
+      return TenantState.getCurrentTenantUser() || NexusStore.getUser();
+    }
+    return NexusStore.getUser();
+  },
+
+  getProjectAssignments(project) {
+    return Array.isArray(project?.assignedUsers) ? project.assignedUsers : (Array.isArray(project?.members) ? project.members : []);
+  },
+
+  findUserAssignment(project, user = this.getCurrentUser()) {
+    if (!project || !user) return null;
+    const assignments = this.getProjectAssignments(project);
+    return assignments.find(assignment => assignment.userId && assignment.userId === user.id)
+      || assignments.find(assignment => assignment.id && assignment.id === user.id)
+      || assignments.find(assignment => assignment.email && user.email && assignment.email.toLowerCase() === user.email.toLowerCase())
+      || null;
+  },
+
+  getAssignedProjects(projects = NexusStore.getProjects(), user = this.getCurrentUser()) {
+    return (projects || []).filter(project => Boolean(this.findUserAssignment(project, user)));
+  },
+
+  getSelectedProject(projects = NexusStore.getProjects()) {
+    const selectedId = this.getSelectedProjectId();
+    if (selectedId) return (projects || []).find(project => project.id === selectedId) || null;
+    const fallback = (projects || [])[0] || null;
+    if (fallback?.id) this.setSelectedProjectId(fallback.id, { silent: true });
+    return fallback;
+  },
+
+  getSelectedProjectId() {
+    return sessionStorage.getItem('nexus_selected_project') || localStorage.getItem('nexus_selected_project') || NexusStore.getActiveProject?.() || '';
+  },
+
+  setSelectedProjectId(projectId, options = {}) {
+    if (!projectId) return;
+    sessionStorage.setItem('nexus_selected_project', projectId);
+    localStorage.setItem('nexus_selected_project', projectId);
+    if (options.silent) return;
+    this.refreshNavigationRole();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('nexus:selected-project-changed', { detail: { projectId } }));
+    }
+  },
+
+  getPrimaryProjectRole(projects = NexusStore.getProjects(), user = this.getCurrentUser()) {
+    const selectedProjectId = this.getSelectedProjectId();
+    if (!selectedProjectId) {
+      const firstAssignedProject = this.getAssignedProjects(projects, user)[0];
+      const fallbackAssignment = this.findUserAssignment(firstAssignedProject, user);
+      return this.normalizeProjectRole(fallbackAssignment?.projectRole);
+    }
+    const selectedProject = this.getSelectedProject(projects);
+    const selectedAssignment = this.findUserAssignment(selectedProject, user);
+    return this.normalizeProjectRole(selectedAssignment?.projectRole);
+  },
+
+  getTenantRoleLabel(user = this.getCurrentUser()) {
+    if (!user) return '';
+    const rawRole = String(user.tenantRole || user.role || '').trim().toLowerCase();
+    const tenant = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenant?.() : null;
+    const ownerEmail = (tenant?.primaryAdmin?.email || tenant?.admin_email || '').trim().toLowerCase();
+    const userEmail = (user.email || '').trim().toLowerCase();
+    const isExplicitOwner = rawRole === 'tenant_admin' || (Boolean(user.isTenantOwner || user.isOriginalTenantAdmin) && (!ownerEmail || ownerEmail === userEmail));
+    if (isExplicitOwner) return 'Tenant Admin';
+    if (rawRole === 'admin') return 'Admin';
+    if (rawRole === 'member') return 'Member';
+    return 'Member';
+  },
+
+  getSidebarRoleLabel(user = this.getCurrentUser(), projects = NexusStore.getProjects()) {
+    const tenantRole = this.getTenantRoleLabel(user);
+    const projectRole = this.projectRoleLabel(this.getPrimaryProjectRole(projects, user));
+    return projectRole ? `${tenantRole} (${projectRole})` : tenantRole;
+  },
+
+  getDashboardHref(projects = NexusStore.getProjects(), user = this.getCurrentUser()) {
+    return this.getPrimaryProjectRole(projects, user) === 'PRODUCT_DELIVERY'
+      ? 'product-delivery-dashboard.html'
+      : 'role-dashboard.html';
+  },
+
+  refreshNavigationRole() {
+    const roleEl = document.querySelector('.nav-footer .user-role');
+    if (roleEl) roleEl.textContent = this.getSidebarRoleLabel();
+    const dashboardLink = document.querySelector('.nav-link[href$="role-dashboard.html"], .nav-link[href$="product-delivery-dashboard.html"]');
+    if (dashboardLink) dashboardLink.setAttribute('href', this.getDashboardHref());
+  }
+};
+if (typeof window !== 'undefined') window.NexusRoleUtils = NexusRoleUtils;
+
 function createNavigation(activePage) {
   // Session protection: must be logged in
   if (activePage !== 'login' && activePage !== 'landing') {
@@ -12,12 +126,14 @@ function createNavigation(activePage) {
   const systemState = NexusStore.getSystemState();
   const role = TenantState.getRole();
   const tenantUser = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenantUser() : null;
-  const tenantRoleLabel = tenantUser ? (tenantUser.isTenantOwner ? 'Tenant Admin' : tenantUser.tenantRole === 'admin' ? 'Admin' : 'Member') : (user?.role || '');
+  const tenantRoleLabel = tenantUser ? NexusRoleUtils.getTenantRoleLabel(tenantUser) : (user?.role || '');
+  const sidebarRoleLabel = tenantUser ? NexusRoleUtils.getSidebarRoleLabel(tenantUser) : (user?.role || '');
+  const dashboardHref = NexusRoleUtils.getDashboardHref();
 
 
   // ─── Master Navigation Structure ───
   const mainNavItems = [
-    { id: 'role-dashboard', label: 'Dashboard', icon: '🎭', href: 'role-dashboard.html' },
+    { id: 'role-dashboard', label: 'Dashboard', icon: '🎭', href: dashboardHref, activePages: ['role-dashboard', 'product-delivery-dashboard'] },
     { id: 'dashboard', label: 'Projects Hub', icon: '📊', href: 'dashboard.html' },
     { id: 'workspace', label: 'Workspace', icon: '💬', href: 'workspace.html' },
     { id: 'agents', label: 'Agents', icon: '🤖', href: 'agents.html' },
@@ -56,7 +172,7 @@ function createNavigation(activePage) {
     </div>
     <div class="nav-links">
       ${mainNavItems.map(item => `
-        <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}">
+        <a href="${item.href}" class="nav-link ${(item.activePages || [item.id]).includes(activePage) ? 'active' : ''}">
           <span class="nav-icon">${item.icon}</span>
           <span class="nav-label">${item.label}</span>
           ${item.id === 'support' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
@@ -76,7 +192,7 @@ function createNavigation(activePage) {
         <span class="user-avatar">${user?.avatar || '👤'}</span>
         <div class="user-info">
           <span class="user-name">${user?.name || 'Guest'}</span>
-          <span class="user-role">${tenantRoleLabel}</span>
+          <span class="user-role">${sidebarRoleLabel}</span>
         </div>
       </div>
       <button class="nav-logout" onclick="handleLogout()">Logout</button>
@@ -121,9 +237,10 @@ function createProjectSelector(containerId, onChange) {
   const projects = typeof NexusPermissions !== 'undefined'
     ? NexusPermissions.getVisibleProjects(NexusStore.getProjects())
     : NexusStore.getProjects();
-  const saved = sessionStorage.getItem('nexus_selected_project');
+  const saved = NexusRoleUtils.getSelectedProjectId();
   const selected = projects.some(p => p.id === saved) ? saved : (projects[0]?.id || '');
-  if (selected) sessionStorage.setItem('nexus_selected_project', selected);
+  if (selected) NexusRoleUtils.setSelectedProjectId(selected, { silent: true });
+  NexusRoleUtils.refreshNavigationRole();
 
   container.innerHTML = `
     <select id="projectSelect" class="project-select" onchange="window._onProjectChange && window._onProjectChange(this.value)">
@@ -132,7 +249,7 @@ function createProjectSelector(containerId, onChange) {
   `;
 
   window._onProjectChange = (val) => {
-    sessionStorage.setItem('nexus_selected_project', val);
+    NexusRoleUtils.setSelectedProjectId(val);
     if (onChange) onChange(val);
   };
 
@@ -143,10 +260,10 @@ function getSelectedProject() {
   const projects = typeof NexusPermissions !== 'undefined'
     ? NexusPermissions.getVisibleProjects(NexusStore.getProjects())
     : NexusStore.getProjects();
-  const saved = sessionStorage.getItem('nexus_selected_project');
+  const saved = NexusRoleUtils.getSelectedProjectId();
   if (projects.some(p => p.id === saved)) return saved;
   const fallback = projects[0]?.id || '';
-  if (fallback) sessionStorage.setItem('nexus_selected_project', fallback);
+  if (fallback) NexusRoleUtils.setSelectedProjectId(fallback, { silent: true });
   return fallback;
 }
 
@@ -232,7 +349,7 @@ function ensureInviteUsersModal() {
         <div class="invite-section invite-status-section">
           <div class="invite-section-header">
             <div>
-              <h4 class="invite-section-title">Team Members</h4>
+              <h4 class="invite-section-title">Invitation Status</h4>
               <p class="invite-section-subtitle">Track pending and accepted invitations without leaving this page.</p>
             </div>
           </div>
@@ -242,7 +359,7 @@ function ensureInviteUsersModal() {
           </div>
           <div class="table-container invite-table-wrap">
             <table>
-              <thead><tr><th>Email</th><th>Tenant Role</th><th>InvitationStatus</th><th>Invited Date</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Email</th><th>Tenant Role</th><th>Status</th><th>Invited Date</th><th>Actions</th></tr></thead>
               <tbody id="inviteStatusTable"></tbody>
             </table>
           </div>
