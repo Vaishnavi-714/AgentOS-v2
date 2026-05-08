@@ -49,6 +49,79 @@
       align-items: center;
     }
 
+    .integration-section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+      max-width: 100%;
+    }
+
+    .integration-logo {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .integration-add-card {
+      min-height: 210px;
+      width: 100%;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg-card);
+      color: inherit;
+      font-family: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 22px 18px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .integration-add-card:hover,
+    .integration-add-card:focus-visible {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.04);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .integration-add-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      font-size: 18px;
+    }
+
+    .integration-add-title {
+      margin-top: 4px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .integration-add-helper {
+      max-width: 220px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }
+
     .integration-summary {
       display: grid;
       gap: 6px;
@@ -103,6 +176,7 @@
 
     @media (max-width: 720px) {
       .integration-form-grid { grid-template-columns: 1fr; }
+      .integration-section-grid { grid-template-columns: 1fr; }
       .modal.integration-setup-modal {
         width: calc(100vw - 24px);
         max-height: calc(100vh - 24px);
@@ -141,7 +215,7 @@
     <div class="modal-overlay" id="integSetupModal" style="display:none">
       <div class="modal integration-setup-modal" style="max-width:760px;">
         <div class="modal-header">
-          <h3 class="modal-title" id="integSetupTitle">Add Integration</h3>
+          <h3 class="modal-title" id="integSetupTitle">Click to configure</h3>
           <button class="modal-close" onclick="closeModal('integSetupModal')" aria-label="Close setup">&times;</button>
         </div>
         <div class="modal-body" id="integSetupBody"></div>
@@ -349,19 +423,19 @@
     };
 
     const baselineIntegrations = [
-        { id: 'INT-001', name: 'GitHub', icon: '🐙', category: 'Developer Tools', status: 'CONNECTED', description: 'Source code, PRs, issues, and webhooks', connected_at: new Date(Date.now() - 86400000*30).toISOString(), config: { org: 'nexus-platform', repos: 3, webhooks: ['push','pull_request','release'], api_calls_today: 1245 }, features: ['PR auto-review on push', 'Issue sync to backlog', 'Release auto-tagging', 'Branch protection rules'], health: 'HEALTHY', last_sync: new Date(Date.now() - 300000).toISOString() },
-        { id: 'INT-002', name: 'Jira', icon: '📋', category: 'Developer Tools', status: 'CONNECTED', description: 'Project management, sprints, and issue tracking', connected_at: new Date(Date.now() - 86400000*25).toISOString(), config: { project: 'NEX', board: 'Scrum Board', issues_synced: 156, sprints_active: 2 }, features: ['Bi-directional issue sync', 'Sprint auto-planning', 'Story point estimation', 'Burndown chart data'], health: 'HEALTHY', last_sync: new Date(Date.now() - 600000).toISOString() },
-        { id: 'INT-003', name: 'Slack', icon: '💬', category: 'Communication', status: 'CONNECTED', description: 'Team notifications, alerts, and bot commands', connected_at: new Date(Date.now() - 86400000*20).toISOString(), config: { workspace: 'nexus-team', channels: ['#deployments','#alerts','#code-review','#general'], messages_sent: 892 }, features: ['Deployment notifications', 'Escalation alerts', 'Build failure alerts', 'Slash commands (/nexus deploy)'], health: 'HEALTHY', last_sync: new Date(Date.now() - 60000).toISOString() },
-        { id: 'INT-004', name: 'Confluence', icon: '📖', category: 'Developer Tools', status: 'CONNECTED', description: 'Documentation, architecture decisions, and knowledge base', connected_at: new Date(Date.now() - 86400000*15).toISOString(), config: { space: 'NEXUS', pages_synced: 45 }, features: ['Auto-publish decision records', 'Architecture doc generation', 'Release notes publishing', 'Meeting notes sync'], health: 'HEALTHY', last_sync: new Date(Date.now() - 1800000).toISOString() },
-        { id: 'INT-005', name: 'Microsoft Teams', icon: '🟦', category: 'Communication', status: 'DISCONNECTED', description: 'Enterprise communication and collaboration', connected_at: null, config: {}, features: ['Channel notifications', 'Approval workflows via adaptive cards', 'Meeting scheduling', 'Bot interactions'], health: 'N/A', last_sync: null },
-        { id: 'INT-006', name: 'AWS', icon: '☁️', category: 'Cloud & Infrastructure', status: 'CONNECTED', description: 'Cloud infrastructure, deployment, and monitoring', connected_at: new Date(Date.now() - 86400000*40).toISOString(), config: { region: 'us-east-1', services: ['ECS','RDS','S3','CloudWatch','IAM'], account: '****1234' }, features: ['Auto-deployment to ECS', 'RDS provisioning', 'CloudWatch metrics', 'Cost monitoring'], health: 'HEALTHY', last_sync: new Date(Date.now() - 120000).toISOString() },
-        { id: 'INT-007', name: 'Datadog', icon: '🐕', category: 'Monitoring', status: 'CONNECTED', description: 'APM, infrastructure monitoring, and log management', connected_at: new Date(Date.now() - 86400000*10).toISOString(), config: { dashboards: 8, monitors: 24, api_key: '****abcd' }, features: ['APM traces integration', 'Custom metrics from agents', 'Alert forwarding to incidents', 'SLO tracking'], health: 'HEALTHY', last_sync: new Date(Date.now() - 30000).toISOString() },
-        { id: 'INT-008', name: 'SonarQube', icon: '🔍', category: 'Developer Tools', status: 'CONNECTED', description: 'Code quality, security analysis, and technical debt tracking', connected_at: new Date(Date.now() - 86400000*8).toISOString(), config: { projects: 3, quality_gate: 'Nexus Standard', issues_open: 12 }, features: ['Quality gate checks in CI/CD', 'Security hotspot detection', 'Code smell analysis', 'Coverage tracking'], health: 'DEGRADED', last_sync: new Date(Date.now() - 7200000).toISOString() },
-        { id: 'INT-009', name: 'ServiceNow', icon: '🎫', category: 'Enterprise', status: 'DISCONNECTED', description: 'IT service management and incident tracking', connected_at: null, config: {}, features: ['Incident auto-creation', 'Change request workflows', 'CMDB sync', 'SLA monitoring'], health: 'N/A', last_sync: null },
-        { id: 'INT-010', name: 'PagerDuty', icon: '📟', category: 'Monitoring', status: 'CONNECTED', description: 'On-call management and incident response', connected_at: new Date(Date.now() - 86400000*5).toISOString(), config: { services: 4, on_call_teams: 2, incidents_managed: 12 }, features: ['Auto-escalation to on-call', 'Incident acknowledgment sync', 'Schedule management', 'Postmortem integration'], health: 'HEALTHY', last_sync: new Date(Date.now() - 180000).toISOString() },
-        { id: 'INT-011', name: 'Vault (HashiCorp)', icon: '🔐', category: 'Security', status: 'CONNECTED', description: 'Secrets management and encryption', connected_at: new Date(Date.now() - 86400000*35).toISOString(), config: { secrets_managed: 45, engines: ['kv','transit','pki'] }, features: ['Dynamic secrets rotation', 'Encryption as a service', 'PKI certificate management', 'Audit logging'], health: 'HEALTHY', last_sync: new Date(Date.now() - 60000).toISOString() },
-        { id: 'INT-012', name: 'Salesforce', icon: '☁️', category: 'Enterprise', status: 'DISCONNECTED', description: 'CRM integration for customer data and analytics', connected_at: null, config: {}, features: ['Customer data sync', 'Support ticket integration', 'Usage analytics', 'License management'], health: 'N/A', last_sync: null },
-        { id: 'INT-013', name: 'CI/CD', icon: '🚀', category: 'DevOps', status: 'DISCONNECTED', description: 'Build pipelines, deployment tracking, and rollback alerts', connected_at: null, config: {}, features: ['Build status sync', 'Deployment tracking', 'Rollback alerts', 'Environment promotion checks'], health: 'N/A', last_sync: null }
+        { id: 'INT-001', name: 'GitHub', iconClass: 'fa-brands fa-github', category: 'Developer Tools', status: 'CONNECTED', description: 'Source code, PRs, issues, and webhooks', connected_at: new Date(Date.now() - 86400000*30).toISOString(), config: { org: 'nexus-platform', repos: 3, webhooks: ['push','pull_request','release'], api_calls_today: 1245 }, features: ['PR auto-review on push', 'Issue sync to backlog', 'Release auto-tagging', 'Branch protection rules'], health: 'HEALTHY', last_sync: new Date(Date.now() - 300000).toISOString() },
+        { id: 'INT-002', name: 'Jira', iconClass: 'fa-brands fa-jira', category: 'Developer Tools', status: 'CONNECTED', description: 'Project management, sprints, and issue tracking', connected_at: new Date(Date.now() - 86400000*25).toISOString(), config: { project: 'NEX', board: 'Scrum Board', issues_synced: 156, sprints_active: 2 }, features: ['Bi-directional issue sync', 'Sprint auto-planning', 'Story point estimation', 'Burndown chart data'], health: 'HEALTHY', last_sync: new Date(Date.now() - 600000).toISOString() },
+        { id: 'INT-003', name: 'Slack', iconClass: 'fa-brands fa-slack', category: 'Communication', status: 'CONNECTED', description: 'Team notifications, alerts, and bot commands', connected_at: new Date(Date.now() - 86400000*20).toISOString(), config: { workspace: 'nexus-team', channels: ['#deployments','#alerts','#code-review','#general'], messages_sent: 892 }, features: ['Deployment notifications', 'Escalation alerts', 'Build failure alerts', 'Slash commands (/nexus deploy)'], health: 'HEALTHY', last_sync: new Date(Date.now() - 60000).toISOString() },
+        { id: 'INT-004', name: 'Confluence', iconClass: 'fa-brands fa-confluence', category: 'Developer Tools', status: 'CONNECTED', description: 'Documentation, architecture decisions, and knowledge base', connected_at: new Date(Date.now() - 86400000*15).toISOString(), config: { space: 'NEXUS', pages_synced: 45 }, features: ['Auto-publish decision records', 'Architecture doc generation', 'Release notes publishing', 'Meeting notes sync'], health: 'HEALTHY', last_sync: new Date(Date.now() - 1800000).toISOString() },
+        { id: 'INT-005', name: 'Microsoft Teams', iconClass: 'fa-brands fa-microsoft', category: 'Communication', status: 'DISCONNECTED', description: 'Enterprise communication and collaboration', connected_at: null, config: {}, features: ['Channel notifications', 'Approval workflows via adaptive cards', 'Meeting scheduling', 'Bot interactions'], health: 'N/A', last_sync: null },
+        { id: 'INT-006', name: 'AWS', iconClass: 'fa-brands fa-aws', category: 'Cloud & Infrastructure', status: 'CONNECTED', description: 'Cloud infrastructure, deployment, and monitoring', connected_at: new Date(Date.now() - 86400000*40).toISOString(), config: { region: 'us-east-1', services: ['ECS','RDS','S3','CloudWatch','IAM'], account: '****1234' }, features: ['Auto-deployment to ECS', 'RDS provisioning', 'CloudWatch metrics', 'Cost monitoring'], health: 'HEALTHY', last_sync: new Date(Date.now() - 120000).toISOString() },
+        { id: 'INT-007', name: 'Datadog', iconClass: 'fa-solid fa-chart-line', category: 'Monitoring', status: 'CONNECTED', description: 'APM, infrastructure monitoring, and log management', connected_at: new Date(Date.now() - 86400000*10).toISOString(), config: { dashboards: 8, monitors: 24, api_key: '****abcd' }, features: ['APM traces integration', 'Custom metrics from agents', 'Alert forwarding to incidents', 'SLO tracking'], health: 'HEALTHY', last_sync: new Date(Date.now() - 30000).toISOString() },
+        { id: 'INT-008', name: 'SonarQube', iconClass: 'fa-solid fa-magnifying-glass-chart', category: 'Developer Tools', status: 'CONNECTED', description: 'Code quality, security analysis, and technical debt tracking', connected_at: new Date(Date.now() - 86400000*8).toISOString(), config: { projects: 3, quality_gate: 'Nexus Standard', issues_open: 12 }, features: ['Quality gate checks in CI/CD', 'Security hotspot detection', 'Code smell analysis', 'Coverage tracking'], health: 'DEGRADED', last_sync: new Date(Date.now() - 7200000).toISOString() },
+        { id: 'INT-009', name: 'ServiceNow', iconClass: 'fa-solid fa-ticket', category: 'Enterprise', status: 'DISCONNECTED', description: 'IT service management and incident tracking', connected_at: null, config: {}, features: ['Incident auto-creation', 'Change request workflows', 'CMDB sync', 'SLA monitoring'], health: 'N/A', last_sync: null },
+        { id: 'INT-010', name: 'PagerDuty', iconClass: 'fa-solid fa-bell', category: 'Monitoring', status: 'CONNECTED', description: 'On-call management and incident response', connected_at: new Date(Date.now() - 86400000*5).toISOString(), config: { services: 4, on_call_teams: 2, incidents_managed: 12 }, features: ['Auto-escalation to on-call', 'Incident acknowledgment sync', 'Schedule management', 'Postmortem integration'], health: 'HEALTHY', last_sync: new Date(Date.now() - 180000).toISOString() },
+        { id: 'INT-011', name: 'Vault (HashiCorp)', iconClass: 'fa-solid fa-vault', category: 'Security', status: 'CONNECTED', description: 'Secrets management and encryption', connected_at: new Date(Date.now() - 86400000*35).toISOString(), config: { secrets_managed: 45, engines: ['kv','transit','pki'] }, features: ['Dynamic secrets rotation', 'Encryption as a service', 'PKI certificate management', 'Audit logging'], health: 'HEALTHY', last_sync: new Date(Date.now() - 60000).toISOString() },
+        { id: 'INT-012', name: 'Salesforce', iconClass: 'fa-brands fa-salesforce', category: 'Enterprise', status: 'DISCONNECTED', description: 'CRM integration for customer data and analytics', connected_at: null, config: {}, features: ['Customer data sync', 'Support ticket integration', 'Usage analytics', 'License management'], health: 'N/A', last_sync: null },
+        { id: 'INT-013', name: 'CI/CD', iconClass: 'fa-solid fa-rocket', category: 'DevOps', status: 'DISCONNECTED', description: 'Build pipelines, deployment tracking, and rollback alerts', connected_at: null, config: {}, features: ['Build status sync', 'Deployment tracking', 'Rollback alerts', 'Environment promotion checks'], health: 'N/A', last_sync: null }
     ];
 
     function seedIntegrations() {
@@ -404,17 +478,17 @@
       document.getElementById('integrationGrid').innerHTML = Object.entries(categories).map(([cat, items]) => `
         <div style="margin-bottom:24px;">
           <h3 style="font-size:14px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">${cat}</h3>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
+          <div class="integration-section-grid">
             ${items.map(i => {
               const statusColor = i.status === 'CONNECTED' ? '#10b981' : '#6b7280';
               const healthColor = { HEALTHY: '#10b981', DEGRADED: '#f59e0b', DOWN: '#ef4444', 'N/A': '#6b7280' }[i.health];
               return `
               <div class="card integration-card" onclick="openIntegDetail('${i.id}')" tabindex="0" onkeydown="handleCardKey(event, '${i.id}')">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-                  <span style="font-size:28px;">${i.icon}</span>
+                  ${renderIntegrationIcon(i)}
                   <div style="flex:1;">
-                    <div style="font-weight:700;font-size:15px;">${i.name}</div>
-                    <div style="font-size:11px;color:var(--text-muted);">${i.description}</div>
+                    <div style="font-weight:700;font-size:15px;">${esc(i.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${esc(i.description)}</div>
                   </div>
                   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
                     <span style="width:8px;height:8px;border-radius:50%;background:${statusColor};${i.status==='CONNECTED'?'':''}"></span>
@@ -422,21 +496,100 @@
                   </div>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  ${i.features.slice(0,2).map(f => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg-tertiary);color:var(--text-muted);">${f}</span>`).join('')}
+                  ${i.features.slice(0,2).map(f => `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg-tertiary);color:var(--text-muted);">${esc(f)}</span>`).join('')}
                   ${i.features.length > 2 ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg-tertiary);color:var(--text-muted);">+${i.features.length-2} more</span>` : ''}
                 </div>
                 ${renderIntegrationSummary(i)}
                 ${i.last_sync ? `<div style="font-size:10px;color:var(--text-muted);margin-top:8px;">Last sync: ${formatTime(i.last_sync)}</div>` : ''}
                 <div class="integration-card-footer">
-                  <button type="button" class="btn btn-primary btn-sm integration-add-btn" onclick="openIntegrationSetup(event, '${i.id}')" aria-label="Add ${i.name} integration">
-                    <span>Add Integration</span><span class="arrow-icon" aria-hidden="true">→</span>
+                  <button type="button" class="btn btn-primary btn-sm integration-add-btn" onclick="openIntegrationSetup(event, '${i.id}')" aria-label="Add ${esc(i.name)} integration">
+                    <span>Click to configure</span><span class="arrow-icon" aria-hidden="true">→</span>
                   </button>
                 </div>
               </div>`;
             }).join('')}
+            ${renderAddIntegrationCard(cat)}
           </div>
         </div>
       `).join('');
+    }
+
+    function renderAddIntegrationCard(category) {
+      const helper = integrationAddHelper(category);
+      return `
+        <button type="button" class="integration-add-card" onclick="openAddIntegrationModal('${jsString(category)}')" aria-label="Add new ${esc(category)} integration">
+          <span class="integration-add-icon" aria-hidden="true"><i class="fa-solid fa-circle-plus"></i></span>
+          <span class="integration-add-title">Add New Integration</span>
+          <span class="integration-add-helper">${esc(helper)}</span>
+        </button>
+      `;
+    }
+
+    function renderIntegrationIcon(integration) {
+      const iconClass = integration.iconClass || integrationIconClassForName(integration.name) || integrationIconClassForCategory(integration.category);
+      return `<span class="integration-logo" aria-hidden="true"><i class="${esc(iconClass)}"></i></span>`;
+    }
+
+    function integrationAddHelper(category) {
+      const helpers = {
+        'Developer Tools': 'Connect a new developer tool',
+        Communication: 'Connect a new communication app',
+        DevOps: 'Connect a new pipeline or deployment tool',
+        'Cloud & Infrastructure': 'Connect a new cloud or infrastructure tool',
+        Monitoring: 'Connect a new monitoring or incident tool',
+        Enterprise: 'Connect a new enterprise system',
+        Security: 'Connect a new security tool'
+      };
+      return helpers[category] || `Connect a new ${category.toLowerCase()} integration`;
+    }
+
+    function integrationCategories() {
+      const current = NexusStore.getIntegrations().map(integration => integration.category).filter(Boolean);
+      return Array.from(new Set([...baselineIntegrations.map(integration => integration.category), ...current]));
+    }
+
+    function integrationIconClassForCategory(category) {
+      const icons = {
+        'Developer Tools': 'fa-solid fa-code-branch',
+        Communication: 'fa-solid fa-comments',
+        DevOps: 'fa-solid fa-diagram-project',
+        'Cloud & Infrastructure': 'fa-solid fa-cloud',
+        Monitoring: 'fa-solid fa-chart-line',
+        Enterprise: 'fa-solid fa-building',
+        Security: 'fa-solid fa-shield-halved'
+      };
+      return icons[category] || 'fa-solid fa-plug';
+    }
+
+    function integrationIconClassForName(name) {
+      const normalized = String(name || '').toLowerCase();
+      if (normalized.includes('github')) return 'fa-brands fa-github';
+      if (normalized.includes('jira')) return 'fa-brands fa-jira';
+      if (normalized.includes('confluence')) return 'fa-brands fa-confluence';
+      if (normalized.includes('slack')) return 'fa-brands fa-slack';
+      if (normalized.includes('teams')) return 'fa-brands fa-microsoft';
+      if (normalized.includes('aws')) return 'fa-brands fa-aws';
+      if (normalized.includes('salesforce')) return 'fa-brands fa-salesforce';
+      if (normalized.includes('vault')) return 'fa-solid fa-vault';
+      if (normalized.includes('pagerduty')) return 'fa-solid fa-bell';
+      if (normalized.includes('datadog')) return 'fa-solid fa-chart-line';
+      if (normalized.includes('sonar')) return 'fa-solid fa-magnifying-glass-chart';
+      if (normalized.includes('servicenow')) return 'fa-solid fa-ticket';
+      if (normalized.includes('ci/cd') || normalized.includes('cicd')) return 'fa-solid fa-rocket';
+      return '';
+    }
+
+    function defaultIntegrationFeatures(category) {
+      const featureMap = {
+        'Developer Tools': ['Repository sync', 'Workflow alerts', 'Activity tracking'],
+        Communication: ['Team notifications', 'Approval alerts', 'Agent updates'],
+        DevOps: ['Build status sync', 'Deployment tracking', 'Rollback alerts'],
+        'Cloud & Infrastructure': ['Environment sync', 'Infrastructure health', 'Cost visibility'],
+        Monitoring: ['Incident alerts', 'Health telemetry', 'SLO tracking'],
+        Enterprise: ['Data sync', 'Workflow records', 'Operational updates'],
+        Security: ['Secret controls', 'Audit events', 'Access monitoring']
+      };
+      return featureMap[category] || ['Manual configuration', 'Workflow alerts', 'Data sync'];
     }
 
     function openIntegDetail(integId) {
@@ -444,7 +597,7 @@
       const integ = integrations.find(i => i.id === integId);
       if (!integ) return;
 
-      document.getElementById('integDetailTitle').textContent = `${integ.icon} ${integ.name}`;
+      document.getElementById('integDetailTitle').textContent = integ.name;
 
       const statusColor = integ.status === 'CONNECTED' ? '#10b981' : '#6b7280';
       const healthColor = { HEALTHY: '#10b981', DEGRADED: '#f59e0b', DOWN: '#ef4444', 'N/A': '#6b7280' }[integ.health];
@@ -452,8 +605,8 @@
       document.getElementById('integDetailBody').innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <div>
-            <div style="font-size:13px;color:var(--text-muted);">${integ.description}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Category: ${integ.category}</div>
+            <div style="font-size:13px;color:var(--text-muted);">${esc(integ.description)}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Category: ${esc(integ.category)}</div>
           </div>
           <div style="text-align:right;">
             ${statusBadge(integ.status)}
@@ -484,8 +637,8 @@
           <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Features</div>
           ${integ.features.map(f => `
             <div style="display:flex;align-items:center;gap:8px;padding:4px 0;">
-              <span style="color:${integ.status === 'CONNECTED' ? '#10b981' : '#6b7280'}">${integ.status === 'CONNECTED' ? '✅' : '⬜'}</span>
-              <span style="font-size:13px;">${f}</span>
+              <span style="color:${integ.status === 'CONNECTED' ? '#10b981' : '#6b7280'}"><i class="${integ.status === 'CONNECTED' ? 'fa-solid fa-circle-check' : 'fa-regular fa-square'}" aria-hidden="true"></i></span>
+              <span style="font-size:13px;">${esc(f)}</span>
             </div>
           `).join('')}
         </div>
@@ -495,9 +648,9 @@
         <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;">
           <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Quick Actions</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-outline" onclick="testWebhook('${integ.id}')">🔔 Test Webhook</button>
-            <button class="btn btn-sm btn-outline" onclick="syncIntegration('${integ.id}')">🔄 Force Sync</button>
-            <button class="btn btn-sm btn-outline" onclick="viewLogs('${integ.id}')">📋 View Logs</button>
+            <button class="btn btn-sm btn-outline" onclick="testWebhook('${integ.id}')"><i class="fa-solid fa-bell" aria-hidden="true"></i> Test Webhook</button>
+            <button class="btn btn-sm btn-outline" onclick="syncIntegration('${integ.id}')"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Force Sync</button>
+            <button class="btn btn-sm btn-outline" onclick="viewLogs('${integ.id}')"><i class="fa-solid fa-list" aria-hidden="true"></i> View Logs</button>
           </div>
         </div>
         ` : ''}
@@ -506,10 +659,10 @@
       document.getElementById('integDetailFooter').innerHTML = `
         <div style="display:flex;gap:8px;width:100%;justify-content:flex-end;">
           ${integ.status === 'DISCONNECTED' ? `
-            <button class="btn btn-primary" onclick="openIntegrationSetup(null, '${integ.id}')">Add Integration <span aria-hidden="true">→</span></button>
+            <button class="btn btn-primary" onclick="openIntegrationSetup(null, '${integ.id}')">Click to configure <span aria-hidden="true">→</span></button>
           ` : `
             <button class="btn btn-outline" onclick="disconnectIntegration('${integ.id}')">Disconnect</button>
-            <button class="btn btn-primary" onclick="syncIntegration('${integ.id}')">🔄 Sync Now</button>
+            <button class="btn btn-primary" onclick="syncIntegration('${integ.id}')"><i class="fa-solid fa-rotate" aria-hidden="true"></i> Sync Now</button>
           `}
         </div>
       `;
@@ -556,6 +709,92 @@
       showModal('integSetupModal');
       const firstInput = document.querySelector('#integrationSetupForm input:not([readonly]), #integrationSetupForm select');
       if (firstInput) setTimeout(() => firstInput.focus(), 180);
+    }
+
+    function openAddIntegrationModal(category) {
+      const categories = integrationCategories();
+      const selectedCategory = categories.includes(category) ? category : categories[0];
+      document.getElementById('integSetupTitle').textContent = 'Add New Integration';
+      document.getElementById('integSetupBody').innerHTML = `
+        <p class="setup-description">Create a project-specific integration in ${esc(selectedCategory)}. You can configure credentials and sync settings after it is added.</p>
+        <form id="newIntegrationForm" class="integration-form-grid" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="newIntegrationName">Integration name *</label>
+            <input class="form-input" id="newIntegrationName" name="name" type="text" required placeholder="Example: Linear, Jenkins, Zendesk">
+            <div class="field-error" id="newIntegrationNameError"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newIntegrationCategory">Type / category</label>
+            <select class="form-select" id="newIntegrationCategory" name="category">
+              ${categories.map(cat => `<option value="${esc(cat)}" ${cat === selectedCategory ? 'selected' : ''}>${esc(cat)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newIntegrationStatus">Connection status</label>
+            <select class="form-select" id="newIntegrationStatus" name="status">
+              <option value="DISCONNECTED">Disconnected</option>
+              <option value="CONNECTED">Connected</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label class="form-label" for="newIntegrationDescription">Description</label>
+            <textarea class="form-input" id="newIntegrationDescription" name="description" rows="3" placeholder="What this integration connects or automates"></textarea>
+          </div>
+        </form>
+      `;
+      document.getElementById('integSetupFooter').innerHTML = `
+        <button class="btn btn-outline" type="button" onclick="closeModal('integSetupModal')">Cancel</button>
+        <button class="btn btn-primary" type="button" onclick="saveNewIntegration()">Save Integration</button>
+      `;
+      showModal('integSetupModal');
+      const firstInput = document.getElementById('newIntegrationName');
+      if (firstInput) setTimeout(() => firstInput.focus(), 180);
+    }
+
+    function saveNewIntegration() {
+      const form = document.getElementById('newIntegrationForm');
+      if (!form) return;
+      const nameInput = form.querySelector('[name="name"]');
+      const categoryInput = form.querySelector('[name="category"]');
+      const statusInput = form.querySelector('[name="status"]');
+      const descriptionInput = form.querySelector('[name="description"]');
+      const error = document.getElementById('newIntegrationNameError');
+      const name = nameInput.value.trim();
+      if (error) error.textContent = '';
+      if (!name) {
+        if (error) error.textContent = 'Integration name is required.';
+        nameInput.setAttribute('aria-invalid', 'true');
+        nameInput.focus();
+        showToast('Please enter an integration name', 'warning');
+        return;
+      }
+      nameInput.removeAttribute('aria-invalid');
+
+      const category = categoryInput.value;
+      const status = statusInput.value;
+      const now = new Date().toISOString();
+      const newIntegration = {
+        id: `INT-CUSTOM-${Date.now()}`,
+        name,
+        iconClass: integrationIconClassForCategory(category),
+        category,
+        status,
+        description: descriptionInput.value.trim() || integrationAddHelper(category),
+        connected_at: status === 'CONNECTED' ? now : null,
+        config: {},
+        features: defaultIntegrationFeatures(category),
+        health: status === 'CONNECTED' ? 'HEALTHY' : 'N/A',
+        last_sync: status === 'CONNECTED' ? now : null,
+        custom: true
+      };
+
+      const integrations = NexusStore.getIntegrations();
+      integrations.push(newIntegration);
+      NexusStore.setIntegrations(integrations);
+      NexusEventBus.notify('integration', 'Integration Added', `${newIntegration.name} added to ${category}`, {});
+      closeModal('integSetupModal');
+      render();
+      showToast(`${newIntegration.name} added`, 'success');
     }
 
     function renderSetupField(field, integration) {
@@ -684,6 +923,10 @@
       const div = document.createElement('div');
       div.textContent = String(value);
       return div.innerHTML;
+    }
+
+    function jsString(value) {
+      return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
     function connectIntegration(integId) {

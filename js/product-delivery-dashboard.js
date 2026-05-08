@@ -690,6 +690,7 @@ const ProductDeliveryDashboard = (() => {
         </div>
         ${filtered.length > 0 && page < maxIndex ? `<button class="pd-carousel-arrow pd-carousel-arrow-right" type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(1)" aria-label="Next roadmap phase">&#8250;</button>` : ''}
       </div>
+      ${renderFeatureRoadmap(detail.roadmap.featureRoadmap || [])}
     `, 'pd-detail-full', {
       summary: sectionSummary([
         ['In progress', detail.roadmap.phases.filter(phase => phase.status === 'IN_PROGRESS').length],
@@ -698,6 +699,144 @@ const ProductDeliveryDashboard = (() => {
       ]),
       defaultOpen: true
     });
+  }
+
+  function renderFeatureRoadmap(items) {
+    const features = Array.isArray(items) ? items : [];
+    if (!features.length) {
+      return `
+        <article class="pd-feature-roadmap-card">
+          <div class="pd-feature-roadmap-head">
+            <div>
+              <h4>Feature Roadmap</h4>
+              <p>Planned feature delivery timeline</p>
+            </div>
+          </div>
+          <div class="pd-feature-roadmap-empty">No feature roadmap available for this project yet.</div>
+        </article>
+      `;
+    }
+
+    const range = featureRoadmapRange(features);
+    const months = featureRoadmapMonths(range.start, range.end);
+    const now = new Date();
+    const todayLeft = featureRoadmapRawPercent(now, range.start, range.end);
+    const showToday = todayLeft >= 0 && todayLeft <= 100;
+    return `
+      <article class="pd-feature-roadmap-card">
+        <div class="pd-feature-roadmap-head">
+          <div>
+            <h4>Feature Roadmap</h4>
+            <p>Project-specific feature timeline and delivery progress</p>
+          </div>
+          <span>${escapeHtml(featureRoadmapQuarterLabel(range.start, range.end))}</span>
+        </div>
+        <div class="pd-feature-roadmap-chart" style="--pd-feature-months:${months.length}">
+          <div class="pd-feature-roadmap-axis">
+            <div class="pd-feature-roadmap-axis-spacer"></div>
+            <div class="pd-feature-roadmap-months">
+              ${months.map(month => `<span class="${isSameMonth(month.date, now) ? 'is-current' : ''}">${escapeHtml(month.label)}</span>`).join('')}
+            </div>
+          </div>
+          <div class="pd-feature-roadmap-body">
+            ${showToday ? `<div class="pd-feature-today-marker" style="left:calc(var(--pd-feature-label-width) + ((100% - var(--pd-feature-label-width)) * ${todayLeft / 100}))"><span>TODAY</span></div>` : ''}
+            ${features.map(feature => renderFeatureRoadmapRow(feature, range)).join('')}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderFeatureRoadmapRow(feature, range) {
+    const left = featureRoadmapPercent(new Date(feature.startDate), range.start, range.end);
+    const right = featureRoadmapPercent(new Date(feature.endDate), range.start, range.end);
+    const width = Math.max(4, right - left);
+    const tone = featureRoadmapTone(feature.status);
+    const progress = clampPercent(feature.progress);
+    const showProgress = progress > 0 && !/not started|upcoming|pending/i.test(titleCase(feature.status));
+    return `
+      <div class="pd-feature-roadmap-row">
+        <div class="pd-feature-roadmap-label">
+          <span>FT</span>
+          <strong title="${escapeHtml(feature.name)}">${escapeHtml(feature.name)}</strong>
+        </div>
+        <div class="pd-feature-roadmap-lane" aria-label="${escapeHtml(feature.name)} timeline">
+          <i class="pd-feature-roadmap-bar pd-feature-roadmap-${tone}" style="left:${left}%;width:${width}%">
+            ${showProgress ? `<b>${progress}%</b>` : ''}
+          </i>
+        </div>
+      </div>
+    `;
+  }
+
+  function featureRoadmapRange(features) {
+    const starts = features.map(item => new Date(item.startDate)).filter(date => !Number.isNaN(date.getTime()));
+    const ends = features.map(item => new Date(item.endDate)).filter(date => !Number.isNaN(date.getTime()));
+    const fallback = new Date();
+    const min = starts.length ? new Date(Math.min(...starts.map(date => date.getTime()))) : fallback;
+    const max = ends.length ? new Date(Math.max(...ends.map(date => date.getTime()))) : addMonths(fallback, 6);
+    const start = new Date(min.getFullYear(), min.getMonth(), 1);
+    const end = new Date(max.getFullYear(), max.getMonth() + 1, 0, 23, 59, 59, 999);
+    if (monthsBetween(start, end) < 5) {
+      return { start, end: new Date(start.getFullYear(), start.getMonth() + 6, 0, 23, 59, 59, 999) };
+    }
+    return { start, end };
+  }
+
+  function featureRoadmapMonths(start, end) {
+    const months = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cursor <= end && months.length < 12) {
+      months.push({
+        date: new Date(cursor),
+        label: cursor.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+      });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return months;
+  }
+
+  function featureRoadmapPercent(date, start, end) {
+    return Math.max(0, Math.min(100, featureRoadmapRawPercent(date, start, end)));
+  }
+
+  function featureRoadmapRawPercent(date, start, end) {
+    const safeDate = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(safeDate.getTime())) return 0;
+    const total = end.getTime() - start.getTime();
+    if (total <= 0) return 0;
+    return ((safeDate.getTime() - start.getTime()) / total) * 100;
+  }
+
+  function featureRoadmapTone(status) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized.includes('completed')) return 'completed';
+    if (normalized.includes('risk') || normalized.includes('watch') || normalized.includes('blocked')) return 'risk';
+    if (normalized.includes('progress')) return 'progress';
+    return 'upcoming';
+  }
+
+  function featureRoadmapQuarterLabel(start, end) {
+    const startLabel = `Q${Math.floor(start.getMonth() / 3) + 1}`;
+    const endLabel = `Q${Math.floor(end.getMonth() / 3) + 1}`;
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    if (startYear === endYear) return `${startLabel} - ${endLabel} ${startYear}`;
+    return `${startLabel} ${startYear} - ${endLabel} ${endYear}`;
+  }
+
+  function monthsBetween(start, end) {
+    return (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth() + 1;
+  }
+
+  function addMonths(value, months) {
+    const date = new Date(value || Date.now());
+    date.setMonth(date.getMonth() + months);
+    return date;
+  }
+
+  function isSameMonth(first, second) {
+    return first.getFullYear() === second.getFullYear() && first.getMonth() === second.getMonth();
   }
 
   function filteredRoadmapPhases(phases) {
@@ -1521,7 +1660,8 @@ const ProductDeliveryDashboard = (() => {
         deliveryConfidence,
         deliveryHealth,
         atRiskMilestones: deliveryHealth.includes('Red') ? 3 : deliveryHealth.includes('Amber') ? 1 : 0,
-        phases: buildRoadmap(project, seed, completionPercentage)
+        phases: buildRoadmap(project, seed, completionPercentage),
+        featureRoadmap: buildFeatureRoadmap(project, modules, seed)
       },
       milestones: buildMilestones(project, seed, currentMilestone),
       resources: buildResources(project, seed),
@@ -1706,6 +1846,33 @@ const ProductDeliveryDashboard = (() => {
         completion: isThroughDevelopment ? Math.max(18, phaseCompletion) : Math.min(10, phaseCompletion)
       };
     });
+  }
+
+  function buildFeatureRoadmap(project, modules, seed) {
+    if (!Array.isArray(modules) || !modules.length) return [];
+    const start = project.createdAt || project.created_at || Date.now();
+    return modules.slice(0, 6).map((module, index) => {
+      const startOffset = index * 24 + seededInt(seed, -4, 8, 215 + index);
+      const duration = seededInt(seed, 44, 82, 230 + index);
+      const progress = clampPercent(module.completion);
+      return {
+        name: module.name,
+        startDate: addDays(start, startOffset),
+        endDate: addDays(start, startOffset + duration),
+        status: featureRoadmapStatus(module.status, module.ragStatus, progress),
+        progress,
+        owner: module.owner,
+        dependency: module.linkedSprints?.[0] || ''
+      };
+    });
+  }
+
+  function featureRoadmapStatus(status, ragStatus, progress) {
+    const normalized = String(status || '').toLowerCase();
+    if (normalized.includes('completed') || progress >= 96) return 'Completed';
+    if (String(ragStatus || '').toLowerCase().includes('red') || normalized.includes('blocked')) return 'At Risk';
+    if (progress > 18 || normalized.includes('progress') || normalized.includes('approved')) return 'In Progress';
+    return 'Not Started';
   }
 
   function buildMilestones(project, seed) {
