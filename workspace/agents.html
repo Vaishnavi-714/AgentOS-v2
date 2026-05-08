@@ -65,20 +65,53 @@
     .deployed-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); padding: 16px; position: relative; overflow: hidden; transition: all 0.2s ease; }
     .deployed-card:hover { border-color: var(--accent)40; }
     .deployed-card.active-agent { border-color: var(--success)55; box-shadow: 0 0 0 1px var(--success)22; }
-    .deployed-card .dc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-    .deployed-card .dc-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .deployed-card .dc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+    .deployed-card .dc-title-area { flex: 1 1 auto; min-width: 0; padding-right: 4px; }
+    .deployed-card .dc-name { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text-primary); line-height: 1.25; overflow-wrap: anywhere; }
+    .deployed-card .dc-agent-icon {
+      width: 28px; height: 28px; border-radius: 9px;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex: 0 0 28px; background: var(--bg-tertiary); color: var(--accent);
+      border: 1px solid var(--border); font-size: 13px;
+    }
     .deployed-card .dc-role-tag { font-size: 11px; color: var(--text-muted); }
+    .deployed-card .dc-badges {
+      flex: 0 0 auto; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 5px; min-width: max-content;
+      max-width: 126px;
+    }
+    .deployed-card .dc-type-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      max-width: 126px; padding: 4px 8px; border-radius: 999px;
+      font-size: 9px; font-weight: 700; line-height: 1;
+      text-transform: uppercase; letter-spacing: 0.5px; text-align: center;
+      white-space: nowrap;
+    }
+    .deployed-card .dc-type-predefined {
+      background: var(--accent)18; color: var(--accent);
+      border: 1px solid var(--accent)35;
+    }
+    .deployed-card .dc-type-custom {
+      background: var(--success)18; color: var(--success);
+      border: 1px solid var(--success)35;
+    }
+    .deployed-card .dc-badges .status-badge { white-space: nowrap; line-height: 1; }
     .deployed-card .dc-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
     .deployed-card .dc-metric { text-align: center; font-size: 11px; color: var(--text-muted); }
     .deployed-card .dc-metric .val { display: block; font-size: 16px; font-weight: 700; color: var(--text-primary); }
+    .deployed-card .dc-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+    @media (max-width: 520px) {
+      .deployed-card .dc-header { flex-direction: column; }
+      .deployed-card .dc-badges { align-items: flex-start; max-width: 100%; }
+    }
 
     .config-section { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; background: var(--bg-tertiary); }
     .config-section h4 { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
 
     /* ─── Org Builder ─── */
-    .org-builder-wrap { display: flex; gap: 20px; }
-    .org-agent-pool { width: 280px; flex-shrink: 0; }
-    .org-canvas-area { flex: 1; min-height: 500px; }
+    .org-builder-wrap { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .org-agent-pool { width: 100%; min-width: 0; }
+    .org-canvas-area { min-width: 0; min-height: 500px; }
     .org-pool-item {
       padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius);
       background: var(--bg-card); margin-bottom: 6px; cursor: grab;
@@ -91,30 +124,78 @@
     .org-pool-item .opi-role { font-size: 10px; color: var(--text-muted); }
 
     .org-canvas {
-      min-height: 500px; padding: 24px;
+      min-height: 500px; padding: 22px;
       background: var(--bg-tertiary); border: 2px dashed var(--border);
-      border-radius: var(--radius-lg); position: relative;
+      border-radius: var(--radius-lg); position: relative; overflow-x: hidden;
     }
     .org-canvas.drag-over { border-color: var(--accent); background: var(--accent)05; }
 
+    .org-hierarchy-wrapper {
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4px 8px 8px;
+    }
     .org-level-row {
-      display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;
-      margin-bottom: 8px; padding: 12px;
-      min-height: 60px;
+      display: flex; flex-direction: column; align-items: center; text-align: center;
+      margin: 0 auto; padding: 16px 18px 18px;
+      min-height: 112px; width: 100%;
       border: 1px dashed transparent; border-radius: var(--radius);
       transition: all 0.15s ease;
     }
     .org-level-row.drop-target { border-color: var(--accent)60; background: var(--accent)05; }
+    .org-level-header {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; flex-wrap: wrap; width: 100%;
+      margin-bottom: 8px;
+    }
     .org-level-label {
-      width: 100%; text-align: center; font-size: 10px; text-transform: uppercase;
-      letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 4px;
+      text-align: center; font-size: 12px; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--text-primary); font-weight: 800;
+      line-height: 1.35;
+    }
+    .org-level-actions {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 4px; flex-wrap: wrap;
+    }
+    .org-level-action-btn {
+      width: 24px; height: 24px; border: 1px solid var(--border);
+      border-radius: 7px; background: var(--bg-card); color: var(--text-muted);
+      cursor: pointer; font-size: 11px; display: inline-flex;
+      align-items: center; justify-content: center; transition: all 0.15s ease;
+    }
+    .org-level-action-btn:hover { border-color: var(--accent)60; color: var(--accent); background: var(--accent)08; }
+    .org-level-action-btn.danger:hover { border-color: var(--danger)60; color: var(--danger); background: var(--danger)08; }
+    .org-level-purpose {
+      width: 100%; max-width: 760px; margin: 0 auto 16px;
+      color: var(--text-secondary); font-size: 12px; line-height: 1.5;
+      text-align: center;
+    }
+    .org-level-cards {
+      display: flex; justify-content: center; align-items: stretch;
+      flex-wrap: wrap; gap: 16px; width: 100%;
     }
 
     .org-placed-node {
-      padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius);
-      background: var(--bg-card); display: inline-flex; align-items: center; gap: 8px;
-      font-size: 12px; position: relative; cursor: default;
+      width: 220px; min-height: 76px; padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--bg-card); display: inline-flex; align-items: center; gap: 10px;
+      text-align: left; font-size: 12px; position: relative; cursor: default;
       box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .org-placed-node > span:first-child {
+      width: 34px; height: 34px; border-radius: 10px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--bg-tertiary); flex: 0 0 34px;
+    }
+    .org-placed-node > div { min-width: 0; }
+    .org-node-name-text strong {
+      display: inline-block; max-width: 150px; color: var(--text-primary);
+      white-space: normal; line-height: 1.25;
+    }
+    .org-node-role-text {
+      display: inline-block; margin-top: 4px; font-size: 10px;
+      color: var(--text-muted); line-height: 1.3;
     }
     .org-placed-node .opn-remove {
       position: absolute; top: -6px; right: -6px;
@@ -124,11 +205,40 @@
       opacity: 0; transition: opacity 0.15s;
     }
     .org-placed-node:hover .opn-remove { opacity: 1; }
-    .org-connector-line { text-align: center; color: var(--text-muted); font-size: 14px; margin: 2px 0; }
+    .org-empty-drop {
+      width: min(520px, 100%); padding: 12px 14px;
+      border: 1px dashed var(--border); border-radius: var(--radius);
+      color: var(--text-muted); background: var(--bg-card);
+      font-size: 11px; text-align: center;
+    }
+    .org-connector-line {
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      color: var(--text-muted); font-size: 16px; line-height: 1;
+      margin: 2px 0 6px;
+    }
+    .org-connector-line::before,
+    .org-connector-line::after {
+      content: ""; display: block; width: 1px; height: 12px;
+      background: var(--border); margin: 0 auto;
+    }
+    .org-connector-line span {
+      width: 24px; height: 24px; border: 1px solid var(--border);
+      border-radius: 50%; display: inline-flex; align-items: center;
+      justify-content: center; background: var(--bg-card);
+      margin: 0 0;
+    }
 
     @media (max-width: 900px) {
-      .org-builder-wrap { flex-direction: column; }
+      .org-builder-wrap { grid-template-columns: 1fr; }
       .org-agent-pool { width: 100%; }
+      .org-canvas { padding: 16px; }
+      .org-level-row { padding: 14px 10px 16px; }
+      .org-placed-node { width: min(220px, 100%); }
+    }
+    @media (max-width: 560px) {
+      .org-level-header { flex-direction: column; gap: 7px; }
+      .org-level-cards { gap: 10px; }
+      .org-placed-node { width: 100%; }
     }
 
     /* ─── Skills Chip/Tag System ─── */
@@ -1277,41 +1387,67 @@
 
     function renderMyAgents() {
       const search = (document.getElementById('myAgentsSearch')?.value || '').toLowerCase();
-      let agents = getProjectAgents();
+      const projectAgents = getProjectAgents();
+      const projectAgentIds = new Set(projectAgents.map(agent => agent.agent_id));
+      const customAgents = NexusStore.getAgents()
+        .filter(agent => isCustomAgent(agent) && agent._projectId === selectedProjectId && !projectAgentIds.has(agent.agent_id));
+      let agents = [...projectAgents, ...customAgents];
       agents = agents.filter(a => {
-        if (currentMyAgentFilter === 'predefined' && a._agentType !== 'predefined') return false;
-        if (currentMyAgentFilter === 'custom' && a._agentType !== 'custom') return false;
+        const isCustom = isCustomAgent(a);
+        if (currentMyAgentFilter === 'predefined' && isCustom) return false;
+        if (currentMyAgentFilter === 'custom' && !isCustom) return false;
         if (currentMyAgentFilter === 'ACTIVE' && a.status !== 'ACTIVE') return false;
-        if (search) { if (!(a.agent_name+' '+a.role+' '+a.module_scope).toLowerCase().includes(search)) return false; }
+        if (search) {
+          const haystack = `${a.agent_name || ''} ${a.role || ''} ${a.module_scope || ''} ${a._customDesc || ''}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
         return true;
       });
 
       document.getElementById('myAgentsGrid').innerHTML = agents.map(a => {
-        const isCustom = a._agentType === 'custom';
-        const icon = a._icon || a._customIcon || '🤖';
+        const isCustom = isCustomAgent(a);
+        const typeLabel = isCustom ? 'Custom' : 'Predefined';
+        const typeClass = isCustom ? 'dc-type-custom' : 'dc-type-predefined';
         return `
           <div class="deployed-card ${a.status==='ACTIVE'?'active-agent':''}">
-            ${isCustom?'<span class="mc-badge-custom">Custom</span>':'<span class="mc-badge-predefined">Predefined</span>'}
             <div class="dc-header">
-              <div>
-                <div class="dc-name">${icon} ${escapeHtml(a.agent_name)}</div>
-                <div class="dc-role-tag">${a.role.replace(/_/g,' ')} · ${a.module_scope}</div>
+              <div class="dc-title-area">
+                <div class="dc-name"><span class="dc-agent-icon"><i class="fa-solid ${isCustom ? 'fa-user-gear' : 'fa-robot'}" aria-hidden="true"></i></span><span>${escapeHtml(a.agent_name || 'Agent')}</span></div>
+                <div class="dc-role-tag">${escapeHtml(String(a.role || 'Agent').replace(/_/g,' '))} · ${escapeHtml(a.module_scope || 'global')}</div>
               </div>
-              ${statusBadge(a.status)}
+              <div class="dc-badges" aria-label="Agent badges">
+                <span class="dc-type-badge ${typeClass}">${typeLabel}</span>
+                ${statusBadge(agentStatusLabel(a.status))}
+              </div>
             </div>
-            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${a.model_variant} · ${a.ceiling_profile?.risk_sensitivity||'MEDIUM'} risk</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${escapeHtml(a.model_variant || 'Default model')} · ${escapeHtml(a.ceiling_profile?.risk_sensitivity || 'MEDIUM')} risk</div>
             <div class="dc-metrics">
               <div class="dc-metric"><span class="val">${a.metrics?.tasks_completed||0}</span>Tasks</div>
               <div class="dc-metric"><span class="val">${a.metrics?.escalations_raised||0}</span>Escalations</div>
               <div class="dc-metric"><span class="val">${a.metrics?.gate_pass_rate||0}%</span>Gate</div>
             </div>
-            <div style="display:flex;gap:6px;margin-top:8px">
+            <div class="dc-actions">
               <button class="btn btn-outline btn-sm" onclick="openAgentWorkspacePanel('${a.agent_id}')">Workspace</button>
               ${canEditProjectAgents ? `<button class="btn btn-outline btn-sm" onclick="toggleAgentStatus('${a.agent_id}')">${a.status==='ACTIVE'?'Pause':'Resume'}</button>
               <button class="btn btn-outline btn-sm" style="color:var(--danger)" onclick="removeAgent('${a.agent_id}')">Remove</button>` : '<span class="tag">Read only</span>'}
             </div>
           </div>`;
-      }).join('') || '<div class="empty-state"><div class="empty-state-icon">🤖</div><h3 class="empty-state-title">No agents in this project</h3><p class="empty-state-text">Deploy from Marketplace or build a custom agent</p></div>';
+      }).join('') || '<div class="empty-state"><div class="empty-state-icon"><i class="fa-solid fa-robot" aria-hidden="true"></i></div><h3 class="empty-state-title">No agents in this project</h3><p class="empty-state-text">Deploy from Marketplace or build a custom agent</p></div>';
+    }
+
+    function isCustomAgent(agent) {
+      return Boolean(
+        agent?._agentType === 'custom' ||
+        agent?._customIcon ||
+        agent?._customDesc ||
+        String(agent?.agent_id || '').startsWith('agent_custom_')
+      );
+    }
+
+    function agentStatusLabel(status) {
+      const value = String(status || 'DRAFT').toUpperCase();
+      if (value === 'INACTIVE') return 'PAUSED';
+      return value;
     }
 
     function toggleAgentStatus(agentId) {
@@ -1469,32 +1605,42 @@
       `).join('') : '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px">All agents placed or none deployed yet.</div>';
 
       // Canvas with edit support
-      document.getElementById('orgCanvas').innerHTML = orgLevels.map((level, idx) => `
-        <div class="org-level-row" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${idx})" id="orgLevel_${idx}">
-          <div class="org-level-label">
-            <span onclick="renameOrgLevel(${idx})" style="cursor:pointer" title="Click to rename">${escapeHtml(level.label)}</span>
-            ${level._generatedFromSow || level.purpose ? '<span class="tag" style="margin-left:8px">Generated from SOW</span>' : ''}
-            ${canEditProjectAgents && idx > 0 ? `
-              <button onclick="moveOrgLevel(${idx},-1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;margin-left:4px" title="Move up">▲</button>
-              <button onclick="moveOrgLevel(${idx},1)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:11px" title="Move down">▼</button>
-              <button onclick="removeOrgLevel(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:11px;margin-left:4px" title="Remove level">✕</button>
-            ` : ''}
-            ${canEditProjectAgents && isEditMode ? `<button class="org-add-role-btn" onclick="addRoleToLevel(${idx})" style="margin-left:8px">+ Add Role</button>` : ''}
-          </div>
-          ${level.purpose ? `<div class="org-level-purpose">${escapeHtml(level.purpose)}</div>` : ''}
-          ${level.agents.length ? level.agents.map((a, aIdx) => `
-            <div class="org-placed-node ${isEditMode ? 'editable' : ''} ${a._aiGenerated ? 'ai-node' : ''}" data-org-node="${idx}-${aIdx}" ${isEditMode && a.agent_id !== '_human_' ? `onclick="inlineRenameRole(${idx},${aIdx})"` : ''}>
-              <span>${a.icon||'🤖'}</span>
-              <div>
-                <span class="org-node-name-text"><strong>${escapeHtml(a.name)}</strong></span>
-                <br><span style="font-size:10px;color:var(--text-muted)">${escapeHtml(a.role)}</span>
+      document.getElementById('orgCanvas').innerHTML = `
+        <div class="org-hierarchy-wrapper">
+          ${orgLevels.map((level, idx) => `
+            <div class="org-level-row" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,${idx})" id="orgLevel_${idx}">
+              <div class="org-level-header">
+                <div class="org-level-label">
+                  <span onclick="renameOrgLevel(${idx})" style="cursor:pointer" title="Click to rename">${escapeHtml(level.label)}</span>
+                </div>
+                ${level._generatedFromSow || level.purpose ? '<span class="tag">Generated from SOW</span>' : ''}
+                ${canEditProjectAgents && idx > 0 ? `
+                  <div class="org-level-actions" aria-label="Level actions">
+                    <button class="org-level-action-btn" onclick="moveOrgLevel(${idx},-1)" title="Move up" aria-label="Move level up">▲</button>
+                    <button class="org-level-action-btn" onclick="moveOrgLevel(${idx},1)" title="Move down" aria-label="Move level down">▼</button>
+                    <button class="org-level-action-btn danger" onclick="removeOrgLevel(${idx})" title="Remove level" aria-label="Remove level">✕</button>
+                  </div>
+                ` : ''}
+                ${canEditProjectAgents && isEditMode ? `<button class="org-add-role-btn" onclick="addRoleToLevel(${idx})">+ Add Role</button>` : ''}
               </div>
-              ${canEditProjectAgents && a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="event.stopPropagation();${isEditMode ? `deleteRoleFromOrg(${idx},${aIdx})` : `removeAgentFromOrg(${idx},'${a.agent_id}')`}">✕</button>` : ''}
+              ${level.purpose ? `<div class="org-level-purpose">${escapeHtml(level.purpose)}</div>` : ''}
+              <div class="org-level-cards">
+                ${level.agents.length ? level.agents.map((a, aIdx) => `
+                  <div class="org-placed-node ${isEditMode ? 'editable' : ''} ${a._aiGenerated ? 'ai-node' : ''}" data-org-node="${idx}-${aIdx}" ${isEditMode && a.agent_id !== '_human_' ? `onclick="inlineRenameRole(${idx},${aIdx})"` : ''}>
+                    <span>${a.icon||'🤖'}</span>
+                    <div>
+                      <span class="org-node-name-text"><strong>${escapeHtml(a.name)}</strong></span>
+                      <br><span class="org-node-role-text">${escapeHtml(a.role)}</span>
+                    </div>
+                    ${canEditProjectAgents && a.agent_id !== '_human_' ? `<button class="opn-remove" onclick="event.stopPropagation();${isEditMode ? `deleteRoleFromOrg(${idx},${aIdx})` : `removeAgentFromOrg(${idx},'${a.agent_id}')`}">✕</button>` : ''}
+                  </div>
+                `).join('') : '<div class="org-empty-drop">Drop agents here...</div>'}
+              </div>
             </div>
-          `).join('') : '<div style="font-size:11px;color:var(--text-muted);padding:8px;border:1px dashed var(--border);border-radius:var(--radius)">Drop agents here...</div>'}
+            ${idx < orgLevels.length - 1 ? '<div class="org-connector-line"><span>↓</span></div>' : ''}
+          `).join('')}
         </div>
-        ${idx < orgLevels.length - 1 ? '<div class="org-connector-line">↓</div>' : ''}
-      `).join('');
+      `;
     }
 
     // ─── Drag & Drop ───

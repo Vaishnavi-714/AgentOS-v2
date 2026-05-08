@@ -52,6 +52,84 @@
     .my-wf-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg-card); padding: 16px; position: relative; overflow: hidden; transition: all 0.2s ease; }
     .my-wf-card:hover { border-color: var(--accent)40; }
     .my-wf-card.wf-active { border-color: var(--success)55; box-shadow: 0 0 0 1px var(--success)22; }
+    .my-wf-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .my-wf-title-area {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding-right: 4px;
+    }
+    .my-wf-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
+    .my-wf-meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .my-wf-badges {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      min-width: max-content;
+      max-width: 140px;
+    }
+    .my-wf-source-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 140px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      white-space: normal;
+      text-align: center;
+    }
+    .my-wf-source-badge.source-template,
+    .my-wf-source-badge.source-sow {
+      background: var(--accent)18;
+      color: var(--accent);
+      border: 1px solid var(--accent)35;
+    }
+    .my-wf-source-badge.source-custom,
+    .my-wf-source-badge.source-custom-sow {
+      background: var(--success)18;
+      color: var(--success);
+      border: 1px solid var(--success)35;
+    }
+    .my-wf-badges .status-badge {
+      white-space: nowrap;
+      line-height: 1;
+    }
+    @media (max-width: 520px) {
+      .my-wf-header { flex-direction: column; }
+      .my-wf-badges {
+        align-items: flex-start;
+        max-width: 100%;
+      }
+      .my-wf-source-badge {
+        max-width: 100%;
+        white-space: nowrap;
+      }
+    }
 
     .builder-step { width: 100%; max-width: 500px; margin: 0 auto; padding: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; }
     .builder-step .step-info .step-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
@@ -530,15 +608,19 @@
         const isCustom = wf._type === 'custom';
         const isSow = wf._source === 'SOW Generated';
         const isCustomSow = Boolean(wf._customSowWorkflow);
+        const sourceBadgeLabel = isCustomSow ? 'Custom SOW Workflow' : isSow ? 'SOW Generated' : isCustom ? 'Custom' : 'Template';
+        const sourceBadgeClass = isCustomSow ? 'source-custom-sow' : isSow ? 'source-sow' : isCustom ? 'source-custom' : 'source-template';
         return `
           <div class="my-wf-card ${wf.status==='ACTIVE'||wf.status==='READY'?'wf-active':''}" ${isCustomSow ? 'style="border-color:var(--success)"' : ''}>
-            ${isCustomSow ? '<span class="tc-badge-custom">Custom SOW Workflow</span>' : isSow ? '<span class="tc-badge-template">SOW Generated</span>' : isCustom?'<span class="tc-badge-custom">Custom</span>':'<span class="tc-badge-template">Template</span>'}
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-              <div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary)">${wf.icon||'🔄'} ${wf.name}</div>
-                <div style="font-size:11px;color:var(--text-muted)">Category: ${escapeHtml(wf.category || 'Workflow')} · Source: ${escapeHtml(wf._source || 'Manual')} · Project: ${escapeHtml(project?.name || '')}</div>
+            <div class="my-wf-header">
+              <div class="my-wf-title-area">
+                <div class="my-wf-title">${wf.icon||'🔄'} ${escapeHtml(wf.name)}</div>
+                <div class="my-wf-meta">Category: ${escapeHtml(wf.category || 'Workflow')} · Source: ${escapeHtml(wf._source || 'Manual')} · Project: ${escapeHtml(project?.name || '')}</div>
               </div>
-              ${statusBadge(wf.status === 'READY' ? 'READY' : wf.status)}
+              <div class="my-wf-badges" aria-label="Workflow badges">
+                <span class="my-wf-source-badge ${sourceBadgeClass}">${escapeHtml(sourceBadgeLabel)}</span>
+                ${statusBadge(wf.status === 'READY' ? 'READY' : wf.status)}
+              </div>
             </div>
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.4">${wf.desc}</p>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${(wf.steps||[]).slice(0, 4).map((step, idx)=>`<span class="tag">${idx + 1}. ${escapeHtml(step)}</span>`).join('')}</div>

@@ -678,8 +678,9 @@ const ProductDeliveryDashboard = (() => {
       <div class="pd-roadmap-toolbar">
         <div class="pd-filter-chips" aria-label="Roadmap filters">
           ${roadmapFilterButton('ALL', 'All')}
-          ${roadmapFilterButton('COMPLETED', 'Completed')}
+          ${roadmapFilterButton('NOT_STARTED', 'Not Started')}
           ${roadmapFilterButton('IN_PROGRESS', 'In Progress')}
+          ${roadmapFilterButton('COMPLETED', 'Completed')}
         </div>
       </div>
       <div class="pd-roadmap-carousel">
@@ -693,7 +694,7 @@ const ProductDeliveryDashboard = (() => {
       summary: sectionSummary([
         ['In progress', detail.roadmap.phases.filter(phase => phase.status === 'IN_PROGRESS').length],
         ['Completed', detail.roadmap.phases.filter(phase => phase.status === 'COMPLETED').length],
-        ['Upcoming', detail.roadmap.phases.filter(phase => phase.status === 'NOT_STARTED' || phase.status === 'TO_DO').length]
+        ['Upcoming', detail.roadmap.phases.filter(isNotStartedRoadmapPhase).length]
       ]),
       defaultOpen: true
     });
@@ -702,7 +703,13 @@ const ProductDeliveryDashboard = (() => {
   function filteredRoadmapPhases(phases) {
     if (state.roadmapFilter === 'COMPLETED') return phases.filter(phase => phase.status === 'COMPLETED');
     if (state.roadmapFilter === 'IN_PROGRESS') return phases.filter(phase => phase.status === 'IN_PROGRESS');
+    if (state.roadmapFilter === 'NOT_STARTED') return phases.filter(isNotStartedRoadmapPhase);
     return phases;
+  }
+
+  function isNotStartedRoadmapPhase(phase) {
+    const status = String(phase?.status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return !status || status === 'not_started' || status === 'planned' || status === 'to_do' || status === 'todo';
   }
 
   function roadmapFilterButton(value, label) {

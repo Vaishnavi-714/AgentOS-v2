@@ -145,6 +145,15 @@ const NexusSidebar = {
 };
 if (typeof window !== 'undefined') window.NexusSidebar = NexusSidebar;
 
+function ensureFontAwesome() {
+  if (document.querySelector('link[data-nexus-fontawesome], link[href*="font-awesome"], link[href*="fontawesome"]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css';
+  link.setAttribute('data-nexus-fontawesome', 'true');
+  document.head.appendChild(link);
+}
+
 function createNavigation(activePage) {
   // Session protection: must be logged in
   if (activePage !== 'login' && activePage !== 'landing') {
@@ -155,30 +164,31 @@ function createNavigation(activePage) {
   }
 
   const user = NexusStore.getUser();
-  const systemState = NexusStore.getSystemState();
   const role = TenantState.getRole();
   const tenantUser = typeof TenantState !== 'undefined' ? TenantState.getCurrentTenantUser() : null;
   const tenantRoleLabel = tenantUser ? NexusRoleUtils.getTenantRoleLabel(tenantUser) : (user?.role || '');
   const sidebarRoleLabel = tenantUser ? NexusRoleUtils.getSidebarRoleLabel(tenantUser) : (user?.role || '');
+  const projectRoleLabel = NexusRoleUtils.projectRoleLabel(NexusRoleUtils.getPrimaryProjectRole(NexusStore.getProjects(), tenantUser || user));
   const dashboardHref = NexusRoleUtils.getDashboardHref();
+  ensureFontAwesome();
 
 
   // ─── Master Navigation Structure ───
   const mainNavItems = [
-    { id: 'role-dashboard', label: 'Dashboard', icon: '🎭', href: dashboardHref, activePages: ['role-dashboard', 'product-delivery-dashboard'] },
-    { id: 'dashboard', label: 'Projects Hub', icon: '📊', href: 'dashboard.html' },
-    { id: 'workspace', label: 'Workspace', icon: '💬', href: 'workspace.html' },
-    { id: 'agents', label: 'Agents', icon: '🤖', href: 'agents.html' },
-    { id: 'workflows', label: 'Workflows', icon: '🔄', href: 'workflows.html' },
-    { id: 'repositories', label: 'Repositories', icon: '📦', href: 'repositories.html' },
-    { id: 'testing', label: 'Testing', icon: '🧪', href: 'testing.html' },
-    { id: 'deployments', label: 'Deployments', icon: '🚀', href: 'deployments.html' },
-    { id: 'integrations', label: 'Integrations', icon: '🔗', href: 'integrations.html' }
+    { id: 'role-dashboard', label: 'Dashboard', icon: 'fa-solid fa-gauge-high', href: dashboardHref, activePages: ['role-dashboard', 'product-delivery-dashboard'] },
+    { id: 'dashboard', label: 'Projects Hub', icon: 'fa-solid fa-folder-tree', href: 'dashboard.html' },
+    { id: 'workspace', label: 'Workspace', icon: 'fa-solid fa-comments', href: 'workspace.html' },
+    { id: 'agents', label: 'Agents', icon: 'fa-solid fa-robot', href: 'agents.html' },
+    { id: 'workflows', label: 'Workflows', icon: 'fa-solid fa-diagram-project', href: 'workflows.html' },
+    { id: 'repositories', label: 'Repositories', icon: 'fa-solid fa-code-branch', href: 'repositories.html' },
+    { id: 'testing', label: 'Testing', icon: 'fa-solid fa-vial', href: 'testing.html' },
+    { id: 'deployments', label: 'Deployments', icon: 'fa-solid fa-rocket', href: 'deployments.html' },
+    { id: 'integrations', label: 'Integrations', icon: 'fa-solid fa-link', href: 'integrations.html' }
   ];
 
   const controlNavItems = [
-    { id: 'support', label: 'Support', icon: '🚨', href: 'support.html' },
-    { id: 'settings', label: 'Settings', icon: '⚙️', href: 'settings.html' }
+    { id: 'support', label: 'Support', icon: 'fa-solid fa-headset', href: 'support.html' },
+    { id: 'settings', label: 'Settings', icon: 'fa-solid fa-gear', href: 'settings.html' }
   ];
 
   const filteredControlItems = controlNavItems;
@@ -186,8 +196,6 @@ function createNavigation(activePage) {
 
   const pendingEscalations = NexusStore.getEscalations().filter(e => e.status === 'PENDING').length;
   const unreadNotifs = (NexusStore.getNotifications() || []).filter(n => !n.read).length;
-
-  const stateColors = { IDLE: '#6b7280', EXECUTING: '#10b981', ESCALATION_PENDING: '#f59e0b', BLOCKED: '#ef4444', GATE_REVIEW: '#8b5cf6', RELEASED: '#3b82f6' };
 
   const nav = document.createElement('nav');
   const sidebarCollapsed = NexusSidebar.isCollapsed();
@@ -197,21 +205,17 @@ function createNavigation(activePage) {
   nav.innerHTML = `
     <div class="nav-header">
       <div class="nav-brand">
-        <span class="brand-icon">🧠</span>
+        <span class="brand-icon"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
         <span class="brand-text">NEXUS</span>
         <button class="nav-collapse-toggle" type="button" onclick="NexusSidebar.toggle()" aria-label="${sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}" aria-expanded="${String(!sidebarCollapsed)}" title="${sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}">
-          <span class="nav-collapse-glyph">&lt;</span>
+          <i class="nav-collapse-glyph fa-solid fa-chevron-left" aria-hidden="true"></i>
         </button>
-      </div>
-      <div class="system-state" style="background: ${stateColors[systemState] || '#6b7280'}20; color: ${stateColors[systemState] || '#6b7280'}; border: 1px solid ${stateColors[systemState] || '#6b7280'}40">
-        <span class="state-dot" style="background: ${stateColors[systemState] || '#6b7280'}"></span>
-        <span class="system-state-label">${systemState}</span>
       </div>
     </div>
     <div class="nav-links">
       ${mainNavItems.map(item => `
         <a href="${item.href}" class="nav-link ${(item.activePages || [item.id]).includes(activePage) ? 'active' : ''}" title="${item.label}" aria-label="${item.label}">
-          <span class="nav-icon">${item.icon}</span>
+          <span class="nav-icon"><i class="${item.icon}" aria-hidden="true"></i></span>
           <span class="nav-label">${item.label}</span>
           ${item.id === 'support' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
         </a>
@@ -219,7 +223,7 @@ function createNavigation(activePage) {
       <div class="nav-section-divider">Control Panel</div>
       ${filteredControlItems.map(item => `
         <a href="${item.href}" class="nav-link ${activePage === item.id ? 'active' : ''}" title="${item.label}" aria-label="${item.label}">
-          <span class="nav-icon">${item.icon}</span>
+          <span class="nav-icon"><i class="${item.icon}" aria-hidden="true"></i></span>
           <span class="nav-label">${item.label}</span>
           ${item.id === 'support' && pendingEscalations > 0 ? `<span class="nav-badge">${pendingEscalations}</span>` : ''}
         </a>
@@ -227,13 +231,24 @@ function createNavigation(activePage) {
     </div>
     <div class="nav-footer">
       <div class="nav-user">
-        <span class="user-avatar">${user?.avatar || '👤'}</span>
+        <span class="user-avatar"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
         <div class="user-info">
           <span class="user-name">${user?.name || 'Guest'}</span>
           <span class="user-role">${sidebarRoleLabel}</span>
         </div>
       </div>
-      <button class="nav-logout" onclick="handleLogout()" title="Logout" aria-label="Logout"><span class="nav-logout-icon">&rarr;</span><span class="nav-logout-label">Logout</span></button>
+      <button class="nav-logout" onclick="handleLogout()" title="Logout" aria-label="Logout"><i class="nav-logout-icon fa-solid fa-right-from-bracket" aria-hidden="true"></i><span class="nav-logout-label">Logout</span></button>
+      <div class="nav-profile-popover" role="tooltip">
+        <div class="nav-profile-popover-head">
+          <span class="user-avatar"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
+          <div>
+            <strong>${user?.name || 'Guest'}</strong>
+            <span>${tenantRoleLabel || 'User'}</span>
+          </div>
+        </div>
+        ${projectRoleLabel ? `<div class="nav-profile-role">Project role: ${projectRoleLabel}</div>` : ''}
+        <button class="nav-popover-logout" onclick="handleLogout()" type="button"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i> Logout</button>
+      </div>
     </div>
   `;
 
@@ -283,7 +298,7 @@ function createProjectSelector(containerId, onChange) {
 
   container.innerHTML = `
     <select id="projectSelect" class="project-select" onchange="window._onProjectChange && window._onProjectChange(this.value)">
-      ${projects.map(p => `<option value="${p.id}" ${p.id === selected ? 'selected' : ''}>${p.name} (${p.status})</option>`).join('')}
+      ${projects.map(p => `<option value="${p.id}" ${p.id === selected ? 'selected' : ''}>${p.name}</option>`).join('')}
     </select>
   `;
 
