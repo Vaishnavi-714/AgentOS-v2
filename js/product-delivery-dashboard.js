@@ -5,6 +5,7 @@ const ProductDeliveryDashboard = (() => {
     openDetailSections: {},
     roadmapFilter: 'ALL',
     roadmapPage: 0,
+    resizeTimer: null,
     expandedEscalationRows: {}
   };
 
@@ -12,6 +13,10 @@ const ProductDeliveryDashboard = (() => {
     seedNexusData();
     createNavigation('product-delivery-dashboard');
     window.addEventListener('nexus:selected-project-changed', render);
+    window.addEventListener('resize', () => {
+      clearTimeout(state.resizeTimer);
+      state.resizeTimer = setTimeout(render, 120);
+    });
     render();
   }
 
@@ -503,30 +508,20 @@ const ProductDeliveryDashboard = (() => {
     const req = detail.requirements;
     const total = Math.max(req.totalReceived, 1);
     return renderDetailBlock('Requirement Intake & Backlog Automation', `
-      <div class="pd-backlog-health">
-        <article>
-          <span class="pd-dot pd-tone-success"></span>
-          <div>
-            <strong>${detail.backlog.onScheduleCount}</strong>
-            <small>On Schedule Backlog Items</small>
+      <div class="pd-backlog-automation-layout">
+        <div class="pd-pipeline-panel" aria-label="Pipeline progress">
+          <h4>Pipeline Progress</h4>
+          <div class="pd-funnel-visual pd-funnel-visual-focus">
+            ${req.funnel.map((item, index) => `
+              <div class="pd-funnel-row pd-funnel-step-${index + 1}">
+                <span>${escapeHtml(item.label)}</span>
+                <strong>${item.value}</strong>
+                <i><b style="width:${clampPercent((item.value / total) * 100)}%"></b></i>
+              </div>
+            `).join('')}
           </div>
-        </article>
-        <article>
-          <span class="pd-dot pd-tone-warning"></span>
-          <div>
-            <strong>${detail.backlog.offScheduleCount}</strong>
-            <small>Off Schedule / Running Behind</small>
-          </div>
-        </article>
-      </div>
-      <div class="pd-funnel-visual pd-funnel-visual-focus">
-        ${req.funnel.map((item, index) => `
-          <div class="pd-funnel-row pd-funnel-step-${index + 1}">
-            <span>${escapeHtml(item.label)}</span>
-            <strong>${item.value}</strong>
-            <i><b style="width:${clampPercent((item.value / total) * 100)}%"></b></i>
-          </div>
-        `).join('')}
+        </div>
+        ${scheduleStatusChart(detail)}
       </div>
     `, 'pd-detail-full', {
       summary: sectionSummary([
@@ -537,9 +532,34 @@ const ProductDeliveryDashboard = (() => {
     });
   }
 
+  function scheduleStatusChart(detail) {
+    const items = [
+      ['On Schedule', detail.backlog.onScheduleCount, 'success'],
+      ['Behind', detail.backlog.offScheduleCount, 'warning'],
+      ['Approved', detail.backlog.approved, 'info']
+    ];
+    const max = Math.max(...items.map(item => Number(item[1]) || 0), 1);
+    return `
+      <aside class="pd-schedule-status-card" aria-label="Schedule Status">
+        <div class="pd-mini-section-head">
+          <h4>Schedule Status</h4>
+        </div>
+        <div class="pd-schedule-bars">
+          ${items.map(([label, value, tone]) => `
+            <div class="pd-schedule-bar pd-schedule-${tone}">
+              <strong>${value}</strong>
+              <i><b style="height:${clampPercent((value / max) * 100)}%"></b></i>
+              <span>${escapeHtml(label)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </aside>
+    `;
+  }
+
   function renderFeatureProgress(detail) {
     return renderDetailBlock('Feature / Module Progress', renderDataTable(
-      ['Feature / Module Name', 'Owner', 'Priority', 'Status', 'Completion %', 'Linked Sprints', 'Blockers', 'RAG Status'],
+      ['Module', 'Owner', 'Priority', 'Status', 'Completion', 'Sprints', 'Blockers', 'RAG'],
       detail.features.map(feature => [
         escapeHtml(feature.name),
         escapeHtml(feature.owner),
@@ -651,10 +671,9 @@ const ProductDeliveryDashboard = (() => {
 
   function renderRoadmapTimeline(detail) {
     const filtered = filteredRoadmapPhases(detail.roadmap.phases);
-    const pageSize = 3;
-    const maxPage = Math.max(0, Math.ceil(filtered.length / pageSize) - 1);
-    const page = Math.min(state.roadmapPage, maxPage);
-    const visible = filtered.slice(page * pageSize, page * pageSize + pageSize);
+    const visibleCount = roadmapVisibleCount();
+    const maxIndex = Math.max(0, filtered.length - visibleCount);
+    const page = Math.min(state.roadmapPage, maxIndex);
     return renderDetailBlock('Roadmap', `
       <div class="pd-roadmap-toolbar">
         <div class="pd-filter-chips" aria-label="Roadmap filters">
@@ -662,16 +681,13 @@ const ProductDeliveryDashboard = (() => {
           ${roadmapFilterButton('COMPLETED', 'Completed')}
           ${roadmapFilterButton('IN_PROGRESS', 'In Progress')}
         </div>
-        <div class="pd-carousel-controls">
-          <button type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(-1)" ${page <= 0 ? 'disabled' : ''} aria-label="Previous roadmap phases">&lt;</button>
-          <span>${filtered.length ? `${page + 1} / ${maxPage + 1}` : '0 / 0'}</span>
-          <button type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(1)" ${page >= maxPage ? 'disabled' : ''} aria-label="Next roadmap phases">&gt;</button>
-        </div>
       </div>
       <div class="pd-roadmap-carousel">
-        <div class="pd-roadmap-track">
-          ${visible.map(phase => roadmapPhaseCard(phase)).join('') || '<div class="pd-carousel-empty">No roadmap phases match this filter.</div>'}
+        ${filtered.length > 0 && page > 0 ? `<button class="pd-carousel-arrow pd-carousel-arrow-left" type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(-1)" aria-label="Previous roadmap phase">&#8249;</button>` : ''}
+        <div class="pd-roadmap-track" style="transform: translateX(calc(var(--pd-roadmap-step) * -${page}))">
+          ${filtered.map(phase => roadmapPhaseCard(phase)).join('') || '<div class="pd-carousel-empty">No roadmap phases match this filter.</div>'}
         </div>
+        ${filtered.length > 0 && page < maxIndex ? `<button class="pd-carousel-arrow pd-carousel-arrow-right" type="button" onclick="ProductDeliveryDashboard.moveRoadmapCarousel(1)" aria-label="Next roadmap phase">&#8250;</button>` : ''}
       </div>
     `, 'pd-detail-full', {
       summary: sectionSummary([
@@ -692,6 +708,13 @@ const ProductDeliveryDashboard = (() => {
   function roadmapFilterButton(value, label) {
     const active = state.roadmapFilter === value;
     return `<button class="${active ? 'active' : ''}" type="button" onclick="ProductDeliveryDashboard.setRoadmapFilter('${value}')">${escapeHtml(label)}</button>`;
+  }
+
+  function roadmapVisibleCount() {
+    if (typeof window === 'undefined') return 4;
+    if (window.innerWidth <= 700) return 1;
+    if (window.innerWidth <= 1000) return 2;
+    return 4;
   }
 
   function roadmapPhaseCard(phase) {
@@ -890,10 +913,13 @@ const ProductDeliveryDashboard = (() => {
     return renderDetailBlock('Delivery Health', `
       <div class="pd-health-grid">
         ${detail.health.items.map(item => `
-          <article>
-            <span>${escapeHtml(item.label)}</span>
-            ${deliveryHealthBadge(item.status)}
+          <article class="pd-health-metric-card">
+            <div class="pd-health-card-head">
+              <span>${escapeHtml(item.label)}</span>
+              ${deliveryHealthBadge(item.status)}
+            </div>
             ${bar(item.score)}
+            <small>${escapeHtml(healthSignalText(item))}</small>
           </article>
         `).join('')}
       </div>
@@ -911,12 +937,22 @@ const ProductDeliveryDashboard = (() => {
     });
   }
 
+  function healthSignalText(item) {
+    const label = String(item.label || 'Delivery').replace(/\s+/g, ' ').trim();
+    const score = Number(item.score) || 0;
+    const status = String(item.status || '');
+    if (/red|critical|blocked|risk/i.test(status)) return `${label} needs attention`;
+    if (/amber|watch|monitor/i.test(status)) return `${label} risk moderate`;
+    if (score >= 80) return `${label} stable`;
+    return `${label} tracking`;
+  }
+
   function renderDataTable(headers, rows, className = '') {
     return `
       <div class="table-container pd-inner-table ${className}">
         <table class="pd-table pd-compact-table">
           <thead><tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
-          <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+          <tbody>${rows.map(row => `<tr>${row.map((cell, index) => `<td data-label="${escapeHtml(headers[index] || '')}">${cell}</td>`).join('')}</tr>`).join('')}</tbody>
         </table>
       </div>
     `;
@@ -1348,8 +1384,8 @@ const ProductDeliveryDashboard = (() => {
   function ragStatusDot(value) {
     const normalized = String(value || 'green').toLowerCase();
     const tone = normalized.includes('red') ? 'red' : normalized.includes('amber') || normalized.includes('yellow') ? 'amber' : 'green';
-    const labels = { green: 'Healthy / On Track', amber: 'Watch / At Risk', red: 'Critical / Blocked' };
-    return `<span class="pd-rag-status pd-rag-${tone}" title="${labels[tone]}" aria-label="${labels[tone]}"><i></i><span>${labels[tone].split(' / ')[0]}</span></span>`;
+    const labels = { green: 'Green / Healthy', amber: 'Amber / Watch', red: 'Red / At Risk' };
+    return `<span class="pd-rag-status pd-rag-${tone}" title="${labels[tone]}" aria-label="${labels[tone]}"><i></i></span>`;
   }
 
   function clampPercent(value) {
@@ -1978,7 +2014,12 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function moveRoadmapCarousel(delta) {
-    state.roadmapPage = Math.max(0, state.roadmapPage + Number(delta || 0));
+    const detail = state.expandedProductProjectId
+      ? buildProductDeliveryDetail(NexusStore.getProjects().find(project => project.id === state.expandedProductProjectId))
+      : null;
+    const filtered = detail ? filteredRoadmapPhases(detail.roadmap.phases) : [];
+    const maxIndex = Math.max(0, filtered.length - roadmapVisibleCount());
+    state.roadmapPage = Math.max(0, Math.min(maxIndex, state.roadmapPage + Number(delta || 0)));
     render();
   }
 
