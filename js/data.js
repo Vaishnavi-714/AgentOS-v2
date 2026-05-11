@@ -478,6 +478,8 @@ function ensureNexusExtensionData() {
       ...member,
       projectRole: member.projectRole || (member.projectRoles || [])[0]
     }));
+    if (!Array.isArray(project.projectUsers)) projectChanged = true;
+    project.projectUsers = project.members;
     project.assignedUsers = project.members;
     if (!Array.isArray(project.selectedWorkflows)) {
       project.selectedWorkflows = ['Requirements to Backlog Pipeline', 'Quality Gate Review'];

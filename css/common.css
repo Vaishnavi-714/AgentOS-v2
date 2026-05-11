@@ -452,6 +452,113 @@ body.sidebar-collapsed .nav-profile-popover {
 }
 .card-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .card-subtitle { font-size: 12px; color: var(--text-muted); }
+.project-card-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.project-actions-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.7;
+}
+.card:hover .project-actions-btn,
+.project-actions-btn:hover,
+.project-actions-btn:focus {
+  opacity: 1;
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--border);
+  outline: none;
+}
+.project-actions-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 1200;
+  min-width: 190px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow);
+}
+.project-actions-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.project-actions-item:hover,
+.project-actions-item:focus {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  outline: none;
+}
+.project-actions-item.danger { color: var(--danger); }
+.project-actions-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+.project-users-modal {
+  max-width: 980px;
+  width: min(980px, calc(100vw - 32px));
+}
+.project-users-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.project-users-name {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 700;
+}
+.project-users-modal .table-container {
+  max-height: 52vh;
+  overflow: auto;
+}
+.project-users-modal th:first-child,
+.project-users-modal td:first-child {
+  width: 76px;
+  text-align: center;
+}
+.project-users-modal th:last-child,
+.project-users-modal td:last-child {
+  width: 110px;
+}
+@media (max-width: 768px) {
+  .project-users-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .project-users-modal {
+    width: calc(100vw - 20px);
+  }
+  .project-actions-menu {
+    right: -4px;
+  }
+}
 
 /* Grid */
 .grid { display: grid; gap: 16px; }

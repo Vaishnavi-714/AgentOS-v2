@@ -540,7 +540,7 @@
           const done = tasks.filter(t=>t.status==='DONE').length;
           const pct = pipeline ? Math.round(pipeline.stages.filter(s=>s.status==='COMPLETED').length/pipeline.stages.length*100) : 0;
           return `<div class="card" style="cursor:pointer" onclick="selectProject('${p.id}')">
-            <div class="card-header"><div><h3 class="card-title">${escapeHtml(p.name)}</h3><p class="card-subtitle">${escapeHtml(p.domain)} · ${formatTime(p.createdAt)}</p></div>${statusBadge(p.status)}</div>
+            <div class="card-header"><div><h3 class="card-title">${escapeHtml(p.name)}</h3><p class="card-subtitle">${escapeHtml(p.domain)} · ${formatTime(p.createdAt)}</p></div><div class="project-card-actions">${statusBadge(p.status)}${ProjectAccessUI.renderProjectCardActions(p.id)}</div></div>
             <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">${escapeHtml(p.description)}</p>
             <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;color:var(--text-muted)">Pipeline</span><span style="font-size:12px">${pct}%</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${(p.techStack||[]).map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>

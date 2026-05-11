@@ -91,6 +91,7 @@ const MockAPI = {
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       createdBy: currentUser?.id || 'unknown',
       tenantId: data.tenantId || currentTenant?.tenant_id || currentTenant?.id || 'TNT-001',
+      projectUsers: members,
       assignedUsers: members,
       members,
       orgStructure: data.orgStructure || setup.orgStructure,

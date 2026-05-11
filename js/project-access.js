@@ -65,6 +65,38 @@ const ProjectAccessUI = {
     return NexusPermissions.getVisibleProjects(NexusStore.getProjects());
   },
 
+  getProjectAssignments(project) {
+    const assignments = Array.isArray(project?.projectUsers) ? project.projectUsers
+      : Array.isArray(project?.assignedUsers) ? project.assignedUsers
+      : Array.isArray(project?.members) ? project.members
+      : [];
+    const seen = new Set();
+    return assignments.reduce((list, assignment) => {
+      const key = assignment.userId || assignment.email;
+      if (!key || seen.has(key)) return list;
+      seen.add(key);
+      list.push({
+        ...assignment,
+        projectId: project?.id || assignment.projectId || '',
+        projectRole: this.normalizeProjectRole(assignment.projectRole || assignment.projectRoles?.[0])
+      });
+      return list;
+    }, []);
+  },
+
+  syncProjectAssignments(project, assignments) {
+    const normalized = assignments.map(assignment => ({
+      ...assignment,
+      projectId: project.id,
+      projectRole: this.normalizeProjectRole(assignment.projectRole)
+    }));
+    project.projectUsers = normalized;
+    project.members = normalized;
+    project.assignedUsers = normalized;
+    project.updatedAt = new Date().toISOString();
+    NexusStore.saveProject(project);
+  },
+
   projectCreateDeniedMessage: 'Only Tenant Admins or Admins can create projects.',
 
   tenantRoleLabel(user) {
@@ -106,6 +138,233 @@ const ProjectAccessUI = {
     document.querySelectorAll('#projectSelectorContainer').forEach(container => {
       container.style.display = hasProjects ? 'inline-block' : 'none';
     });
+  },
+
+  bindProjectActionDismiss() {
+    if (this._projectActionDismissBound) return;
+    this._projectActionDismissBound = true;
+    document.addEventListener('click', event => {
+      if (!event.target.closest('.project-card-actions')) this.closeProjectActionMenus();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') this.closeProjectActionMenus();
+    });
+  },
+
+  closeProjectActionMenus() {
+    document.querySelectorAll('.project-actions-menu').forEach(menu => {
+      menu.hidden = true;
+    });
+  },
+
+  renderProjectCardActions(projectId) {
+    this.bindProjectActionDismiss();
+    return `
+      <div class="project-card-actions" onclick="event.stopPropagation()">
+        <button type="button" class="btn btn-icon project-actions-btn" aria-label="Project actions" title="Project actions" onclick="ProjectAccessUI.toggleProjectActions(event, '${projectId}')">&#8942;</button>
+        <div class="project-actions-menu" data-project-actions="${projectId}" hidden>
+          <button type="button" class="project-actions-item" onclick="ProjectAccessUI.openManageProjectUsers('${projectId}')">Manage Project Users</button>
+          <button type="button" class="project-actions-item" onclick="ProjectAccessUI.showProjectActionPlaceholder('Project Settings')">Project Settings</button>
+          <div class="project-actions-divider"></div>
+          <button type="button" class="project-actions-item danger" onclick="ProjectAccessUI.showProjectActionPlaceholder('Delete Project')">Delete Project</button>
+        </div>
+      </div>
+    `;
+  },
+
+  toggleProjectActions(event, projectId) {
+    event.preventDefault();
+    event.stopPropagation();
+    const menu = document.querySelector(`.project-actions-menu[data-project-actions="${projectId}"]`);
+    if (!menu) return;
+    const shouldOpen = menu.hidden;
+    this.closeProjectActionMenus();
+    menu.hidden = !shouldOpen;
+  },
+
+  showProjectActionPlaceholder(label) {
+    this.closeProjectActionMenus();
+    showToast(`${label} is not available yet.`, 'info');
+  },
+
+  ensureManageProjectUsersModal() {
+    let overlay = document.getElementById('manageProjectUsersModal');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'manageProjectUsersModal';
+    overlay.innerHTML = `
+      <div class="modal project-users-modal" role="dialog" aria-modal="true" aria-labelledby="manageProjectUsersTitle">
+        <div class="modal-header">
+          <h3 class="modal-title" id="manageProjectUsersTitle">Manage Project Users</h3>
+          <button class="modal-close" type="button" aria-label="Close manage project users" onclick="ProjectAccessUI.closeManageProjectUsers()">&times;</button>
+        </div>
+        <div class="modal-body" id="manageProjectUsersBody"></div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" type="button" onclick="ProjectAccessUI.closeManageProjectUsers()">Cancel</button>
+          <button class="btn btn-primary" type="button" onclick="ProjectAccessUI.saveManagedProjectUsers()">Save Changes</button>
+        </div>
+      </div>
+    `;
+    overlay.addEventListener('click', event => {
+      if (event.target === overlay) this.closeManageProjectUsers();
+    });
+    document.body.appendChild(overlay);
+    return overlay;
+  },
+
+  openManageProjectUsers(projectId) {
+    this.closeProjectActionMenus();
+    const project = NexusStore.getProject(projectId);
+    if (!project) return;
+    const overlay = this.ensureManageProjectUsersModal();
+    overlay.dataset.projectId = projectId;
+    this.renderManageProjectUsers(projectId);
+    overlay.classList.add('show');
+  },
+
+  closeManageProjectUsers() {
+    const overlay = document.getElementById('manageProjectUsersModal');
+    if (overlay) overlay.classList.remove('show');
+  },
+
+  renderManageProjectUsers(projectId) {
+    const project = NexusStore.getProject(projectId);
+    const body = document.getElementById('manageProjectUsersBody');
+    if (!project || !body) return;
+    const users = this.getTenantUsers();
+    const assignments = this.getProjectAssignments(project);
+    const assignmentByUser = Object.fromEntries(assignments.map(assignment => [assignment.userId, assignment]));
+    body.innerHTML = `
+      <div class="project-users-heading">
+        <div>
+          <span class="form-label">Project</span>
+          <div class="project-users-name">${this.esc(project.name)}</div>
+        </div>
+        <span class="tag">${assignments.length} assigned</span>
+      </div>
+      <div class="rt-validation err project-users-error" style="display:none"></div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Assign</th>
+              <th>User name</th>
+              <th>Email</th>
+              <th>Tenant role</th>
+              <th>Project role</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${users.map(user => {
+              const assignment = assignmentByUser[user.id];
+              const checked = assignment ? 'checked' : '';
+              const projectRole = this.normalizeProjectRole(assignment?.projectRole || assignment?.projectRoles?.[0]);
+              return `<tr>
+                <td><input type="checkbox" class="manage-project-user" data-user-id="${user.id}" ${checked} onchange="ProjectAccessUI.handleManageAssignmentToggle(this)"></td>
+                <td><strong>${this.esc(user.name)}</strong></td>
+                <td>${this.esc(user.email)}</td>
+                <td><span class="tag">${this.esc(this.tenantRoleLabel(user))}</span></td>
+                <td>
+                  ${this.renderRoleSelect('manage', user.id, projectRole, !assignment)}
+                  <div class="rt-validation err project-role-error" data-user-id="${user.id}" style="display:none">Select project role.</div>
+                </td>
+              </tr>`;
+            }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No tenant users available</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+  },
+
+  handleManageAssignmentToggle(input) {
+    const overlay = document.getElementById('manageProjectUsersModal');
+    const select = overlay?.querySelector(`.manage-project-role[data-user-id="${input.dataset.userId}"]`);
+    if (!select) return;
+    select.disabled = !input.checked;
+    if (!input.checked) {
+      select.value = '';
+      this.clearRoleError(input.dataset.userId);
+    }
+    const error = overlay.querySelector('.project-users-error');
+    if (error) error.style.display = 'none';
+  },
+
+  removeManagedProjectUser(userId) {
+    const overlay = document.getElementById('manageProjectUsersModal');
+    const checkbox = overlay?.querySelector(`.manage-project-user[data-user-id="${userId}"]`);
+    if (!checkbox) return;
+    checkbox.checked = false;
+    this.handleManageAssignmentToggle(checkbox);
+  },
+
+  collectManagedProjectUsers() {
+    const overlay = document.getElementById('manageProjectUsersModal');
+    const users = this.getTenantUsers();
+    if (!overlay) return [];
+    return [...overlay.querySelectorAll('.manage-project-user:checked')].map(input => {
+      const user = users.find(item => item.id === input.dataset.userId);
+      const projectRole = overlay.querySelector(`.manage-project-role[data-user-id="${input.dataset.userId}"]`)?.value || '';
+      return {
+        userId: input.dataset.userId,
+        name: user?.name || '',
+        email: user?.email || '',
+        tenantRole: this.tenantRoleLabel(user),
+        projectRole
+      };
+    });
+  },
+
+  validateManagedProjectUsers() {
+    const overlay = document.getElementById('manageProjectUsersModal');
+    const error = overlay?.querySelector('.project-users-error');
+    if (!overlay || !error) return { valid: false, assignments: [] };
+    error.style.display = 'none';
+    overlay.querySelectorAll('.project-role-error').forEach(item => { item.style.display = 'none'; });
+    const checked = [...overlay.querySelectorAll('.manage-project-user:checked')];
+    if (!checked.length) {
+      error.textContent = 'At least one project user must remain assigned.';
+      error.style.display = 'flex';
+      return { valid: false, assignments: [] };
+    }
+    const seen = new Set();
+    let valid = true;
+    checked.forEach(input => {
+      if (seen.has(input.dataset.userId)) valid = false;
+      seen.add(input.dataset.userId);
+      const select = overlay.querySelector(`.manage-project-role[data-user-id="${input.dataset.userId}"]`);
+      const role = this.normalizeProjectRole(select?.value || '');
+      if (!role) {
+        valid = false;
+        const roleError = overlay.querySelector(`.project-role-error[data-user-id="${input.dataset.userId}"]`);
+        if (roleError) {
+          roleError.textContent = 'Select a project role for each assigned user.';
+          roleError.style.display = 'flex';
+        }
+      } else {
+        select.value = role;
+      }
+    });
+    if (!valid && seen.size !== checked.length) {
+      error.textContent = 'A user can only be assigned to this project once.';
+      error.style.display = 'flex';
+    }
+    return { valid, assignments: valid ? this.collectManagedProjectUsers() : [] };
+  },
+
+  saveManagedProjectUsers() {
+    const overlay = document.getElementById('manageProjectUsersModal');
+    const project = NexusStore.getProject(overlay?.dataset.projectId);
+    if (!project) return;
+    const validation = this.validateManagedProjectUsers();
+    if (!validation.valid) {
+      showToast('Please fix project user validation errors.', 'error');
+      return;
+    }
+    this.syncProjectAssignments(project, validation.assignments);
+    this.closeManageProjectUsers();
+    showToast('Project users updated', 'success');
+    if (typeof renderAll === 'function') renderAll();
   },
 
   renderCreateProjectMembers(containerId = 'projectMemberAssignments') {
@@ -397,7 +656,7 @@ const ProjectAccessUI = {
     if (!container) return;
     const canEdit = NexusPermissions.canAssignProjectRoles();
     const users = this.getTenantUsers();
-    const assignments = Array.isArray(project.members) ? project.members : [];
+    const assignments = this.getProjectAssignments(project);
     const assignmentByUser = Object.fromEntries(assignments.map(a => [a.userId, a]));
     const rows = (canEdit ? users : users.filter(u => assignmentByUser[u.id])).map(user => {
       const assignment = assignmentByUser[user.id];
@@ -447,11 +706,9 @@ const ProjectAccessUI = {
         projectRole
       };
     });
-    project.members = assignments;
-    project.updatedAt = new Date().toISOString();
-    NexusStore.saveProject(project);
+    this.syncProjectAssignments(project, assignments);
     showToast('Project roles saved', 'success');
-    this.renderProjectTeamRoles(project);
+    this.renderProjectTeamRoles(NexusStore.getProject(project.id));
   },
 
   handleTeamAssignmentToggle(input) {
