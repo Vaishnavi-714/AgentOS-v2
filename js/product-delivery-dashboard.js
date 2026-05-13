@@ -30,45 +30,28 @@ const ProductDeliveryDashboard = (() => {
       return;
     }
 
+    if (!model.assignedProjects.length) {
+      root.innerHTML = noAssignedProjects();
+      return;
+    }
+
     root.innerHTML = `
-      <div class="page-header pd-page-header">
-        <div>
-          <h1 class="page-title">Product &amp; Delivery Dashboard</h1>
-          <p class="page-subtitle">Structured project execution and aligned delivery.</p>
-        </div>
-      </div>
-
-      <div class="pd-summary-grid" aria-label="Product and Delivery dashboard navigation">
-        ${summaryCard('Total Projects', model.assignedProjects.length, 'All projects assigned to you', `${model.productDeliveryProjects.length} delivery, ${model.crossRoleProjects.length} cross-role`, projectMixProgress(model), 'product-delivery-projects')}
-        ${summaryCard('Product & Delivery Projects', model.productDeliveryProjects.length, 'Projects where you own delivery flow', 'Open project details for PM controls', model.productDeliveryProjects.length ? 100 : 0, 'product-delivery-projects')}
-        ${summaryCard('Cross-Role Projects', model.crossRoleProjects.length, 'Projects where you support another role', `${model.crossRoleBlockers} blocker${model.crossRoleBlockers === 1 ? '' : 's'}`, model.assignedProjects.length ? (model.crossRoleProjects.length / model.assignedProjects.length) * 100 : 0, 'cross-role-projects')}
-      </div>
-
-      ${!model.assignedProjects.length ? noAssignedProjects() : `
-        <section class="pd-section" id="product-delivery-projects">
-          <div class="pd-unified-section-card">
+      <div class="pd-command-shell">
+        ${renderCommandHero()}
+        ${renderProductProjectRail(model.productDeliveryProjects, model)}
+        <section class="pd-section pd-command-section pd-compact-cross-role" id="cross-role-projects">
+          <div class="pd-unified-section-card pd-project-rail-card">
             <div class="pd-section-header pd-unified-section-header">
               <div>
-                <h2>Product &amp; Delivery Projects</h2>
-                <p>Projects where you are responsible for requirement intake, planning boards, task tracking, roadmap visibility, backlog approvals, and stage progression.</p>
-              </div>
-            </div>
-            ${renderProductDeliveryTable(model.productDeliveryProjects, model)}
-          </div>
-        </section>
-
-        <section class="pd-section" id="cross-role-projects">
-          <div class="pd-unified-section-card">
-            <div class="pd-section-header pd-unified-section-header">
-              <div>
+                <span class="pd-section-eyebrow">Portfolio adjacency</span>
                 <h2>Cross-Role Projects</h2>
-                <p>Projects where you are involved in a role other than Product &amp; Delivery.</p>
+                <p>Projects where you support delivery through another role, module, or workstream.</p>
               </div>
             </div>
             ${renderCrossRoleTable(model.crossRoleProjects, model)}
           </div>
         </section>
-      `}
+      </div>
     `;
   }
 
@@ -120,6 +103,69 @@ const ProductDeliveryDashboard = (() => {
     return (model.productDeliveryProjects.length / model.assignedProjects.length) * 100;
   }
 
+  function renderCommandHero() {
+    return `
+      <section class="pd-command-hero" aria-label="Product and Delivery Command Center">
+        <div class="pd-command-hero-main">
+          <span class="pd-hero-kicker">Product &amp; Delivery</span>
+          <h1>Product &amp; Delivery Dashboard</h1>
+          <p>Structured project execution and aligned delivery.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function noProductDeliveryProjects() {
+    return `
+      <section class="pd-section" id="product-delivery-projects">
+        <div class="pd-empty-state">
+          <h3>No Product &amp; Delivery Projects</h3>
+          <p>You are not assigned as Product &amp; Delivery on the selected project or any current project.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderProductProjectRail(projects, model) {
+    return `
+      <section class="pd-section pd-command-section" id="product-delivery-projects">
+        <div class="pd-unified-section-card pd-project-rail-card">
+          <div class="pd-section-header pd-unified-section-header">
+            <div>
+              <span class="pd-section-eyebrow">Project selector</span>
+              <h2>Product &amp; Delivery Projects</h2>
+              <p>Requirement intake, planning boards, task tracking, roadmap visibility, backlog approvals, and stage progression.</p>
+            </div>
+          </div>
+          ${renderProductDeliveryTable(projects, model)}
+        </div>
+      </section>
+    `;
+  }
+
+  function productProjectTile(project, activeProject, model) {
+    const detail = buildProductDeliveryDetail(project);
+    const active = project.id === activeProject?.id;
+    return `
+      <button class="pd-project-tile ${active ? 'is-active' : ''}" type="button" onclick="ProductDeliveryDashboard.toggleProductDetails('${project.id}')">
+        <span class="pd-project-tile-top">
+          <strong>${escapeHtml(project.name)}</strong>
+          ${statusBadge(project.status || 'ACTIVE')}
+        </span>
+        <span class="pd-project-tile-description">${escapeHtml(project.description || 'No description provided')}</span>
+        <span class="pd-project-tile-meta">
+          <span>Started <b>${formatDate(project.createdAt || project.created_at)}</b></span>
+          <span>Delivery <b>${formatDate(getDeliveryDate(project))}</b></span>
+          <span>Team <b>${NexusRoleUtils.getProjectAssignments(project).length}</b></span>
+        </span>
+        <span class="pd-project-tile-health">
+          ${deliveryHealthBadge(detail.roadmap.deliveryHealth)}
+          ${miniProgress(detail.workflow.completionPercentage)}
+        </span>
+      </button>
+    `;
+  }
+
   function roleMismatchState(model) {
     const roleLabel = model.selectedProjectRoleLabel || 'no assigned project role';
     return `
@@ -160,24 +206,8 @@ const ProductDeliveryDashboard = (() => {
     }
 
     return `
-      <div class="table-container pd-table-card pd-unified-table">
-        <table class="pd-table">
-          <thead>
-            <tr>
-              <th>Project Name</th>
-              <th>Project Description</th>
-              <th>Started Date</th>
-              <th>Delivery Date</th>
-              <th>Team Members</th>
-              <th>Delivery Health</th>
-              <th>Status</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${projects.map(project => productDeliveryRow(project, model)).join('')}
-          </tbody>
-        </table>
+      <div class="pd-project-summary-list" role="list">
+        ${projects.map(project => productDeliveryRow(project, model)).join('')}
       </div>
     `;
   }
@@ -185,101 +215,204 @@ const ProductDeliveryDashboard = (() => {
   function productDeliveryRow(project, model) {
     const expanded = state.expandedProductProjectId === project.id;
     const detail = buildProductDeliveryDetail(project);
+    const owner = deliveryOwner(project, model.tenantUsers);
+    const blockers = Number(detail.risks.summary.blockers || 0) + Number(detail.escalations.summary.slaBreaches || 0);
+    const topRisk = detail.risks.items.find(item => item.status !== 'RESOLVED') || detail.risks.items[0];
     return `
-      <tr>
-        <td><strong>${escapeHtml(project.name)}</strong></td>
-        <td class="pd-description-cell">${escapeHtml(project.description || 'No description provided')}</td>
-        <td>${formatDate(project.createdAt || project.created_at)}</td>
-        <td>${formatDate(getDeliveryDate(project))}</td>
-        <td>${teamSummary(project, model.tenantUsers)}</td>
-        <td>
-          ${deliveryHealthBadge(detail.roadmap.deliveryHealth)}
+      <article class="pd-project-summary-row ${expanded ? 'is-expanded' : ''}" role="listitem">
+        <div class="pd-project-summary-main">
+          <span class="pd-health-dot ${healthDotClass(detail.roadmap.deliveryHealth)}" title="${escapeHtml(detail.roadmap.deliveryHealth)}"></span>
+          <div class="pd-project-name-block">
+            <strong title="${escapeHtml(project.name)}">${escapeHtml(project.name)}</strong>
+            <span title="${escapeHtml(project.description || 'No description provided')}">${escapeHtml(project.description || 'No description provided')}</span>
+          </div>
+        </div>
+        <div class="pd-project-summary-meta">
+          <span><b>Owner</b>${escapeHtml(owner)}</span>
+          <span><b>Priority</b>${priorityBadge(detail.prioritization.priorityRank)}</span>
+          <span><b>Status</b>${statusBadge(project.status || 'ACTIVE')}</span>
+          <span><b>Sprint</b><i>${escapeHtml(shortSprintName(detail.overview.currentSprint))}</i></span>
+          <span><b>Risk</b>${blockersBadge(blockers ? `${blockers} open` : 'None')}</span>
+        </div>
+        <div class="pd-project-summary-progress">
+          <div>
+            <strong>${detail.workflow.completionPercentage}%</strong>
+            <span>progress</span>
+          </div>
           ${miniProgress(detail.workflow.completionPercentage)}
-        </td>
-        <td>${statusBadge(project.status || 'ACTIVE')}</td>
-        <td><button class="btn btn-outline btn-sm" type="button" onclick="ProductDeliveryDashboard.toggleProductDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button></td>
-      </tr>
-      ${expanded ? `<tr class="pd-details-row"><td colspan="8">${renderProductDeliveryDetails(project)}</td></tr>` : ''}
+        </div>
+        <button class="pd-view-details-btn" type="button" onclick="ProductDeliveryDashboard.toggleProductDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button>
+        ${topRisk ? `<div class="pd-project-risk-note"><span>${escapeHtml(topRisk.category)}</span>${escapeHtml(topRisk.name)} · ${escapeHtml(topRisk.owner)}</div>` : ''}
+      </article>
+      ${expanded ? `<div class="pd-details-row">${renderProductDeliveryDetails(project)}</div>` : ''}
     `;
+  }
+
+  function emptyWidget(message) {
+    return `<div class="pd-widget-empty">${escapeHtml(message)}</div>`;
+  }
+
+  function deliveryOwner(project, tenantUsers) {
+    const assignment = NexusRoleUtils.getProjectAssignments(project).find(item => getProjectRole(project, { id: item.userId, email: item.email }) === 'PRODUCT_DELIVERY')
+      || NexusRoleUtils.getProjectAssignments(project)[0];
+    const user = tenantUsers.find(item => item.id === assignment?.userId || item.email === assignment?.email);
+    return user?.name || assignment?.name || assignment?.persona || assignment?.role || 'Delivery Manager';
+  }
+
+  function shortSprintName(value) {
+    return String(value || 'Sprint').replace(/^Sprint\s+/i, 'S');
+  }
+
+  function healthDotClass(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized.includes('red') || normalized.includes('risk') || normalized.includes('blocked')) return 'is-red';
+    if (normalized.includes('amber') || normalized.includes('watch')) return 'is-amber';
+    return 'is-green';
   }
 
   function renderProductDeliveryDetails(project) {
     const detail = buildProductDeliveryDetail(project);
     return `
-      <div class="pd-details-card pd-pdm-details">
+      <div class="pd-details-card pd-pdm-details pd-command-center-grid">
         <div class="pd-details-titlebar">
           <div>
             <h3>${escapeHtml(project.name || 'Project')} Product &amp; Delivery View</h3>
             <p>${escapeHtml(project.description || 'Project-specific delivery management data generated for this project.')}</p>
           </div>
-          ${deliveryHealthBadge(detail.roadmap.deliveryHealth)}
+          <div class="pd-details-titlebar-meta">
+            ${deliveryHealthBadge(detail.roadmap.deliveryHealth)}
+            <span class="pd-mini-chip">${escapeHtml(detail.overview.currentSprint)}</span>
+            <span class="pd-mini-chip">${escapeHtml(String(detail.workflow.completionPercentage))}% complete</span>
+          </div>
         </div>
-        ${renderDetailBlock('Project Overview', renderMetricCards([
-          ['Total Requirements', detail.overview.totalRequirements],
-          ['Requirements Pending Review', detail.overview.requirementsPendingReview],
-          ['Ready for Backlog', detail.overview.readyForBacklog],
-          ['Backlog Items Generated', detail.overview.backlogItemsGenerated],
-          ['Backlog Items Approved', detail.overview.backlogItemsApproved],
-          ['Current Sprint', detail.overview.currentSprint],
-          ['Current Milestone', detail.overview.currentMilestone],
-          ['Delivery Confidence', detail.overview.deliveryConfidence],
-          ['Overall Completion %', `${detail.overview.overallCompletion}%`],
-          ['Target Delivery Date', formatDate(detail.overview.targetDeliveryDate)],
-          ['Days Remaining', detail.overview.daysRemaining],
-          ['Project Health', detail.overview.projectHealth]
-        ]), 'pd-detail-full', {
-          summary: sectionSummary([
-            ['Completion', `${detail.overview.overallCompletion}%`],
-            ['Current Sprint', detail.overview.currentSprint],
-            ['Health', detail.overview.projectHealth]
-          ]),
-          defaultOpen: true
-        })}
-        ${renderDeliveryHealth(detail)}
-        ${renderRoadmapTimeline(detail)}
-        ${renderMilestones(detail)}
-        ${renderRequirementBacklog(detail)}
-        ${renderFeatureProgress(detail)}
-        ${renderPrioritization(detail)}
-        ${renderSprintPlanning(detail)}
-        ${renderResourcePlanning(detail)}
-        ${renderStageGates(detail)}
-        ${renderDependencies(detail)}
-        ${renderRisks(detail)}
-        ${renderEscalations(detail)}
-        ${renderCostBudget(detail)}
-        ${renderStakeholders(detail)}
+        ${renderExecutiveKpiStrip(detail)}
+        <div class="pd-dashboard-grid">
+          ${renderDeliveryHealth(detail)}
+          ${renderActionNeeded(detail)}
+          ${renderRoadmapTimeline(detail)}
+          ${renderRequirementBacklog(detail)}
+          ${renderFeatureProgress(detail)}
+          ${renderPrioritization(detail)}
+          ${renderSprintPlanning(detail)}
+          ${renderResourcePlanning(detail)}
+          <div class="pd-governance-zone">
+            ${renderMilestones(detail)}
+            ${renderStageGates(detail)}
+            ${renderDependencies(detail)}
+            ${renderRisks(detail)}
+          ${renderEscalations(detail)}
+          </div>
+          ${renderCostBudget(detail)}
+          ${renderDecisionLog(detail)}
+          ${renderStakeholders(detail)}
+        </div>
       </div>
     `;
   }
 
   function renderDetailBlock(title, body, className = '', options = {}) {
-    if (options.accordion === false) {
-      return `
-        <section class="pd-management-section ${className}">
-          <div class="pd-management-head">
+    const widgetClass = `pd-widget-${String(title || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+    return `
+      <section class="pd-management-section ${widgetClass} ${className}">
+        <div class="pd-management-head">
+          <div>
+            <span class="pd-section-eyebrow">${escapeHtml(options.eyebrow || 'Command widget')}</span>
             <h3>${escapeHtml(title)}</h3>
           </div>
-          ${body}
-        </section>
-      `;
-    }
-    const sectionKey = detailSectionKey(title);
-    const defaultOpen = options.defaultOpen ?? ['Project Overview', 'Delivery Health', 'Roadmap', 'Milestones'].includes(title);
-    const isOpen = state.openDetailSections[sectionKey] ?? defaultOpen;
-    const summary = options.summary || `<span>${escapeHtml(options.summaryText || 'Quick view available')}</span>`;
-    return `
-      <section class="pd-management-section pd-accordion-section ${className} ${isOpen ? 'is-open' : 'is-collapsed'}">
-        <button class="pd-management-head pd-accordion-head" type="button" onclick="ProductDeliveryDashboard.toggleDetailSection('${sectionKey}', ${String(isOpen)})" aria-expanded="${String(isOpen)}">
-          <span class="pd-accordion-title">${escapeHtml(title)}</span>
-          <span class="pd-accordion-summary">${summary}</span>
-          <span class="pd-accordion-chevron">${isOpen ? '&#9650;' : '&#9660;'}</span>
-        </button>
-        <div class="pd-accordion-body" ${isOpen ? '' : 'hidden'}>
-          ${body}
+          ${options.summary ? `<div class="pd-accordion-summary">${options.summary}</div>` : ''}
         </div>
+        ${body}
       </section>
     `;
+  }
+
+  function renderExecutiveKpiStrip(detail) {
+    const items = [
+      ['Total Requirements', detail.overview.totalRequirements, 'Intake scope', 'blue', detail.overview.overallCompletion],
+      ['Ready for Backlog', detail.overview.readyForBacklog, 'Reviewed and ready', 'green', (detail.overview.readyForBacklog / Math.max(detail.overview.totalRequirements, 1)) * 100],
+      ['Backlog Generated', detail.overview.backlogItemsGenerated, 'Automation output', 'cream', (detail.overview.backlogItemsGenerated / Math.max(detail.backlog.generated, 1)) * 100],
+      ['Backlog Approved', detail.overview.backlogItemsApproved, 'Approved delivery items', 'purple', (detail.overview.backlogItemsApproved / Math.max(detail.backlog.generated, 1)) * 100],
+      ['Completion %', `${detail.overview.overallCompletion}%`, 'Overall progression', 'green', detail.overview.overallCompletion],
+      ['Delivery Confidence', detail.overview.deliveryConfidence, 'Execution confidence', 'blue', confidencePercent(detail.overview.deliveryConfidence)],
+      ['Days Remaining', detail.overview.daysRemaining, 'Target delivery clock', 'cream', daysRemainingPercent(detail.overview.daysRemaining)],
+      ['Project Health', detail.overview.projectHealth, 'Delivery signal', 'purple', detail.overview.overallCompletion]
+    ];
+    return `
+      <section class="pd-executive-kpi-strip" aria-label="Executive Product and Delivery KPIs">
+        ${items.map(([label, value, helper, tone, progress]) => `
+          <article class="pd-exec-kpi pd-exec-kpi-${tone}">
+            <div>
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(String(value))}</strong>
+              <small>${escapeHtml(helper)}</small>
+            </div>
+            <i aria-hidden="true">${metricIcon(label)}</i>
+            ${bar(progress)}
+          </article>
+        `).join('')}
+      </section>
+    `;
+  }
+
+  function renderActionNeeded(detail) {
+    const riskyDependencies = detail.dependencies.items.filter(item => /red|blocked|risk/i.test(`${item.riskLevel} ${item.status}`));
+    const pendingDecisions = detail.stakeholders.items.filter(item => item.pendingDecision !== 'None');
+    const openRisks = detail.risks.items.filter(item => item.status !== 'RESOLVED').slice(0, 3);
+    return renderDetailBlock('Today\'s Attention', `
+      <div class="pd-attention-stack">
+        ${attentionRow('Open blockers', detail.risks.summary.blockers, detail.risks.summary.blockers ? 'danger' : 'success')}
+        ${attentionRow('SLA breaches', detail.escalations.summary.slaBreaches, detail.escalations.summary.slaBreaches ? 'danger' : 'success')}
+        ${attentionRow('Dependencies at risk', riskyDependencies.length, riskyDependencies.length ? 'warning' : 'success')}
+        ${attentionRow('Pending decisions', pendingDecisions.length, pendingDecisions.length ? 'warning' : 'success')}
+        ${openRisks.map(item => `
+          <article class="pd-attention-item">
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <span>${escapeHtml(item.owner)} · ${escapeHtml(item.mitigation)}</span>
+            </div>
+            ${deliveryHealthBadge(item.severity)}
+          </article>
+        `).join('')}
+      </div>
+    `, 'pd-insight-card', {
+      summary: sectionSummary([
+        ['Blockers', detail.risks.summary.blockers],
+        ['SLA', detail.escalations.summary.slaBreaches]
+      ]),
+      eyebrow: 'Manager focus'
+    });
+  }
+
+  function attentionRow(label, value, tone) {
+    return `
+      <article class="pd-attention-metric pd-attention-${tone}">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(String(value))}</strong>
+      </article>
+    `;
+  }
+
+  function metricIcon(label) {
+    if (/requirement/i.test(label)) return 'R';
+    if (/backlog/i.test(label)) return 'B';
+    if (/completion/i.test(label)) return '%';
+    if (/confidence/i.test(label)) return 'C';
+    if (/days/i.test(label)) return 'D';
+    return 'H';
+  }
+
+  function confidencePercent(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized.includes('high')) return 92;
+    if (normalized.includes('medium')) return 64;
+    if (normalized.includes('low')) return 36;
+    return 50;
+  }
+
+  function daysRemainingPercent(value) {
+    const days = Number(value);
+    if (!Number.isFinite(days)) return 0;
+    return clampPercent((days / 90) * 100);
   }
 
   function detailSectionKey(title) {
@@ -1055,6 +1188,48 @@ const ProductDeliveryDashboard = (() => {
     });
   }
 
+  function renderDecisionLog(detail) {
+    const stakeholderDecisions = detail.stakeholders.items
+      .filter(item => item.pendingDecision !== 'None')
+      .map(item => ({
+        decision: item.pendingDecision,
+        owner: item.name,
+        status: 'PENDING',
+        date: detail.stakeholders.summary.nextSteeringMeeting,
+        health: item.sentiment
+      }));
+    const gateDecisions = detail.stageGates
+      .filter(gate => gate.decisionDate || gate.status !== 'APPROVED')
+      .slice(0, 4)
+      .map(gate => ({
+        decision: gate.name,
+        owner: gate.approver,
+        status: gate.status,
+        date: gate.decisionDate,
+        health: gate.status === 'BLOCKED' ? 'Red / At Risk' : gate.status === 'PENDING' ? 'Amber / Watch' : 'Green / Healthy'
+      }));
+    const items = stakeholderDecisions.concat(gateDecisions).slice(0, 6);
+    return renderDetailBlock('Decision Log', `
+      <div class="pd-decision-list">
+        ${items.map(item => `
+          <article>
+            <div>
+              <strong title="${escapeHtml(item.decision)}">${escapeHtml(item.decision)}</strong>
+              <span>${escapeHtml(item.owner)} · ${formatDate(item.date)}</span>
+            </div>
+            ${statusBadge(item.status)}
+            ${deliveryHealthBadge(item.health)}
+          </article>
+        `).join('') || emptyWidget('No pending decisions')}
+      </div>
+    `, 'pd-detail-full', {
+      summary: sectionSummary([
+        ['Pending', stakeholderDecisions.length],
+        ['Gate items', gateDecisions.length]
+      ])
+    });
+  }
+
   function renderDeliveryHealth(detail) {
     return renderDetailBlock('Delivery Health', `
       <div class="pd-health-grid">
@@ -1189,32 +1364,8 @@ const ProductDeliveryDashboard = (() => {
     }
 
     return `
-      <div class="table-container pd-table-card pd-unified-table">
-        <table class="pd-table pd-cross-role-table">
-          <colgroup>
-            <col class="pd-cross-project-col">
-            <col class="pd-cross-role-col">
-            <col class="pd-cross-responsibilities-col">
-            <col class="pd-cross-blockers-col">
-            <col class="pd-cross-team-col">
-            <col class="pd-cross-status-col">
-            <col class="pd-cross-details-col">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Project Name</th>
-              <th>Project Role</th>
-              <th>Key Responsibilities</th>
-              <th>Blockers</th>
-              <th>Team Members</th>
-              <th>Status</th>
-              <th>Details</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${projects.map(project => crossRoleRow(project, model)).join('')}
-          </tbody>
-        </table>
+      <div class="pd-cross-summary-list" role="list">
+        ${projects.map(project => crossRoleRow(project, model)).join('')}
       </div>
     `;
   }
@@ -1222,19 +1373,37 @@ const ProductDeliveryDashboard = (() => {
   function crossRoleRow(project, model) {
     const assignment = NexusRoleUtils.findUserAssignment(project, model.currentUser);
     const role = NexusRoleUtils.normalizeProjectRole(assignment?.projectRole);
-    const responsibilities = getShortResponsibilities(role);
+    const detail = generateCrossRoleDetails(project, role, model);
     const expanded = state.expandedCrossProjectId === project.id;
+    const progress = Math.round(detail.workItems.reduce((sum, item) => sum + Number(item.progress || 0), 0) / Math.max(detail.workItems.length, 1));
+    const riskCount = detail.risks.filter(item => item.status !== 'RESOLVED').length + Number(detail.overview.activeBlockers || 0);
+    const sprintTag = detail.timeline[0]?.milestone || detail.overview.nextMilestone;
     return `
-      <tr>
-        <td><strong>${escapeHtml(project.name)}</strong></td>
-        <td><span class="pd-role-badge">${escapeHtml(NexusRoleUtils.projectRoleLabel(role))}</span></td>
-        <td class="pd-responsibility-cell">${responsibilities.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</td>
-        <td>${blockersBadge(getCrossRoleBlocker(project, role))}</td>
-        <td>${teamSummary(project, model.tenantUsers)}</td>
-        <td>${statusBadge(project.status || 'ACTIVE')}</td>
-        <td><button class="btn btn-outline btn-sm" type="button" onclick="ProductDeliveryDashboard.toggleCrossDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button></td>
-      </tr>
-      ${expanded ? `<tr class="pd-details-row"><td colspan="7">${renderCrossRoleDetails(project, model)}</td></tr>` : ''}
+      <article class="pd-project-summary-row pd-cross-summary-row ${expanded ? 'is-expanded' : ''}" role="listitem">
+        <div class="pd-project-summary-main">
+          <span class="pd-health-dot ${healthDotClass(detail.overview.deliveryHealth)}" title="${escapeHtml(detail.overview.deliveryHealth)}"></span>
+          <div class="pd-project-name-block">
+            <strong title="${escapeHtml(project.name)}">${escapeHtml(project.name)}</strong>
+            <span title="${escapeHtml(detail.overview.supportArea)}">${escapeHtml(detail.overview.supportArea)}</span>
+          </div>
+        </div>
+        <div class="pd-project-summary-meta">
+          <span><b>Role</b><i title="${escapeHtml(detail.overview.assignedRole)}">${escapeHtml(detail.overview.assignedRole)}</i></span>
+          <span><b>Priority</b>${priorityBadge(detail.overview.priority)}</span>
+          <span><b>Status</b>${statusBadge(project.status || detail.overview.currentStatus || 'ACTIVE')}</span>
+          <span><b>Milestone</b><i title="${escapeHtml(sprintTag)}">${escapeHtml(sprintTag)}</i></span>
+          <span><b>Risk</b>${blockersBadge(riskCount ? `${riskCount} open` : 'None')}</span>
+        </div>
+        <div class="pd-project-summary-progress">
+          <div>
+            <strong>${progress}%</strong>
+            <span>progress</span>
+          </div>
+          ${miniProgress(progress)}
+        </div>
+        <button class="pd-view-details-btn" type="button" onclick="ProductDeliveryDashboard.toggleCrossDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button>
+      </article>
+      ${expanded ? `<div class="pd-details-row">${renderCrossRoleDetails(project, model)}</div>` : ''}
     `;
   }
 
@@ -2164,11 +2333,21 @@ const ProductDeliveryDashboard = (() => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function filterDashboard(value) {
+    const query = String(value || '').trim().toLowerCase();
+    document.querySelectorAll('.pd-project-tile, .pd-risk-list article, .pd-attention-item, .pd-agent-card').forEach(card => {
+      const matches = !query || card.textContent.toLowerCase().includes(query);
+      card.style.display = matches ? '' : 'none';
+    });
+  }
+
   function toggleProductDetails(projectId) {
     state.expandedProductProjectId = state.expandedProductProjectId === projectId ? null : projectId;
     state.roadmapPage = 0;
     render();
-    if (state.expandedProductProjectId) requestAnimationFrame(() => document.getElementById('product-delivery-projects')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    if (state.expandedProductProjectId) {
+      requestAnimationFrame(() => document.querySelector('.pd-command-center-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
   }
 
   function toggleDetailSection(sectionKey, currentlyOpen) {
@@ -2206,6 +2385,7 @@ const ProductDeliveryDashboard = (() => {
   return {
     init,
     scrollToSection,
+    filterDashboard,
     toggleProductDetails,
     toggleCrossDetails,
     toggleDetailSection,

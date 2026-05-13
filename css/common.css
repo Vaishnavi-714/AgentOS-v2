@@ -1741,13 +1741,14 @@ tbody tr:last-child td { border-bottom: none; }
 .pd-responsive-table {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-card);
 }
 .pd-responsive-table table {
   width: 100%;
+  min-width: 900px;
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -1971,11 +1972,11 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--bg-card);
   border-radius: var(--radius);
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 .pd-inner-table table {
   width: 100%;
-  min-width: 0;
+  min-width: 860px;
   table-layout: fixed;
 }
 .pd-embedded-table {
@@ -1983,7 +1984,7 @@ tbody tr:last-child td { border-bottom: none; }
   overflow: auto;
 }
 .pd-feature-table table {
-  min-width: 0;
+  min-width: 980px;
   table-layout: fixed;
 }
 .pd-feature-table th,
@@ -4509,4 +4510,755 @@ input[type="range"]::-moz-range-thumb {
   .competitor-row { grid-template-columns: 1fr; }
   .pm-summary-bar { flex-direction: column; gap: 8px; }
   .decision-gate { flex-direction: column; }
+}
+
+/* Product & Delivery Command Center refresh */
+#productDeliveryDashboardRoot {
+  min-height: 100%;
+  overflow-x: hidden;
+  background: linear-gradient(180deg, #f4f6fa 0%, #f7f7f2 100%);
+}
+
+.pd-command-shell {
+  --pd-surface: rgba(255,255,255,0.92);
+  --pd-soft-blue: #eaf3ff;
+  --pd-soft-green: #eaf8f1;
+  --pd-soft-cream: #fff6df;
+  --pd-soft-purple: #f2edff;
+  --bg-card: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #eef3f9;
+  --bg-hover: rgba(37,99,235,0.08);
+  --text-primary: #10213a;
+  --text-secondary: #4a5d79;
+  --text-muted: #718198;
+  --border: rgba(148,163,184,0.28);
+  --border-light: rgba(100,116,139,0.26);
+  color: var(--text-primary);
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 18px 0 36px;
+  display: grid;
+  gap: 22px;
+}
+.pd-command-shell .pd-section,
+.pd-command-shell .pd-details-card { margin: 0; }
+.pd-command-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  min-height: 0;
+  padding: 20px 24px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(242,247,255,0.92));
+  box-shadow: 0 16px 38px rgba(15,23,42,0.08);
+  overflow: hidden;
+}
+.pd-command-hero-main h1 {
+  margin: 6px 0 6px;
+  color: #10213a;
+  font-size: 30px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+.pd-command-hero-main p {
+  margin: 0;
+  max-width: 720px;
+  color: #52637a;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.pd-hero-kicker,
+.pd-section-eyebrow {
+  display: inline-flex;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.pd-hero-chips,
+.pd-command-hero-actions,
+.pd-project-tile-top,
+.pd-project-tile-health {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.pd-hero-chips { margin-top: 20px; }
+.pd-hero-chips > span:not(.pd-badge) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid rgba(148,163,184,0.28);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.72);
+  color: #23344f;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.pd-hero-chips b {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.pd-command-hero-actions { justify-content: flex-end; }
+.pd-command-search {
+  flex: 1 1 260px;
+  max-width: 340px;
+  display: grid;
+  gap: 6px;
+}
+.pd-command-search span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.pd-command-search input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(148,163,184,0.26);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.86);
+  color: #10213a;
+  padding: 0 16px;
+  outline: none;
+}
+.pd-icon-action {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(148,163,184,0.28);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.84);
+  color: #10213a;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.pd-executive-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pd-command-shell .pd-summary-card,
+.pd-command-shell .pd-unified-section-card,
+.pd-command-shell .pd-management-section,
+.pd-command-shell .pd-details-titlebar {
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 24px;
+  background: var(--pd-surface);
+  box-shadow: 0 18px 45px rgba(15,23,42,0.08);
+}
+.pd-command-shell .pd-summary-card {
+  min-height: 138px;
+  padding: 20px;
+  text-align: left;
+}
+.pd-project-rail-card { padding: 20px; }
+.pd-project-summary-list {
+  display: grid;
+  gap: 10px;
+}
+.pd-cross-summary-list {
+  display: grid;
+  gap: 10px;
+}
+.pd-cross-summary-row .pd-project-name-block span,
+.pd-cross-summary-row .pd-project-summary-meta i {
+  max-width: 100%;
+}
+.pd-project-summary-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) minmax(360px, 2.2fr) minmax(110px, 0.5fr) 118px;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 18px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(15,23,42,0.05);
+  min-width: 0;
+}
+.pd-project-summary-row.is-expanded {
+  border-color: rgba(37,99,235,0.36);
+  background: linear-gradient(135deg, #fff, #f6fbff);
+}
+.pd-project-summary-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.pd-health-dot {
+  flex: 0 0 10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 4px rgba(148,163,184,0.12);
+}
+.pd-health-dot.is-green { background: #10b981; }
+.pd-health-dot.is-amber { background: #f59e0b; }
+.pd-health-dot.is-red { background: #ef4444; }
+.pd-project-name-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.pd-project-name-block strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-project-name-block span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-project-summary-meta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.pd-project-summary-meta > span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.pd-project-summary-meta b {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.pd-project-summary-meta i {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-project-summary-progress {
+  display: grid;
+  gap: 6px;
+}
+.pd-project-summary-progress > div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.pd-project-summary-progress strong {
+  color: var(--text-primary);
+  font-size: 16px;
+}
+.pd-project-summary-progress span {
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.pd-view-details-btn {
+  min-height: 34px;
+  border: 1px solid rgba(37,99,235,0.28);
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pd-view-details-btn:hover {
+  background: #dbeafe;
+  border-color: rgba(37,99,235,0.44);
+}
+.pd-project-risk-note {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border-top: 1px solid rgba(148,163,184,0.16);
+  padding-top: 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-project-risk-note span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(148,163,184,0.24);
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 3px 8px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.pd-project-rail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+.pd-project-tile {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 22px;
+  background: #fff;
+  color: inherit;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(15,23,42,0.06);
+}
+.pd-project-tile.is-active {
+  border-color: rgba(37,99,235,0.38);
+  background: linear-gradient(135deg, #ffffff, #eef6ff);
+  box-shadow: 0 18px 42px rgba(37,99,235,0.14);
+}
+.pd-project-tile-top { justify-content: space-between; }
+.pd-project-tile-top strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+.pd-project-tile-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 38px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pd-project-tile-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.pd-project-tile-meta span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.pd-project-tile-meta b {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 11px;
+  text-transform: none;
+}
+.pd-command-center-grid {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.pd-command-center-grid > .pd-details-titlebar { padding: 22px; }
+.pd-executive-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.pd-exec-kpi {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 12px;
+  min-height: 148px;
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 16px 38px rgba(15,23,42,0.07);
+}
+.pd-exec-kpi-blue { background: var(--pd-soft-blue); }
+.pd-exec-kpi-green { background: var(--pd-soft-green); }
+.pd-exec-kpi-cream { background: var(--pd-soft-cream); }
+.pd-exec-kpi-purple { background: var(--pd-soft-purple); }
+.pd-exec-kpi span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.pd-exec-kpi strong {
+  display: block;
+  margin-top: 8px;
+  color: #10213a;
+  font-size: 24px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.pd-exec-kpi small {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+.pd-exec-kpi > i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+  background: rgba(255,255,255,0.75);
+  color: #2563eb;
+  font-style: normal;
+  font-weight: 900;
+}
+.pd-exec-kpi .pd-card-meter {
+  grid-column: 1 / -1;
+  margin: 0;
+  background: rgba(255,255,255,0.74);
+}
+.pd-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+}
+.pd-dashboard-grid > .pd-management-section { min-width: 0; }
+.pd-widget-delivery-health,
+.pd-widget-roadmap,
+.pd-widget-feature-module-progress,
+.pd-widget-resource-planning,
+.pd-widget-cost-budget,
+.pd-widget-stakeholder-communication,
+.pd-widget-decision-log,
+.pd-governance-zone { grid-column: span 12; }
+.pd-widget-today-s-attention { grid-column: span 4; }
+.pd-widget-delivery-health { grid-column: span 8; }
+.pd-widget-requirement-intake-backlog-automation,
+.pd-widget-prioritization,
+.pd-widget-sprint-planning { grid-column: span 6; }
+.pd-governance-zone { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.pd-governance-zone .pd-management-section { min-width: 0; }
+.pd-command-shell .pd-management-section { padding: 18px; }
+.pd-command-shell .pd-management-head {
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.pd-command-shell .pd-management-head h3 {
+  margin-top: 3px;
+  font-size: 17px;
+}
+.pd-command-shell .pd-health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pd-command-shell .pd-health-metric-card,
+.pd-command-shell .pd-management-kpi,
+.pd-command-shell .pd-agent-card,
+.pd-command-shell .pd-cost-breakdown article,
+.pd-command-shell .pd-pie-summary,
+.pd-command-shell .pd-priority-mini-card,
+.pd-command-shell .pd-sprint-card,
+.pd-command-shell .pd-roadmap-phase,
+.pd-command-shell .pd-feature-roadmap-card,
+.pd-command-shell .pd-responsive-table,
+.pd-command-shell .pd-inner-table,
+.pd-command-shell .pd-cost-bars {
+  border-color: rgba(148,163,184,0.18);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(15,23,42,0.05);
+}
+.pd-command-shell .pd-agent-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.pd-command-shell .pd-agent-card { min-height: 176px; }
+.pd-command-shell .pd-table th,
+.pd-command-shell .pd-responsive-table th {
+  background: #f6f8fb;
+  letter-spacing: 0;
+}
+.pd-attention-stack {
+  display: grid;
+  gap: 10px;
+}
+.pd-attention-metric,
+.pd-attention-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 18px;
+  background: #fff;
+  padding: 12px;
+}
+.pd-attention-metric span,
+.pd-attention-item span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.pd-attention-metric strong,
+.pd-attention-item strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+.pd-attention-success { background: #f0fbf6; }
+.pd-attention-warning { background: #fff8e8; }
+.pd-attention-danger { background: #fff1f2; }
+.pd-command-shell .pd-cost-dashboard,
+.pd-command-shell .pd-two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pd-command-shell .pd-backlog-automation-layout { grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr); }
+.pd-command-shell .pd-priority-compact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pd-command-shell .pd-roadmap-carousel { --pd-roadmap-card: calc((100% - (var(--pd-roadmap-gap) * 3)) / 4); }
+.pd-command-shell .pd-compact-cross-role .pd-unified-section-card { padding: 20px; }
+.pd-widget-empty {
+  border: 1px dashed rgba(148,163,184,0.32);
+  border-radius: 14px;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.pd-command-shell .pd-detail-full,
+.pd-widget-requirement-intake-backlog-automation,
+.pd-widget-sprint-planning,
+.pd-widget-milestones,
+.pd-widget-stage-gates,
+.pd-widget-dependencies,
+.pd-widget-risks-issues,
+.pd-widget-escalation-roadmap {
+  grid-column: span 12;
+}
+.pd-product-project-table {
+  table-layout: fixed;
+  min-width: 1180px;
+}
+.pd-product-project-col { width: 16%; }
+.pd-product-description-col { width: 25%; }
+.pd-product-date-col { width: 10%; }
+.pd-product-team-col { width: 11%; }
+.pd-product-health-col { width: 13%; }
+.pd-product-status-col { width: 10%; }
+.pd-product-action-col { width: 12%; }
+.pd-product-project-table td,
+.pd-cross-role-table td,
+.pd-inner-table td,
+.pd-responsive-table td {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.pd-product-project-table .btn,
+.pd-cross-role-table .btn,
+.pd-inner-table .btn,
+.pd-responsive-table .btn,
+.pd-product-project-table .pd-badge,
+.pd-cross-role-table .pd-badge,
+.pd-inner-table .pd-badge,
+.pd-responsive-table .pd-badge,
+.pd-product-project-table .status-badge,
+.pd-cross-role-table .status-badge,
+.pd-inner-table .status-badge,
+.pd-responsive-table .status-badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.pd-product-project-table .btn,
+.pd-cross-role-table .btn {
+  min-width: 104px;
+  justify-content: center;
+}
+.pd-details-titlebar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.pd-command-shell .pd-inner-table,
+.pd-command-shell .pd-responsive-table,
+.pd-command-shell .pd-table-card {
+  overflow-x: visible;
+}
+.pd-command-shell .pd-inner-table table,
+.pd-command-shell .pd-responsive-table table,
+.pd-command-shell .pd-cross-role-table {
+  min-width: 0;
+}
+.pd-decision-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.pd-decision-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+.pd-decision-list article > div {
+  min-width: 0;
+}
+.pd-decision-list strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-decision-list span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 1200px) {
+  .pd-command-hero,
+  .pd-command-shell .pd-backlog-automation-layout,
+  .pd-command-shell .pd-cost-dashboard,
+  .pd-command-shell .pd-two-col { grid-template-columns: 1fr; }
+  .pd-executive-kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pd-project-summary-row {
+    grid-template-columns: minmax(260px, 1.4fr) minmax(320px, 1.8fr) 118px;
+  }
+  .pd-project-summary-progress {
+    grid-column: 2 / 3;
+  }
+  .pd-view-details-btn {
+    grid-column: 3 / 4;
+    grid-row: 1 / 2;
+  }
+  .pd-widget-delivery-health,
+  .pd-widget-today-s-attention,
+  .pd-widget-requirement-intake-backlog-automation,
+  .pd-widget-prioritization,
+  .pd-widget-sprint-planning { grid-column: span 12; }
+  .pd-command-shell .pd-agent-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .pd-command-shell {
+    padding-top: 8px;
+    gap: 16px;
+  }
+  .pd-command-hero {
+    padding: 20px;
+    border-radius: 22px;
+  }
+  .pd-command-hero-main h1 { font-size: 26px; }
+  .pd-executive-summary,
+  .pd-executive-kpi-strip,
+  .pd-governance-zone,
+  .pd-project-rail,
+  .pd-command-shell .pd-health-grid,
+  .pd-command-shell .pd-agent-grid { grid-template-columns: 1fr; }
+  .pd-dashboard-grid { grid-template-columns: 1fr; }
+  .pd-dashboard-grid > .pd-management-section,
+  .pd-governance-zone { grid-column: span 1; }
+  .pd-command-shell .pd-management-section {
+    padding: 14px;
+    border-radius: 20px;
+  }
+  .pd-project-tile-meta { grid-template-columns: 1fr; }
+  .pd-project-summary-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .pd-project-summary-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pd-project-summary-progress,
+  .pd-view-details-btn {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .pd-project-risk-note {
+    white-space: normal;
+    align-items: flex-start;
+  }
+  .pd-decision-list {
+    grid-template-columns: 1fr;
+  }
+  .pd-decision-list article {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+  .pd-command-hero-actions { justify-content: stretch; }
+  .pd-command-search { max-width: none; }
+  .pd-product-project-table,
+  .pd-cross-role-table {
+    min-width: 0;
+  }
+  .pd-product-project-table thead,
+  .pd-cross-role-table thead,
+  .pd-product-project-table colgroup,
+  .pd-cross-role-table colgroup {
+    display: none;
+  }
+  .pd-product-project-table,
+  .pd-product-project-table tbody,
+  .pd-product-project-table tr,
+  .pd-product-project-table td,
+  .pd-cross-role-table,
+  .pd-cross-role-table tbody,
+  .pd-cross-role-table tr,
+  .pd-cross-role-table td {
+    display: block;
+    width: 100%;
+  }
+  .pd-product-project-table tbody,
+  .pd-cross-role-table tbody {
+    padding: 10px;
+  }
+  .pd-product-project-table tbody tr,
+  .pd-cross-role-table tbody tr {
+    border: 1px solid rgba(148,163,184,0.22);
+    border-radius: 16px;
+    background: #fff;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .pd-product-project-table tbody tr.pd-details-row,
+  .pd-cross-role-table tbody tr.pd-details-row {
+    border: 0;
+    background: transparent;
+    overflow: visible;
+  }
+  .pd-product-project-table td,
+  .pd-cross-role-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 12px;
+  }
+  .pd-product-project-table td::before,
+  .pd-cross-role-table td::before {
+    content: attr(data-label);
+    flex: 0 0 112px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+  .pd-product-project-table .pd-details-row td,
+  .pd-cross-role-table .pd-details-row td {
+    display: block;
+    padding: 0;
+  }
+  .pd-product-project-table .pd-details-row td::before,
+  .pd-cross-role-table .pd-details-row td::before {
+    display: none;
+  }
 }
