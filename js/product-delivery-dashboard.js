@@ -288,7 +288,6 @@ const ProductDeliveryDashboard = (() => {
         ${renderExecutiveKpiStrip(detail)}
         <div class="pd-dashboard-grid">
           ${renderDeliveryHealth(detail)}
-          ${renderActionNeeded(detail)}
           ${renderRoadmapTimeline(detail)}
           ${renderRequirementBacklog(detail)}
           ${renderFeatureProgress(detail)}
@@ -351,44 +350,6 @@ const ProductDeliveryDashboard = (() => {
           </article>
         `).join('')}
       </section>
-    `;
-  }
-
-  function renderActionNeeded(detail) {
-    const riskyDependencies = detail.dependencies.items.filter(item => /red|blocked|risk/i.test(`${item.riskLevel} ${item.status}`));
-    const pendingDecisions = detail.stakeholders.items.filter(item => item.pendingDecision !== 'None');
-    const openRisks = detail.risks.items.filter(item => item.status !== 'RESOLVED').slice(0, 3);
-    return renderDetailBlock('Today\'s Attention', `
-      <div class="pd-attention-stack">
-        ${attentionRow('Open blockers', detail.risks.summary.blockers, detail.risks.summary.blockers ? 'danger' : 'success')}
-        ${attentionRow('SLA breaches', detail.escalations.summary.slaBreaches, detail.escalations.summary.slaBreaches ? 'danger' : 'success')}
-        ${attentionRow('Dependencies at risk', riskyDependencies.length, riskyDependencies.length ? 'warning' : 'success')}
-        ${attentionRow('Pending decisions', pendingDecisions.length, pendingDecisions.length ? 'warning' : 'success')}
-        ${openRisks.map(item => `
-          <article class="pd-attention-item">
-            <div>
-              <strong>${escapeHtml(item.name)}</strong>
-              <span>${escapeHtml(item.owner)} · ${escapeHtml(item.mitigation)}</span>
-            </div>
-            ${deliveryHealthBadge(item.severity)}
-          </article>
-        `).join('')}
-      </div>
-    `, 'pd-insight-card', {
-      summary: sectionSummary([
-        ['Blockers', detail.risks.summary.blockers],
-        ['SLA', detail.escalations.summary.slaBreaches]
-      ]),
-      eyebrow: 'Manager focus'
-    });
-  }
-
-  function attentionRow(label, value, tone) {
-    return `
-      <article class="pd-attention-metric pd-attention-${tone}">
-        <span>${escapeHtml(label)}</span>
-        <strong>${escapeHtml(String(value))}</strong>
-      </article>
     `;
   }
 
@@ -770,19 +731,13 @@ const ProductDeliveryDashboard = (() => {
   function renderSprintPlanning(detail) {
     const sprint = detail.sprints.current;
     return renderDetailBlock('Sprint Planning', `
-      <div class="pd-two-col">
+      <div class="pd-sprint-planning-compact">
         ${renderMetricCards([
-          ['Current Sprint Name', sprint.name],
-          ['Sprint Start Date', formatDate(sprint.startDate)],
-          ['Sprint End Date', formatDate(sprint.endDate)],
-          ['Sprint Goal', sprint.goal],
-          ['Total Sprint Tasks', sprint.totalTasks],
-          ['Tasks Completed', sprint.completed],
-          ['Tasks In Progress', sprint.inProgress],
-          ['Tasks Blocked', sprint.blocked],
-          ['Sprint Velocity', sprint.velocity],
-          ['Sprint Confidence', sprint.confidence]
-        ], 'pd-kpis-compact')}
+          ['Current Sprint', sprint.name],
+          ['Start Date', formatDate(sprint.startDate)],
+          ['End Date', formatDate(sprint.endDate)],
+          ['Sprint Goal', sprint.goal]
+        ], 'pd-kpis-compact pd-sprint-summary-kpis')}
         <div class="pd-sprint-stack">
           ${detail.sprints.list.map(item => `
             <article class="pd-sprint-card">
@@ -793,7 +748,7 @@ const ProductDeliveryDashboard = (() => {
           `).join('')}
         </div>
       </div>
-    `, 'pd-detail-full', {
+    `, '', {
       summary: sectionSummary([
         ['Current', sprint.name],
         ['Velocity', sprint.velocity],
@@ -2335,7 +2290,7 @@ const ProductDeliveryDashboard = (() => {
 
   function filterDashboard(value) {
     const query = String(value || '').trim().toLowerCase();
-    document.querySelectorAll('.pd-project-tile, .pd-risk-list article, .pd-attention-item, .pd-agent-card').forEach(card => {
+    document.querySelectorAll('.pd-project-tile, .pd-risk-list article, .pd-agent-card').forEach(card => {
       const matches = !query || card.textContent.toLowerCase().includes(query);
       card.style.display = matches ? '' : 'none';
     });
