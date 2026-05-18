@@ -236,10 +236,9 @@ const ProductDeliveryDashboard = (() => {
         </div>
         <div class="pd-project-summary-progress">
           <div>
-            <strong>${detail.workflow.completionPercentage}%</strong>
+            <strong style="color:${getRAGColor(detail.workflow.completionPercentage)}">${detail.workflow.completionPercentage}%</strong>
             <span>progress</span>
           </div>
-          ${miniProgress(detail.workflow.completionPercentage)}
         </div>
         <button class="pd-view-details-btn" type="button" onclick="ProductDeliveryDashboard.toggleProductDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button>
         ${topRisk ? `<div class="pd-project-risk-note"><span>${escapeHtml(topRisk.category)}</span>${escapeHtml(topRisk.name)} · ${escapeHtml(topRisk.owner)}</div>` : ''}
@@ -327,26 +326,25 @@ const ProductDeliveryDashboard = (() => {
 
   function renderExecutiveKpiStrip(detail) {
     const items = [
-      ['Total Requirements', detail.overview.totalRequirements, 'Intake scope', 'blue', detail.overview.overallCompletion],
-      ['Ready for Backlog', detail.overview.readyForBacklog, 'Reviewed and ready', 'green', (detail.overview.readyForBacklog / Math.max(detail.overview.totalRequirements, 1)) * 100],
-      ['Backlog Generated', detail.overview.backlogItemsGenerated, 'Automation output', 'cream', (detail.overview.backlogItemsGenerated / Math.max(detail.backlog.generated, 1)) * 100],
-      ['Backlog Approved', detail.overview.backlogItemsApproved, 'Approved delivery items', 'purple', (detail.overview.backlogItemsApproved / Math.max(detail.backlog.generated, 1)) * 100],
-      ['Completion %', `${detail.overview.overallCompletion}%`, 'Overall progression', 'green', detail.overview.overallCompletion],
-      ['Delivery Confidence', detail.overview.deliveryConfidence, 'Execution confidence', 'blue', confidencePercent(detail.overview.deliveryConfidence)],
-      ['Days Remaining', detail.overview.daysRemaining, 'Target delivery clock', 'cream', daysRemainingPercent(detail.overview.daysRemaining)],
-      ['Project Health', detail.overview.projectHealth, 'Delivery signal', 'purple', detail.overview.overallCompletion]
+      ['Total Requirements', detail.overview.totalRequirements, 'Intake scope', 'var(--text-primary)'],
+      ['Ready for Backlog', detail.overview.readyForBacklog, 'Reviewed and ready', 'var(--text-primary)'],
+      ['Backlog Generated', detail.overview.backlogItemsGenerated, 'Automation output', 'var(--text-primary)'],
+      ['Backlog Approved', detail.overview.backlogItemsApproved, 'Approved delivery items', 'var(--text-primary)'],
+      ['Completion %', `${detail.overview.overallCompletion}%`, 'Overall progression', getRAGColor(detail.overview.overallCompletion)],
+      ['Delivery Confidence', detail.overview.deliveryConfidence, 'Execution confidence', getConfidenceColor(detail.overview.deliveryConfidence)],
+      ['Days Remaining', detail.overview.daysRemaining, 'Target delivery clock', getDaysRemainingColor(detail.overview.daysRemaining)],
+      ['Project Health', detail.overview.projectHealth, 'Delivery signal', getHealthColor(detail.overview.projectHealth)]
     ];
     return `
       <section class="pd-executive-kpi-strip" aria-label="Executive Product and Delivery KPIs">
-        ${items.map(([label, value, helper, tone, progress]) => `
-          <article class="pd-exec-kpi pd-exec-kpi-${tone}">
+        ${items.map(([label, value, helper, color]) => `
+          <article class="pd-exec-kpi">
             <div>
               <span>${escapeHtml(label)}</span>
-              <strong>${escapeHtml(String(value))}</strong>
+              <strong style="color:${color}">${escapeHtml(String(value))}</strong>
               <small>${escapeHtml(helper)}</small>
             </div>
             <i aria-hidden="true">${metricIcon(label)}</i>
-            ${bar(progress)}
           </article>
         `).join('')}
       </section>
@@ -422,7 +420,6 @@ const ProductDeliveryDashboard = (() => {
             <p>${escapeHtml(agent.responsibilityArea)}</p>
             <div class="pd-agent-util">
               <span>Utilization <strong>${agent.utilization}%</strong></span>
-              ${bar(agent.utilization)}
             </div>
             <div class="pd-agent-card-foot">
               <span>${escapeHtml(agent.workflowStage)}</span>
@@ -607,11 +604,16 @@ const ProductDeliveryDashboard = (() => {
           <h4>Pipeline Progress</h4>
           <div class="pd-funnel-visual pd-funnel-visual-focus">
             ${req.funnel.map((item, index) => `
+              ${(() => {
+                const fill = clampPercent((item.value / total) * 100);
+                return `
               <div class="pd-funnel-row pd-funnel-step-${index + 1}">
                 <span>${escapeHtml(item.label)}</span>
                 <strong>${item.value}</strong>
-                <i><b style="width:${clampPercent((item.value / total) * 100)}%"></b></i>
+                <i><b style="width:${fill}%;--pd-rag-fill:${getRAGColor(fill)}"></b></i>
               </div>
+                `;
+              })()}
             `).join('')}
           </div>
         </div>
@@ -628,9 +630,9 @@ const ProductDeliveryDashboard = (() => {
 
   function scheduleStatusChart(detail) {
     const items = [
-      ['On Schedule', detail.backlog.onScheduleCount, 'success'],
-      ['Behind', detail.backlog.offScheduleCount, 'warning'],
-      ['Approved', detail.backlog.approved, 'info']
+      ['On Schedule', detail.backlog.onScheduleCount, 'success', 'var(--rag-green)'],
+      ['Behind', detail.backlog.offScheduleCount, 'warning', detail.backlog.offScheduleCount > 5 ? 'var(--rag-red)' : 'var(--rag-amber)'],
+      ['Approved', detail.backlog.approved, 'state', '#64748b']
     ];
     const max = Math.max(...items.map(item => Number(item[1]) || 0), 1);
     return `
@@ -639,9 +641,9 @@ const ProductDeliveryDashboard = (() => {
           <h4>Schedule Status</h4>
         </div>
         <div class="pd-schedule-bars">
-          ${items.map(([label, value, tone]) => `
-            <div class="pd-schedule-bar pd-schedule-${tone}">
-              <strong>${value}</strong>
+          ${items.map(([label, value, tone, color]) => `
+            <div class="pd-schedule-bar pd-schedule-${tone}" style="--pd-schedule-color:${color}">
+              <strong style="color:${tone === 'state' ? 'var(--text-primary)' : color}">${value}</strong>
               <i><b style="height:${clampPercent((value / max) * 100)}%"></b></i>
               <span>${escapeHtml(label)}</span>
             </div>
@@ -653,16 +655,17 @@ const ProductDeliveryDashboard = (() => {
 
   function renderFeatureProgress(detail) {
     return renderDetailBlock('Feature / Module Progress', renderDataTable(
-      ['Module', 'Owner', 'Priority', 'Status', 'Completion', 'Sprints', 'Blockers', 'RAG'],
+      ['Module', 'Owner', 'Priority', 'SP', 'Status', 'Completion', 'Sprints', 'Blockers', 'RAG'],
       detail.features.map(feature => [
         escapeHtml(feature.name),
         escapeHtml(feature.owner),
         priorityBadge(feature.priority),
+        `<span class="pd-story-points">${feature.storyPoints || 5}</span>`,
         statusBadge(feature.status),
-        `<div class="pd-progress-cell"><span>${feature.completion}%</span>${bar(feature.completion)}</div>`,
+        `<div class="pd-progress-cell"><span style="color:${getRAGColor(feature.completion)}">${feature.completion}%</span></div>`,
         sprintChips(feature.linkedSprints),
-        blockersBadge(String(feature.blockers)),
-        ragStatusDot(feature.ragStatus)
+        featureBlockersCell(feature.blockers),
+        ragStatusDot(feature.ragStatus, feature.blockers)
       ]),
       'pd-feature-table'
     ), 'pd-detail-full', {
@@ -742,8 +745,8 @@ const ProductDeliveryDashboard = (() => {
           ${detail.sprints.list.map(item => `
             <article class="pd-sprint-card">
               <div><strong>${escapeHtml(item.name)}</strong>${statusBadge(item.status)}</div>
-              ${bar(item.completion)}
-              <span>${item.completion}% complete</span>
+              ${bar(item.completion, getRAGColor(item.completion))}
+              <span style="color:${getRAGColor(item.completion)}">${item.completion}% complete</span>
             </article>
           `).join('')}
         </div>
@@ -839,7 +842,6 @@ const ProductDeliveryDashboard = (() => {
     const left = featureRoadmapPercent(new Date(feature.startDate), range.start, range.end);
     const right = featureRoadmapPercent(new Date(feature.endDate), range.start, range.end);
     const width = Math.max(4, right - left);
-    const tone = featureRoadmapTone(feature.status);
     const progress = clampPercent(feature.progress);
     const showProgress = progress > 0 && !/not started|upcoming|pending/i.test(titleCase(feature.status));
     return `
@@ -849,7 +851,7 @@ const ProductDeliveryDashboard = (() => {
           <strong title="${escapeHtml(feature.name)}">${escapeHtml(feature.name)}</strong>
         </div>
         <div class="pd-feature-roadmap-lane" aria-label="${escapeHtml(feature.name)} timeline">
-          <i class="pd-feature-roadmap-bar pd-feature-roadmap-${tone}" style="left:${left}%;width:${width}%">
+          <i class="pd-feature-roadmap-bar" style="left:${left}%;width:${width}%;background:${getRAGColor(progress)}">
             ${showProgress ? `<b>${progress}%</b>` : ''}
           </i>
         </div>
@@ -952,14 +954,15 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function roadmapPhaseCard(phase) {
+    const riskColor = getDelayRiskColor(phase.delayRisk);
     return `
-      <article class="pd-roadmap-phase">
+      <article class="pd-roadmap-phase" style="--pd-roadmap-risk:${riskColor}">
         <span>${escapeHtml(phase.name)}</span>
         ${statusBadge(phase.status)}
         <small>Planned: ${formatDate(phase.plannedDate)}</small>
         <small>Forecast: ${formatDate(phase.forecastDate)}</small>
-        <small>Delay risk: ${escapeHtml(phase.delayRisk)}</small>
-        ${bar(phase.completion)}
+        <small class="pd-delay-risk">Delay risk: <b><i></i>${escapeHtml(phase.delayRisk)}</b></small>
+        ${bar(phase.completion, riskColor)}
       </article>
     `;
   }
@@ -1189,26 +1192,25 @@ const ProductDeliveryDashboard = (() => {
     return renderDetailBlock('Delivery Health', `
       <div class="pd-health-grid">
         ${detail.health.items.map(item => `
-          <article class="pd-health-metric-card">
+          <article class="pd-health-metric-card" style="--pd-health-color:${getHealthColor(item.status)}">
             <div class="pd-health-card-head">
               <span>${escapeHtml(item.label)}</span>
               ${deliveryHealthBadge(item.status)}
             </div>
-            ${bar(item.score)}
             <small>${escapeHtml(healthSignalText(item))}</small>
           </article>
         `).join('')}
       </div>
       <div class="pd-overall-confidence">
         <span>Overall Delivery Confidence</span>
-        <strong>${escapeHtml(detail.health.overallDeliveryConfidence)}</strong>
+        <strong style="color:${getHealthColor(detail.health.overallDeliveryConfidence)}">${escapeHtml(detail.health.overallDeliveryConfidence)}</strong>
       </div>
     `, 'pd-detail-full', {
-      summary: sectionSummary([
-        ['Confidence', detail.health.overallDeliveryConfidence],
-        ['Signals', detail.health.items.length],
-        ['Watch', detail.health.items.filter(item => item.status.includes('Amber')).length]
-      ]),
+      summary: `
+        <span><b>Confidence</b> <i style="color:${getHealthColor(detail.health.overallDeliveryConfidence)}">${escapeHtml(detail.health.overallDeliveryConfidence)}</i></span>
+        <span><b>Signals</b> ${detail.health.items.length}</span>
+        <span><b>Watch</b> ${detail.health.items.filter(item => item.status.includes('Amber')).length}</span>
+      `,
       defaultOpen: true
     });
   }
@@ -1234,14 +1236,13 @@ const ProductDeliveryDashboard = (() => {
     `;
   }
 
-  function bar(value) {
-    return `<div class="pd-card-meter"><i style="width:${clampPercent(value)}%"></i></div>`;
+  function bar(value, color = getRAGColor(value)) {
+    return `<div class="pd-card-meter"><i style="width:${clampPercent(value)}%;--pd-rag-fill:${color}"></i></div>`;
   }
 
   function priorityBadge(value) {
-    const label = titleCase(value || 'Medium');
-    const tone = /must|high|critical/i.test(label) ? 'danger' : /should|medium/i.test(label) ? 'warning' : /could|low/i.test(label) ? 'info' : 'muted';
-    return `<span class="pd-badge pd-badge-${tone}">${escapeHtml(label)}</span>`;
+    const label = priorityLabel(value);
+    return `<span class="pd-badge pd-priority-badge" style="background:${getPriorityColor(label)}">${escapeHtml(label)}</span>`;
   }
 
   function scoreVisual(label, value, caption) {
@@ -1351,10 +1352,9 @@ const ProductDeliveryDashboard = (() => {
         </div>
         <div class="pd-project-summary-progress">
           <div>
-            <strong>${progress}%</strong>
+            <strong style="color:${getRAGColor(progress)}">${progress}%</strong>
             <span>progress</span>
           </div>
-          ${miniProgress(progress)}
         </div>
         <button class="pd-view-details-btn" type="button" onclick="ProductDeliveryDashboard.toggleCrossDetails('${project.id}')">${expanded ? 'Hide Details' : 'View Details'}</button>
       </article>
@@ -1632,13 +1632,19 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function miniProgress(value) {
-    return `<div class="pd-mini-progress"><span style="width:${clampPercent(value)}%"></span></div>`;
+    return `<div class="pd-mini-progress"><span style="width:${clampPercent(value)}%;--pd-rag-fill:${getRAGColor(value)}"></span></div>`;
   }
 
   function deliveryHealthBadge(value) {
     const label = titleCase(value || 'Watch');
-    const tone = /blocked|risk/i.test(label) ? 'danger' : /watch|monitor/i.test(label) ? 'warning' : 'success';
-    return `<span class="pd-badge pd-badge-${tone}">${escapeHtml(label)}</span>`;
+    return `<span class="pd-badge pd-rag-badge" style="background:${getHealthColor(label)}">${escapeHtml(label)}</span>`;
+  }
+
+  function statusBadge(status) {
+    const label = String(status || 'NOT_STARTED').trim().toUpperCase();
+    const color = getStatusColor(label);
+    const isState = ['IN_PROGRESS', 'NOT_STARTED', 'PENDING', 'SPECIFIED', 'APPROVED', 'ACTIVE'].includes(label);
+    return `<span class="status-badge pd-status-badge" style="background:${isState ? color : color};color:#fff;border-color:${color}">${escapeHtml(label)}</span>`;
   }
 
   function blockersBadge(value) {
@@ -1646,16 +1652,111 @@ const ProductDeliveryDashboard = (() => {
     return `<span class="pd-badge ${hasBlocker ? 'pd-badge-danger' : 'pd-badge-muted'}">${escapeHtml(value || 'None')}</span>`;
   }
 
+  function featureBlockersCell(value) {
+    const count = Number(value) || 0;
+    if (count <= 0) return '<span class="pd-feature-blockers is-clear">—</span>';
+    return `<span class="pd-feature-blockers">${count}</span>`;
+  }
+
   function sprintChips(values) {
     const sprints = Array.isArray(values) && values.length ? values : ['Sprint 1'];
     return `<div class="pd-sprint-chip-list">${sprints.map(sprint => `<span>${escapeHtml(sprint)}</span>`).join('')}</div>`;
   }
 
-  function ragStatusDot(value) {
+  function ragStatusDot(value, blockers = 0) {
     const normalized = String(value || 'green').toLowerCase();
     const tone = normalized.includes('red') ? 'red' : normalized.includes('amber') || normalized.includes('yellow') ? 'amber' : 'green';
     const labels = { green: 'Green / Healthy', amber: 'Amber / Watch', red: 'Red / At Risk' };
-    return `<span class="pd-rag-status pd-rag-${tone}" title="${labels[tone]}" aria-label="${labels[tone]}"><i></i></span>`;
+    const count = Number(blockers) || 0;
+    const title = count > 0 ? `${count} blockers` : 'On track';
+    return `<span class="pd-rag-status pd-rag-${tone}" title="${escapeHtml(title)}" aria-label="${labels[tone]}"><i></i></span>`;
+  }
+
+  function getRAGColor(score) {
+    const num = Number(score) || 0;
+    if (num >= 75) return 'var(--rag-green)';
+    if (num >= 50) return 'var(--rag-amber)';
+    return 'var(--rag-red)';
+  }
+
+  function getDelayRiskColor(risk) {
+    if (String(risk || '').toLowerCase() === 'low') return 'var(--rag-green)';
+    if (String(risk || '').toLowerCase() === 'medium') return 'var(--rag-amber)';
+    return 'var(--rag-red)';
+  }
+
+  function getHealthColor(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized.includes('red') || normalized.includes('risk') || normalized.includes('critical') || normalized.includes('blocked') || normalized.includes('low')) return 'var(--rag-red)';
+    if (normalized.includes('amber') || normalized.includes('watch') || normalized.includes('medium') || normalized.includes('monitor')) return 'var(--rag-amber)';
+    return 'var(--rag-green)';
+  }
+
+  function getConfidenceColor(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized.includes('high')) return 'var(--rag-green)';
+    if (normalized.includes('medium')) return 'var(--rag-amber)';
+    return 'var(--rag-red)';
+  }
+
+  function getDaysRemainingColor(value) {
+    const days = Number(value);
+    if (!Number.isFinite(days)) return 'var(--text-primary)';
+    if (days > 60) return 'var(--rag-green)';
+    if (days >= 30) return 'var(--rag-amber)';
+    return 'var(--rag-red)';
+  }
+
+  function getStatusColor(status) {
+    switch (String(status || '').toUpperCase()) {
+      case 'COMPLETED':
+      case 'DONE':
+      case 'APPROVED':
+      case 'ACTIVE':
+      case 'RESOLVED':
+        return 'var(--rag-green)';
+      case 'BLOCKED':
+      case 'REJECTED':
+      case 'ESCALATED':
+        return 'var(--rag-red)';
+      case 'IN_PROGRESS':
+      case 'EXECUTING':
+      case 'AGENT_ASSIGNED':
+        return '#475569';
+      case 'NOT_STARTED':
+      case 'PENDING':
+      case 'SPECIFIED':
+        return '#9ca3af';
+      default:
+        return '#6b7280';
+    }
+  }
+
+  function priorityLabel(priority) {
+    const normalized = String(priority || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const labels = {
+      MUST_HAVE: 'Must Have',
+      SHOULD_HAVE: 'Should Have',
+      COULD_HAVE: 'Could Have',
+      WONT_HAVE: "Won't Have",
+      DEFERRED: "Won't Have"
+    };
+    return labels[normalized] || titleCase(priority || 'Could Have');
+  }
+
+  function getPriorityColor(priority) {
+    switch (priorityLabel(priority)) {
+      case 'Must Have':
+        return 'var(--rag-red)';
+      case 'Should Have':
+        return 'var(--rag-amber)';
+      case 'Could Have':
+        return '#64748b';
+      case "Won't Have":
+        return '#9ca3af';
+      default:
+        return '#6b7280';
+    }
   }
 
   function clampPercent(value) {
@@ -1877,22 +1978,41 @@ const ProductDeliveryDashboard = (() => {
     const fromBacklog = [...new Set((backlog || []).map(item => item.module).filter(Boolean).map(titleCase))];
     const names = [...new Set([...fromProject, ...fromBacklog, ...moduleNamePool(project)])].slice(0, 6);
     const owners = ['Product Owner', 'Delivery Manager', 'Tech Lead', 'QA Lead', 'Business Analyst', 'UX Lead'];
-    const priorities = ['MUST_HAVE', 'SHOULD_HAVE', 'COULD_HAVE', 'DEFERRED'];
-    const statuses = ['IN_PROGRESS', 'PENDING', 'APPROVED', 'BLOCKED', 'COMPLETED'];
+    const storyPointFallback = [13, 21, 8, 5, 3, 5];
+    const statuses = ['IN_PROGRESS', 'NOT_STARTED', 'BLOCKED', 'COMPLETED'];
     return names.map((name, index) => {
       const moduleCompletion = clampPercent(completion + seededInt(seed, -22, 24, 30 + index));
       const blockers = seededInt(seed, 0, index === 0 ? 2 : 4, 60 + index);
+      const priority = modulePriority(name, index);
       return {
         name,
         owner: owners[index % owners.length],
-        priority: priorities[seededInt(seed, 0, priorities.length - 1, 40 + index)],
+        priority,
         status: moduleCompletion > 92 ? 'COMPLETED' : statuses[seededInt(seed, 0, statuses.length - 2, 50 + index)],
         completion: moduleCompletion,
+        storyPoints: moduleStoryPoints(name, index, storyPointFallback),
         linkedSprints: buildLinkedSprints(seed, index),
         blockers,
         ragStatus: moduleRagStatus(moduleCompletion, blockers)
       };
     });
+  }
+
+  function modulePriority(name, index) {
+    const normalized = String(name || '').toLowerCase();
+    if (/authentication module/.test(normalized)) return 'SHOULD_HAVE';
+    if (/(^auth$|payment|dashboard$|checkout|identity)/.test(normalized) && !/analytics/.test(normalized)) return 'MUST_HAVE';
+    if (/analytics|reporting|notification|inventory|client review/.test(normalized)) return 'COULD_HAVE';
+    if (index >= 5 || /deferred|low-value|integration layer|go-live planning/.test(normalized)) return 'DEFERRED';
+    return index < 3 ? 'MUST_HAVE' : index === 3 ? 'SHOULD_HAVE' : 'COULD_HAVE';
+  }
+
+  function moduleStoryPoints(name, index, fallback) {
+    const normalized = String(name || '').toLowerCase();
+    if (/auth|identity/.test(normalized)) return 13;
+    if (/payment|checkout/.test(normalized)) return 21;
+    if (/dashboard/.test(normalized)) return /analytics/.test(normalized) ? 5 : 8;
+    return fallback[index] || 3;
   }
 
   function buildBacklogScheduleHealth(backlog, seed, totalBacklog) {
