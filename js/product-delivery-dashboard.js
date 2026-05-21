@@ -532,7 +532,7 @@ const ProductDeliveryDashboard = (() => {
     return meanings[num] || 'Escalation owner';
   }
 
-  function costBreakdownList(items, maxCost) {
+  function costBreakdownList(items) {
     return `
       <div class="pd-cost-breakdown">
         ${items.map(item => `
@@ -541,7 +541,6 @@ const ProductDeliveryDashboard = (() => {
               <span>${escapeHtml(item.label)}</span>
               <strong>${currency(item.value)}</strong>
             </div>
-            <i><b style="width:${clampPercent((item.value / Math.max(maxCost, 1)) * 100)}%"></b></i>
           </article>
         `).join('')}
       </div>
@@ -1100,7 +1099,6 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function renderCostBudget(detail) {
-    const maxCost = Math.max(detail.cost.approvedBudget, detail.cost.actualCost, detail.cost.forecastCost, 1);
     return renderDetailBlock('Cost & Budget', `
       ${metricStrip([
         ['Budget', currency(detail.cost.approvedBudget)],
@@ -1111,12 +1109,7 @@ const ProductDeliveryDashboard = (() => {
         ['Burn Rate', currency(detail.cost.burnRate)]
       ], 'pd-cost-strip')}
       <div class="pd-cost-dashboard">
-        <div class="pd-cost-bars">
-          ${costBar('Budget', detail.cost.approvedBudget, maxCost)}
-          ${costBar('Actual', detail.cost.actualCost, maxCost)}
-          ${costBar('Forecast', detail.cost.forecastCost, maxCost)}
-        </div>
-        ${costBreakdownList(detail.cost.breakdown, maxCost)}
+        ${costBreakdownList(detail.cost.breakdown)}
       </div>
     `, 'pd-detail-full', {
       summary: sectionSummary([
@@ -1197,7 +1190,6 @@ const ProductDeliveryDashboard = (() => {
               <span>${escapeHtml(item.label)}</span>
               ${deliveryHealthBadge(item.status)}
             </div>
-            <small>${escapeHtml(healthSignalText(item))}</small>
           </article>
         `).join('')}
       </div>
@@ -1213,16 +1205,6 @@ const ProductDeliveryDashboard = (() => {
       `,
       defaultOpen: true
     });
-  }
-
-  function healthSignalText(item) {
-    const label = String(item.label || 'Delivery').replace(/\s+/g, ' ').trim();
-    const score = Number(item.score) || 0;
-    const status = String(item.status || '');
-    if (/red|critical|blocked|risk/i.test(status)) return `${label} needs attention`;
-    if (/amber|watch|monitor/i.test(status)) return `${label} risk moderate`;
-    if (score >= 80) return `${label} stable`;
-    return `${label} tracking`;
   }
 
   function renderDataTable(headers, rows, className = '') {
@@ -1295,16 +1277,6 @@ const ProductDeliveryDashboard = (() => {
             <strong>${value}</strong>
           </article>
         `).join('')}
-      </div>
-    `;
-  }
-
-  function costBar(label, value, max) {
-    return `
-      <div class="pd-cost-bar">
-        <span>${escapeHtml(label)}</span>
-        <i><b style="width:${clampPercent((value / max) * 100)}%"></b></i>
-        <strong>${currency(value)}</strong>
       </div>
     `;
   }
