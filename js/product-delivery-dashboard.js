@@ -236,7 +236,7 @@ const ProductDeliveryDashboard = (() => {
         </div>
         <div class="pd-project-summary-progress">
           <div>
-            <strong style="color:${getRAGColor(detail.workflow.completionPercentage)}">${detail.workflow.completionPercentage}%</strong>
+            <strong style="color:${getProgressColor(detail.workflow.completionPercentage, project.status, blockers)}">${detail.workflow.completionPercentage}%</strong>
             <span>progress</span>
           </div>
         </div>
@@ -330,7 +330,7 @@ const ProductDeliveryDashboard = (() => {
       ['Ready for Backlog', detail.overview.readyForBacklog, 'Reviewed and ready', 'var(--text-primary)'],
       ['Backlog Generated', detail.overview.backlogItemsGenerated, 'Automation output', 'var(--text-primary)'],
       ['Backlog Approved', detail.overview.backlogItemsApproved, 'Approved delivery items', 'var(--text-primary)'],
-      ['Completion %', `${detail.overview.overallCompletion}%`, 'Overall progression', getRAGColor(detail.overview.overallCompletion)],
+      ['Completion %', `${detail.overview.overallCompletion}%`, 'Overall progression', getProgressColor(detail.overview.overallCompletion, detail.workflow.currentStage, detail.workflow.blockedStages)],
       ['Delivery Confidence', detail.overview.deliveryConfidence, 'Execution confidence', getConfidenceColor(detail.overview.deliveryConfidence)],
       ['Days Remaining', detail.overview.daysRemaining, 'Target delivery clock', getDaysRemainingColor(detail.overview.daysRemaining)],
       ['Project Health', detail.overview.projectHealth, 'Delivery signal', getHealthColor(detail.overview.projectHealth)]
@@ -609,7 +609,7 @@ const ProductDeliveryDashboard = (() => {
               <div class="pd-funnel-row pd-funnel-step-${index + 1}">
                 <span>${escapeHtml(item.label)}</span>
                 <strong>${item.value}</strong>
-                <i><b style="width:${fill}%;--pd-rag-fill:${getRAGColor(fill)}"></b></i>
+                <i><b style="width:${fill}%;--pd-rag-fill:${getFunnelStepColor(item.label, fill, item.value, total)}"></b></i>
               </div>
                 `;
               })()}
@@ -629,9 +629,9 @@ const ProductDeliveryDashboard = (() => {
 
   function scheduleStatusChart(detail) {
     const items = [
-      ['On Schedule', detail.backlog.onScheduleCount, 'success', 'var(--rag-green)'],
-      ['Behind', detail.backlog.offScheduleCount, 'warning', detail.backlog.offScheduleCount > 5 ? 'var(--rag-red)' : 'var(--rag-amber)'],
-      ['Approved', detail.backlog.approved, 'state', '#64748b']
+      ['On Schedule', detail.backlog.onScheduleCount, 'success', getHealthToneColor('green')],
+      ['Behind', detail.backlog.offScheduleCount, 'warning', getScheduleBehindColor(detail.backlog.offScheduleCount, detail.backlog.generated)],
+      ['Approved', detail.backlog.approved, 'success', getHealthToneColor('green')]
     ];
     const max = Math.max(...items.map(item => Number(item[1]) || 0), 1);
     return `
@@ -655,17 +655,20 @@ const ProductDeliveryDashboard = (() => {
   function renderFeatureProgress(detail) {
     return renderDetailBlock('Feature / Module Progress', renderDataTable(
       ['Module', 'Owner', 'Priority', 'SP', 'Status', 'Completion', 'Sprints', 'Blockers', 'RAG'],
-      detail.features.map(feature => [
-        escapeHtml(feature.name),
-        escapeHtml(feature.owner),
-        priorityBadge(feature.priority),
-        `<span class="pd-story-points">${feature.storyPoints || 5}</span>`,
-        statusBadge(feature.status),
-        `<div class="pd-progress-cell"><span style="color:${getRAGColor(feature.completion)}">${feature.completion}%</span></div>`,
-        sprintChips(feature.linkedSprints),
-        featureBlockersCell(feature.blockers),
-        ragStatusDot(feature.ragStatus, feature.blockers)
-      ]),
+      detail.features.map(feature => {
+        const health = getFeatureHealthTone(feature);
+        return [
+          escapeHtml(feature.name),
+          escapeHtml(feature.owner),
+          priorityBadge(feature.priority),
+          `<span class="pd-story-points">${feature.storyPoints || 5}</span>`,
+          statusBadge(feature.status),
+          `<div class="pd-progress-cell"><span style="color:${getHealthToneColor(health)}">${feature.completion}%</span></div>`,
+          sprintChips(feature.linkedSprints),
+          featureBlockersCell(feature.blockers),
+          ragStatusDot(health, feature.blockers)
+        ];
+      }),
       'pd-feature-table'
     ), 'pd-detail-full', {
       summary: sectionSummary([
@@ -744,8 +747,8 @@ const ProductDeliveryDashboard = (() => {
           ${detail.sprints.list.map(item => `
             <article class="pd-sprint-card">
               <div><strong>${escapeHtml(item.name)}</strong>${statusBadge(item.status)}</div>
-              ${bar(item.completion, getRAGColor(item.completion))}
-              <span style="color:${getRAGColor(item.completion)}">${item.completion}% complete</span>
+              ${bar(item.completion, getSprintProgressColor(item))}
+              <span style="color:${getSprintProgressColor(item)}">${item.completion}% complete</span>
             </article>
           `).join('')}
         </div>
@@ -843,6 +846,7 @@ const ProductDeliveryDashboard = (() => {
     const width = Math.max(4, right - left);
     const progress = clampPercent(feature.progress);
     const showProgress = progress > 0 && !/not started|upcoming|pending/i.test(titleCase(feature.status));
+    const barColor = getFeatureRoadmapColor(feature);
     return `
       <div class="pd-feature-roadmap-row">
         <div class="pd-feature-roadmap-label">
@@ -850,7 +854,7 @@ const ProductDeliveryDashboard = (() => {
           <strong title="${escapeHtml(feature.name)}">${escapeHtml(feature.name)}</strong>
         </div>
         <div class="pd-feature-roadmap-lane" aria-label="${escapeHtml(feature.name)} timeline">
-          <i class="pd-feature-roadmap-bar" style="left:${left}%;width:${width}%;background:${getRAGColor(progress)}">
+          <i class="pd-feature-roadmap-bar" style="left:${left}%;width:${width}%;background:${barColor}">
             ${showProgress ? `<b>${progress}%</b>` : ''}
           </i>
         </div>
@@ -954,6 +958,7 @@ const ProductDeliveryDashboard = (() => {
 
   function roadmapPhaseCard(phase) {
     const riskColor = getDelayRiskColor(phase.delayRisk);
+    const progressColor = getRoadmapPhaseProgressColor(phase);
     return `
       <article class="pd-roadmap-phase" style="--pd-roadmap-risk:${riskColor}">
         <span>${escapeHtml(phase.name)}</span>
@@ -961,7 +966,7 @@ const ProductDeliveryDashboard = (() => {
         <small>Planned: ${formatDate(phase.plannedDate)}</small>
         <small>Forecast: ${formatDate(phase.forecastDate)}</small>
         <small class="pd-delay-risk">Delay risk: <b><i></i>${escapeHtml(phase.delayRisk)}</b></small>
-        ${bar(phase.completion, riskColor)}
+        ${bar(phase.completion, progressColor)}
       </article>
     `;
   }
@@ -1218,8 +1223,102 @@ const ProductDeliveryDashboard = (() => {
     `;
   }
 
-  function bar(value, color = getRAGColor(value)) {
+  function bar(value, color = getProgressColor(value)) {
     return `<div class="pd-card-meter"><i style="width:${clampPercent(value)}%;--pd-rag-fill:${color}"></i></div>`;
+  }
+
+  function getHealthToneColor(tone) {
+    const normalized = String(tone || '').toLowerCase();
+    if (normalized.includes('red') || normalized.includes('critical') || normalized.includes('blocked')) return 'var(--rag-red)';
+    if (normalized.includes('amber') || normalized.includes('warning') || normalized.includes('watch')) return 'var(--rag-amber)';
+    if (normalized.includes('blue') || normalized.includes('neutral')) return 'var(--info)';
+    if (normalized.includes('gray') || normalized.includes('grey')) return '#64748b';
+    return 'var(--rag-green)';
+  }
+
+  function normalizeStatusTone(status) {
+    const value = String(status || '').toUpperCase().replace(/[\s-]+/g, '_');
+    if (['BLOCKED', 'DELAYED', 'HIGH_RISK', 'FAILED', 'REJECTED', 'ESCALATED', 'REWORK'].includes(value)) return 'red';
+    if (['IN_PROGRESS', 'EXECUTING', 'AT_RISK', 'PENDING_REVIEW', 'PARTIALLY_COMPLETE', 'GATE_REVIEW', 'AGENT_ASSIGNED'].includes(value)) return 'amber';
+    if (['COMPLETED', 'DONE', 'APPROVED', 'ON_TRACK', 'ACTIVE', 'RESOLVED', 'PASS', 'PASSED'].includes(value)) return 'green';
+    if (['PENDING', 'NOT_STARTED', 'SPECIFIED', 'CREATED', 'IDLE'].includes(value)) return 'gray';
+    return 'gray';
+  }
+
+  function getFeatureHealthTone(feature) {
+    const completion = clampPercent(feature?.completion);
+    const blockers = Number(feature?.blockers) || 0;
+    const priority = priorityLabel(feature?.priority);
+    const statusTone = normalizeStatusTone(feature?.status);
+    const delayTone = getDelayRiskTone(feature?.delayRisk || feature?.scheduleStatus);
+
+    if (statusTone === 'red' || delayTone === 'red') return 'red';
+    if (blockers >= 2 || (blockers > 0 && priority === 'Must Have')) return 'red';
+    if (blockers > 0 || statusTone === 'amber' || delayTone === 'amber') return 'amber';
+    if (statusTone === 'green' || completion >= 71) return 'green';
+    if (completion <= 30) return 'amber';
+    if (completion <= 70) return 'amber';
+    return 'green';
+  }
+
+  function getProgressHealthTone(completion, status, blockers = 0, delayRisk = '', priority = '') {
+    const statusTone = normalizeStatusTone(status);
+    const riskTone = getDelayRiskTone(delayRisk);
+    const count = Number(blockers) || 0;
+    const pct = clampPercent(completion);
+    const isMustHave = priorityLabel(priority) === 'Must Have';
+    if (statusTone === 'red' || riskTone === 'red' || count >= 2) return 'red';
+    if (count > 0 && isMustHave) return 'red';
+    if (count > 0 || riskTone === 'amber') return 'amber';
+    if (statusTone === 'gray') return pct <= 30 ? 'gray' : 'amber';
+    if (pct >= 71 || statusTone === 'green') return 'green';
+    if (pct >= 31) return 'amber';
+    if (statusTone === 'amber') return 'amber';
+    return 'amber';
+  }
+
+  function getProgressColor(completion, status, blockers = 0, delayRisk = '') {
+    return getHealthToneColor(getProgressHealthTone(completion, status, blockers, delayRisk));
+  }
+
+  function getSprintProgressColor(sprint) {
+    return getProgressColor(sprint?.completion, sprint?.status, sprint?.blocked || 0, sprint?.delayRisk || '');
+  }
+
+  function getRoadmapPhaseProgressColor(phase) {
+    return getProgressColor(phase?.completion, phase?.status, 0, phase?.delayRisk);
+  }
+
+  function getFeatureRoadmapColor(feature) {
+    const healthTone = getDelayRiskTone(feature?.health);
+    if (healthTone) return getHealthToneColor(healthTone);
+    return getProgressColor(feature?.progress, feature?.status, feature?.blockers || 0, feature?.delayRisk);
+  }
+
+  function getDelayRiskTone(risk) {
+    const normalized = String(risk || '').toLowerCase();
+    if (!normalized) return '';
+    if (normalized.includes('high') || normalized.includes('red') || normalized.includes('delayed') || normalized.includes('blocked')) return 'red';
+    if (normalized.includes('medium') || normalized.includes('amber') || normalized.includes('watch') || normalized.includes('risk')) return 'amber';
+    if (normalized.includes('low') || normalized.includes('green') || normalized.includes('on track')) return 'green';
+    return '';
+  }
+
+  function getScheduleBehindColor(behind, total) {
+    const count = Number(behind) || 0;
+    const all = Math.max(Number(total) || 0, 1);
+    if (count <= 0) return getHealthToneColor('green');
+    return count / all > 0.3 ? getHealthToneColor('red') : getHealthToneColor('amber');
+  }
+
+  function getFunnelStepColor(label, fill, value, total) {
+    const normalized = String(label || '').toLowerCase();
+    const count = Number(value) || 0;
+    const all = Math.max(Number(total) || 0, 1);
+    if (normalized.includes('clarification')) return count / all > 0.25 ? getHealthToneColor('red') : getHealthToneColor('amber');
+    if (normalized.includes('review')) return fill >= 70 ? getHealthToneColor('green') : getHealthToneColor('amber');
+    if (normalized.includes('approval') || normalized.includes('sprint ready') || normalized.includes('backlog')) return fill >= 50 ? getHealthToneColor('green') : getHealthToneColor('amber');
+    return getHealthToneColor('green');
   }
 
   function priorityBadge(value) {
@@ -1324,7 +1423,7 @@ const ProductDeliveryDashboard = (() => {
         </div>
         <div class="pd-project-summary-progress">
           <div>
-            <strong style="color:${getRAGColor(progress)}">${progress}%</strong>
+            <strong style="color:${getProgressColor(progress, detail.overview.currentStatus, riskCount)}">${progress}%</strong>
             <span>progress</span>
           </div>
         </div>
@@ -1604,7 +1703,7 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function miniProgress(value) {
-    return `<div class="pd-mini-progress"><span style="width:${clampPercent(value)}%;--pd-rag-fill:${getRAGColor(value)}"></span></div>`;
+    return `<div class="pd-mini-progress"><span style="width:${clampPercent(value)}%;--pd-rag-fill:${getProgressColor(value)}"></span></div>`;
   }
 
   function deliveryHealthBadge(value) {
@@ -1615,8 +1714,7 @@ const ProductDeliveryDashboard = (() => {
   function statusBadge(status) {
     const label = String(status || 'NOT_STARTED').trim().toUpperCase();
     const color = getStatusColor(label);
-    const isState = ['IN_PROGRESS', 'NOT_STARTED', 'PENDING', 'SPECIFIED', 'APPROVED', 'ACTIVE'].includes(label);
-    return `<span class="status-badge pd-status-badge" style="background:${isState ? color : color};color:#fff;border-color:${color}">${escapeHtml(label)}</span>`;
+    return `<span class="status-badge pd-status-badge" style="background:${getStatusBadgeBackground(label)};color:${getStatusBadgeTextColor(label)};border-color:${color}">${escapeHtml(label)}</span>`;
   }
 
   function blockersBadge(value) {
@@ -1637,24 +1735,18 @@ const ProductDeliveryDashboard = (() => {
 
   function ragStatusDot(value, blockers = 0) {
     const normalized = String(value || 'green').toLowerCase();
-    const tone = normalized.includes('red') ? 'red' : normalized.includes('amber') || normalized.includes('yellow') ? 'amber' : 'green';
-    const labels = { green: 'Green / Healthy', amber: 'Amber / Watch', red: 'Red / At Risk' };
+    const tone = normalized.includes('red') || normalized.includes('critical') ? 'red' : normalized.includes('amber') || normalized.includes('yellow') || normalized.includes('warning') ? 'amber' : normalized.includes('gray') || normalized.includes('grey') ? 'gray' : 'green';
+    const labels = { green: 'Green / Healthy', amber: 'Amber / Watch', red: 'Red / At Risk', gray: 'Neutral / Not Started' };
     const count = Number(blockers) || 0;
     const title = count > 0 ? `${count} blockers` : 'On track';
     return `<span class="pd-rag-status pd-rag-${tone}" title="${escapeHtml(title)}" aria-label="${labels[tone]}"><i></i></span>`;
   }
 
-  function getRAGColor(score) {
-    const num = Number(score) || 0;
-    if (num >= 75) return 'var(--rag-green)';
-    if (num >= 50) return 'var(--rag-amber)';
-    return 'var(--rag-red)';
-  }
-
   function getDelayRiskColor(risk) {
-    if (String(risk || '').toLowerCase() === 'low') return 'var(--rag-green)';
-    if (String(risk || '').toLowerCase() === 'medium') return 'var(--rag-amber)';
-    return 'var(--rag-red)';
+    const tone = getDelayRiskTone(risk);
+    if (tone === 'red') return 'var(--rag-red)';
+    if (tone === 'amber') return 'var(--rag-amber)';
+    return 'var(--rag-green)';
   }
 
   function getHealthColor(value) {
@@ -1680,28 +1772,27 @@ const ProductDeliveryDashboard = (() => {
   }
 
   function getStatusColor(status) {
-    switch (String(status || '').toUpperCase()) {
-      case 'COMPLETED':
-      case 'DONE':
-      case 'APPROVED':
-      case 'ACTIVE':
-      case 'RESOLVED':
-        return 'var(--rag-green)';
-      case 'BLOCKED':
-      case 'REJECTED':
-      case 'ESCALATED':
-        return 'var(--rag-red)';
-      case 'IN_PROGRESS':
-      case 'EXECUTING':
-      case 'AGENT_ASSIGNED':
-        return '#475569';
-      case 'NOT_STARTED':
-      case 'PENDING':
-      case 'SPECIFIED':
-        return '#9ca3af';
-      default:
-        return '#6b7280';
-    }
+    const tone = normalizeStatusTone(status);
+    if (tone === 'green') return 'var(--rag-green)';
+    if (tone === 'amber') return 'var(--rag-amber)';
+    if (tone === 'red') return 'var(--rag-red)';
+    return '#94a3b8';
+  }
+
+  function getStatusBadgeBackground(status) {
+    const tone = normalizeStatusTone(status);
+    if (tone === 'green') return '#dcfce7';
+    if (tone === 'amber') return '#fef3c7';
+    if (tone === 'red') return '#fee2e2';
+    return '#f1f5f9';
+  }
+
+  function getStatusBadgeTextColor(status) {
+    const tone = normalizeStatusTone(status);
+    if (tone === 'green') return '#166534';
+    if (tone === 'amber') return '#92400e';
+    if (tone === 'red') return '#991b1b';
+    return '#334155';
   }
 
   function priorityLabel(priority) {
@@ -1956,18 +2047,36 @@ const ProductDeliveryDashboard = (() => {
       const moduleCompletion = clampPercent(completion + seededInt(seed, -22, 24, 30 + index));
       const blockers = seededInt(seed, 0, index === 0 ? 2 : 4, 60 + index);
       const priority = modulePriority(name, index);
+      const status = getModuleStatus(moduleCompletion, blockers, priority, statuses[seededInt(seed, 0, statuses.length - 2, 50 + index)]);
+      const delayRisk = getModuleDelayRisk(moduleCompletion, blockers, status);
       return {
         name,
         owner: owners[index % owners.length],
         priority,
-        status: moduleCompletion > 92 ? 'COMPLETED' : statuses[seededInt(seed, 0, statuses.length - 2, 50 + index)],
+        status,
         completion: moduleCompletion,
         storyPoints: moduleStoryPoints(name, index, storyPointFallback),
         linkedSprints: buildLinkedSprints(seed, index),
         blockers,
-        ragStatus: moduleRagStatus(moduleCompletion, blockers)
+        delayRisk,
+        ragStatus: moduleRagStatus(moduleCompletion, blockers, priority, status, delayRisk)
       };
     });
+  }
+
+  function getModuleStatus(completion, blockers, priority, fallback) {
+    const pct = clampPercent(completion);
+    if (blockers >= 2 && priorityLabel(priority) === 'Must Have') return 'BLOCKED';
+    if (blockers >= 3) return 'BLOCKED';
+    if (pct >= 92) return 'COMPLETED';
+    if (pct <= 12 && blockers === 0) return 'NOT_STARTED';
+    return fallback === 'BLOCKED' && blockers === 0 ? 'IN_PROGRESS' : fallback;
+  }
+
+  function getModuleDelayRisk(completion, blockers, status) {
+    if (normalizeStatusTone(status) === 'red' || blockers >= 2) return 'High';
+    if (blockers > 0 || completion < 71) return 'Medium';
+    return 'Low';
   }
 
   function modulePriority(name, index) {
@@ -2011,10 +2120,8 @@ const ProductDeliveryDashboard = (() => {
     return [...new Set(Array.from({ length: count }, (_, offset) => `Sprint ${Math.min(5, first + offset)}`))];
   }
 
-  function moduleRagStatus(completion, blockers) {
-    if (blockers >= 3 || completion < 35) return 'red';
-    if (blockers > 0 || completion < 68) return 'amber';
-    return 'green';
+  function moduleRagStatus(completion, blockers, priority, status, delayRisk) {
+    return getProgressHealthTone(completion, status, blockers, delayRisk || getModuleDelayRisk(completion, blockers, status), priority);
   }
 
   function buildSprints(project, seed, completion) {
@@ -2034,6 +2141,8 @@ const ProductDeliveryDashboard = (() => {
         endDate: addDays(start, index * 14 + 13),
         status: sprintCompletion > 96 ? 'COMPLETED' : sprintCompletion > 20 && sprintCompletion < 96 ? 'IN_PROGRESS' : 'PENDING',
         completion: sprintCompletion,
+        delayRisk: sprintCompletion < 25 ? 'Medium' : sprintCompletion < 70 ? 'Medium' : 'Low',
+        blocked: 0,
         goal: sprintGoal(project, index)
       };
     });
@@ -2077,6 +2186,9 @@ const ProductDeliveryDashboard = (() => {
         endDate: addDays(start, startOffset + duration),
         status: featureRoadmapStatus(module.status, module.ragStatus, progress),
         progress,
+        health: module.ragStatus,
+        delayRisk: module.delayRisk,
+        blockers: module.blockers,
         owner: module.owner,
         dependency: module.linkedSprints?.[0] || ''
       };
