@@ -656,8 +656,9 @@ tbody tr:last-child td { border-bottom: none; }
 /* Status badges */
 .status-badge, .risk-badge, .priority-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 6px; font-size: 11px;
-  font-weight: 600; letter-spacing: 0.5px; white-space: nowrap;
+  padding: 3px 10px; border-radius: 999px; font-size: 11px;
+  font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
+  line-height: 1.2;
 }
 
 /* Tabs */
@@ -1437,9 +1438,6 @@ tbody tr:last-child td { border-bottom: none; }
 .pill,
 .status-tag,
 .rag-chip,
-.status-badge,
-.risk-badge,
-.priority-badge,
 .pd-badge-success,
 .pd-badge-warning,
 .pd-badge-danger,

@@ -694,14 +694,13 @@ function renderInvitationStatusTable() {
 function renderInviteStatusBadge(status) {
   const value = String(status || 'pending').toLowerCase();
   const label = value.replace(/\b\w/g, c => c.toUpperCase());
-  const colors = {
-    pending: '#f59e0b',
-    accepted: '#10b981',
-    cancelled: '#6b7280',
-    expired: '#ef4444'
+  const tones = {
+    pending: 'amber',
+    accepted: 'green',
+    cancelled: 'gray',
+    expired: 'red'
   };
-  const color = colors[value] || '#6b7280';
-  return `<span class="status-badge" style="background:${color}20;color:${color};border:1px solid ${color}40">${label}</span>`;
+  return badgeMarkup('status-badge', label, tones[value] || 'gray');
 }
 
 function renderInvitationActions(invitation, user) {
@@ -845,35 +844,48 @@ function formatTime(ts) {
 
 // Status badge
 function statusBadge(status) {
-  const colors = {
-    'COMPLETED': '#10b981', 'DONE': '#10b981', 'PASS': '#10b981', 'PASSED': '#10b981', 'ACTIVE': '#10b981', 'APPROVED': '#10b981', 'RESOLVED': '#10b981',
-    'IN_PROGRESS': '#3b82f6', 'EXECUTING': '#3b82f6',
-    'PENDING': '#f59e0b', 'SPECIFIED': '#f59e0b', 'CONFIGURED': '#f59e0b',
-    'AGENT_ASSIGNED': '#8b5cf6', 'GATE_REVIEW': '#8b5cf6',
-    'BLOCKED': '#ef4444', 'FAIL': '#ef4444', 'FAILED': '#ef4444', 'REJECTED': '#ef4444',
-    'ESCALATED': '#f97316',
-    'IDLE': '#6b7280',
-    'CREATED': '#8b5cf6', 'LEARNING': '#8b5cf6', 'OPTIMIZED': '#a855f7',
-    'RETIRED': '#6b7280', 'NOT_STARTED': '#6b7280'
+  const value = String(status || 'UNKNOWN').toUpperCase();
+  const tones = {
+    'COMPLETED': 'green', 'DONE': 'green', 'PASS': 'green', 'PASSED': 'green', 'ACTIVE': 'green', 'APPROVED': 'green', 'RESOLVED': 'green',
+    'IN_PROGRESS': 'blue', 'EXECUTING': 'blue',
+    'PENDING': 'amber', 'SPECIFIED': 'amber', 'CONFIGURED': 'amber',
+    'AGENT_ASSIGNED': 'purple', 'GATE_REVIEW': 'purple',
+    'BLOCKED': 'red', 'FAIL': 'red', 'FAILED': 'red', 'REJECTED': 'red',
+    'ESCALATED': 'orange',
+    'IDLE': 'gray',
+    'CREATED': 'purple', 'LEARNING': 'purple', 'OPTIMIZED': 'purple',
+    'RETIRED': 'gray', 'NOT_STARTED': 'gray'
   };
-  const color = colors[status] || '#6b7280';
-  return `<span class="status-badge" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40">${status}</span>`;
+  return badgeMarkup('status-badge', value, tones[value] || 'gray');
 }
 
 // Risk badge
 function riskBadge(risk) {
-  const colors = { LOW: '#10b981', MEDIUM: '#f59e0b', HIGH: '#f97316', CRITICAL: '#ef4444' };
-  const color = colors[risk] || '#6b7280';
-  return `<span class="risk-badge" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40">${risk}</span>`;
+  const value = String(risk || 'UNKNOWN').toUpperCase();
+  const tones = { LOW: 'green', MEDIUM: 'amber', HIGH: 'orange', CRITICAL: 'red' };
+  return badgeMarkup('risk-badge', value, tones[value] || 'gray');
 }
 
 // Priority badge
 function priorityBadge(priority) {
   const labels = { MUST_HAVE: 'Must Have', SHOULD_HAVE: 'Should Have', COULD_HAVE: 'Could Have', WONT_HAVE: "Won't Have", UNCLASSIFIED: 'Unclassified' };
-  const colors = { MUST_HAVE: '#ef4444', SHOULD_HAVE: '#f59e0b', COULD_HAVE: '#3b82f6', WONT_HAVE: '#6b7280', UNCLASSIFIED: '#6b7280' };
-  const label = labels[priority] || priority;
-  const color = colors[priority] || '#6b7280';
-  return `<span class="priority-badge" style="background: ${color}20; color: ${color}; border: 1px solid ${color}40">${label}</span>`;
+  const value = String(priority || 'UNCLASSIFIED').toUpperCase();
+  const tones = { MUST_HAVE: 'red', SHOULD_HAVE: 'amber', COULD_HAVE: 'blue', WONT_HAVE: 'gray', UNCLASSIFIED: 'gray' };
+  return badgeMarkup('priority-badge', labels[value] || value, tones[value] || 'gray');
+}
+
+function badgeMarkup(className, label, tone) {
+  const styles = {
+    green: { bg: '#dcfce7', border: '#22c55e', text: '#166534' },
+    blue: { bg: '#dbeafe', border: '#60a5fa', text: '#1e40af' },
+    amber: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
+    orange: { bg: '#ffedd5', border: '#fb923c', text: '#9a3412' },
+    red: { bg: '#fee2e2', border: '#f87171', text: '#991b1b' },
+    purple: { bg: '#ede9fe', border: '#a78bfa', text: '#5b21b6' },
+    gray: { bg: '#f1f5f9', border: '#94a3b8', text: '#334155' }
+  };
+  const style = styles[tone] || styles.gray;
+  return `<span class="${className}" data-badge-tone="${tone}" style="background:${style.bg};color:${style.text};border:1px solid ${style.border}">${escapeHtml(label)}</span>`;
 }
 
 // Tab switching helper

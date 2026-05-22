@@ -138,7 +138,6 @@
     <div class="tabs" data-tab-group="projects">
       <a href="#overview-section" class="tab nav-link active">📊 Overview</a>
       <a href="#projectListing-section" class="tab nav-link">📂 Projects</a>
-      <a href="#activity-section" class="tab nav-link">📜 Activity</a>
       <a href="#projectOverview-section" class="tab nav-link">📋 Project Details</a>
       <a href="#requirements-section" class="tab nav-link">📄 Requirements</a>
       <a href="#backlog-section" class="tab nav-link">📝 Backlog</a>
@@ -157,14 +156,6 @@
       <div id="projectCards"></div>
     </div>
 
-    <!-- Global Activity -->
-    <div class="tab-content" id="activity-section">
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">Recent Activity</h3></div>
-        <div id="globalActivityLog" class="timeline"></div>
-      </div>
-    </div>
-
     <!-- Project Overview -->
     <div class="tab-content" id="projectOverview-section">
       <div class="grid grid-4" id="overviewStats" style="margin-bottom:20px"></div>
@@ -172,9 +163,7 @@
         <div class="card"><div class="card-header"><h3 class="card-title">📊 Progress</h3></div><div id="overviewProgress"></div></div>
         <div class="card"><div class="card-header"><h3 class="card-title">👥 Team</h3></div><div id="overviewTeam"></div></div>
       </div>
-      <div id="projectSetupSection"></div>
       <div id="projectTeamRolesSection"></div>
-      <div class="card" style="margin-top:16px"><div class="card-header"><h3 class="card-title">📜 Activity</h3></div><div id="overviewActivity" class="timeline"></div></div>
     </div>
 
     <!-- Requirements -->
@@ -460,16 +449,6 @@
       });
     }
 
-    function getDisplayActivity(project) {
-      const pid = project?.id;
-      const stored = NexusStore.getLogs().filter(log => log.message && log.message.includes(pid)).slice(0, 8);
-      if (stored.length) return stored.map(log => ({ message: log.message, timestamp: log.timestamp }));
-      return getDashboardData(project).activity.map((message, index) => ({
-        message,
-        timestamp: new Date(Date.now() - index * 60000).toISOString()
-      }));
-    }
-
     function openModal(id) {
       if (id === 'createProjectModal' && !ProjectAccessUI.guardCreateProject()) return;
       document.getElementById(id).classList.add('show');
@@ -490,7 +469,6 @@
       renderTasks();
       renderTimeline();
       renderPipeline();
-      renderGlobalActivity();
     }
 
     function renderProjectListing() {
@@ -584,17 +562,7 @@
 
       renderModules(data.modules);
       renderTeam(teamMembers);
-      ProjectAccessUI.renderProjectAccessPanels(pid);
-
-      const logs = getDisplayActivity(project);
-      const activityContainer = document.getElementById('overviewActivity');
-      if (!logs.length) {
-        activityContainer.innerHTML = "<p>No activity yet</p>";
-      } else {
-        activityContainer.innerHTML = logs
-          .map(log => `<div class="timeline-item completed"><p style="font-size:13px;color:var(--text-secondary)">${escapeHtml(log.message)}</p><span style="font-size:11px;color:var(--text-muted)">${formatTime(log.timestamp)}</span></div>`)
-          .join("");
-      }
+      ProjectAccessUI.renderProjectTeamRoles(project);
     }
 
     function getProjectDummyData(projectId) {
@@ -1293,20 +1261,6 @@
       renderAll();
     }
 
-
-    function renderGlobalActivity() {
-      const logs = NexusStore.getLogs().slice(0, 15);
-      const typeColors = { SYSTEM: 'var(--info)', AUTH: 'var(--purple)', PROJECT: 'var(--success)', PIPELINE: 'var(--accent)', AGENT: 'var(--warning)', TASK: 'var(--info)', GATE: 'var(--success)', ESCALATION: 'var(--orange)', DECISION: 'var(--purple)', REQUIREMENTS: 'var(--info)' };
-      document.getElementById('globalActivityLog').innerHTML = logs.map(log => `
-        <div class="timeline-item completed">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <span style="font-size:11px; font-weight:600; color:${typeColors[log.type]||'var(--text-muted)'}; text-transform:uppercase;">${log.type}</span>
-            <span style="font-size:11px; color:var(--text-muted)">${formatTime(log.timestamp)}</span>
-          </div>
-          <p style="font-size:13px; color:var(--text-secondary)">${escapeHtml(log.message)}</p>
-        </div>
-      `).join('') || '<p style="color:var(--text-muted);font-size:13px">No recent activity.</p>';
-    }
 
     function resetData() {
       if (confirm('Reset all data to initial demo state?')) {
