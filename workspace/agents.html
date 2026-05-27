@@ -49,7 +49,7 @@
     .marketplace-card .mc-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; min-height: 40px; }
     .marketplace-card .mc-caps { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px; }
     .marketplace-card .mc-caps .cap-tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border); }
-    .marketplace-card .mc-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+    .marketplace-card .mc-meta { display: flex; justify-content: flex-start; align-items: center; font-size: 11px; color: var(--text-muted); margin-bottom: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
     .marketplace-card .mc-actions { display: flex; gap: 8px; }
     .mc-badge-predefined { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--accent)18; color: var(--accent); border: 1px solid var(--accent)35; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
     .mc-badge-custom { position: absolute; top: 12px; right: 12px; font-size: 9px; padding: 2px 8px; border-radius: 8px; background: var(--success)18; color: var(--success); border: 1px solid var(--success)35; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; }
@@ -1264,8 +1264,6 @@
             <div class="mc-caps">${t.skills.slice(0,4).map(c=>`<span class="cap-tag">${c.replace(/_/g,' ')}</span>`).join('')}${t.skills.length>4?`<span class="cap-tag">+${t.skills.length-4}</span>`:''}</div>
             <div class="mc-meta">
               <span>⭐ ${t.popularity}%</span>
-              <span>🚀 ${t.deployCount.toLocaleString()}</span>
-              <span>🛡️ ${t.ceiling.risk_sensitivity}</span>
             </div>
             <div class="mc-actions">
               ${canEditProjectAgents ? (isDeployed
